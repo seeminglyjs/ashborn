@@ -5,6 +5,7 @@ import '../../data/characters.dart';
 import '../../game/ashborn_game.dart';
 import '../hud/hud.dart';
 import '../inventory_scope.dart';
+import '../overlays/equipment_overlay.dart';
 import '../overlays/game_over_overlay.dart';
 import '../overlays/level_up_overlay.dart';
 
@@ -36,6 +37,8 @@ class _GameScreenState extends State<GameScreen> {
           ),
           AshbornGame.levelUpOverlay: (context, game) =>
               LevelUpOverlay(game: game),
+          AshbornGame.equipmentOverlay: (context, game) =>
+              EquipmentOverlay(game: game),
         },
         initialActiveOverlays: const [AshbornGame.hudOverlay],
       ),

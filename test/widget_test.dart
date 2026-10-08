@@ -1,8 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/main.dart';
 import 'package:ashborn/systems/level_system.dart';
+import 'package:ashborn/systems/loot_system.dart';
 import 'package:ashborn/ui/inventory_scope.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
@@ -131,4 +135,46 @@ void main() {
     expect(find.text('레벨 업'), findsNothing);
     expect(game.paused, isFalse);
   });
+
+  for (final size in [phoneLandscape, desktop]) {
+    testWidgets('장비 화면에서 가방의 반지를 끼면 원래 반지는 가방으로 간다 '
+        '(${size.width.toInt()}x${size.height.toInt()})', (tester) async {
+      useScreen(tester, size);
+      final random = math.Random(4);
+      final inventory = Inventory();
+      // 칸을 다 채우고 가방도 넉넉히 채워 레이아웃을 확인한다.
+      for (var i = 0; i < 40; i++) {
+        inventory.add(LootSystem.generate(random, rarity: Rarity.unique));
+      }
+      final ring = LootSystem.generate(random, type: ItemType.ring);
+      inventory.add(ring);
+      final oldRing = inventory.equipped[EquipSlot.ring1]!;
+      await tester.pumpWidget(gameScreen(Roster.witch, inventory: inventory));
+      await settle(tester, 100);
+      final game = tester
+          .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
+          .game!;
+
+      await tester.tap(find.byKey(const Key('open-equipment')));
+      await tester.pump();
+      expect(game.paused, isTrue);
+      expect(find.text('장비'), findsOneWidget);
+
+      final index = inventory.bag.indexOf(ring);
+      await tester.ensureVisible(find.byKey(Key('bag-$index')));
+      await tester.tap(find.byKey(Key('bag-$index')));
+      await tester.pump();
+      expect(find.text(ring.name), findsWidgets);
+
+      await tester.tap(find.byKey(const Key('equip-ring1')));
+      await tester.pump();
+      expect(inventory.equipped[EquipSlot.ring1], ring);
+      expect(inventory.bag, contains(oldRing));
+
+      await tester.tap(find.byKey(const Key('close-equipment')));
+      await tester.pump();
+      expect(find.text('장비'), findsNothing);
+      expect(game.paused, isFalse);
+    });
+  }
 }

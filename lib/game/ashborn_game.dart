@@ -22,6 +22,7 @@ class AshbornGame extends FlameGame<RunWorld>
   static const hudOverlay = 'hud';
   static const gameOverOverlay = 'gameOver';
   static const levelUpOverlay = 'levelUp';
+  static const equipmentOverlay = 'equipment';
 
   /// 화면 짧은 변에 보이는 월드 크기. 기기 해상도와 상관없이 시야를 고정한다.
   static const double viewShortSide = 540;
@@ -63,6 +64,14 @@ class AshbornGame extends FlameGame<RunWorld>
     overlays.add(gameOverOverlay);
   }
 
+  void openEquipment() {
+    if (overlays.add(equipmentOverlay)) pauseEngine();
+  }
+
+  void closeEquipment() {
+    if (overlays.remove(equipmentOverlay)) resumeEngine();
+  }
+
   /// 한꺼번에 여러 레벨이 오르면 한 장씩 차례로 고른다.
   void onLevelUp(int levels) {
     _pendingLevelUps += levels;
@@ -91,7 +100,7 @@ class AshbornGame extends FlameGame<RunWorld>
 
   void restart() {
     _pendingLevelUps = 0;
-    overlays.removeAll([gameOverOverlay, levelUpOverlay]);
+    overlays.removeAll([gameOverOverlay, levelUpOverlay, equipmentOverlay]);
     world = RunWorld(character);
     resumeEngine();
   }

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../../game/ashborn_game.dart';
 import '../format.dart';
 
-/// 경험치, 체력, 생존 시간, 처치 수. 터치는 게임(조이스틱)으로 그대로 통과시킨다.
+/// 경험치, 체력, 생존 시간, 처치 수, 장비 버튼.
+/// 장비 버튼 밖의 터치는 게임(조이스틱)으로 그대로 통과시킨다.
 class Hud extends StatelessWidget {
   const Hud({super.key, required this.game});
 
@@ -11,6 +12,31 @@ class Hud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        _stats(),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 52, right: 6),
+              child: Material(
+                type: MaterialType.transparency,
+                child: IconButton(
+                  key: const Key('open-equipment'),
+                  tooltip: '장비',
+                  icon: const Icon(Icons.backpack, color: Colors.white70),
+                  onPressed: game.openEquipment,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stats() {
     final stats = game.stats;
     return IgnorePointer(
       child: Material(
