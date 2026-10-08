@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
-import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
+import '../components/effects/hit_vignette.dart';
 import '../data/characters.dart';
 import '../data/equipment.dart';
 import '../data/fates.dart';
@@ -16,6 +16,7 @@ import '../data/stages.dart';
 import '../data/upgrades.dart';
 import '../systems/fate_system.dart';
 import '../systems/level_system.dart';
+import 'floating_joystick.dart';
 import 'notices.dart';
 import 'run_stats.dart';
 import 'world/run_world.dart';
@@ -28,7 +29,7 @@ class AshbornGame extends FlameGame<RunWorld>
     required this.profile,
     this.startStage = Stage.first,
   }) : super(world: RunWorld(character, stage: startStage)) {
-    camera.viewport.add(joystick);
+    camera.viewport.addAll([joystick, hitVignette]);
   }
 
   static const hudOverlay = 'hud';
@@ -67,17 +68,10 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 스테이지 클리어 때 고를 운명 카드.
   final fateOptions = ValueNotifier<List<Fate>>(const []);
 
-  final joystick = JoystickComponent(
-    knob: CircleComponent(
-      radius: 24,
-      paint: Paint()..color = const Color(0xCCFF6B35),
-    ),
-    background: CircleComponent(
-      radius: 60,
-      paint: Paint()..color = const Color(0x33FFFFFF),
-    ),
-    margin: const EdgeInsets.only(left: 48, bottom: 48),
-  );
+  final joystick = FloatingJoystick();
+
+  /// 플레이어가 맞았을 때 붉어지는 화면 가장자리.
+  final hitVignette = HitVignette();
 
   @override
   Color backgroundColor() => world.stage.region.background;

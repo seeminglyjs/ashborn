@@ -291,7 +291,10 @@ class Player extends PositionComponent
     if (effects.contains(UniqueEffect.frostArmor)) _frostArmor();
 
     hp = (hp - damage).clamp(0, maxHp);
-    if (damage > 0 && game.settings.vibration) HapticFeedback.lightImpact();
+    if (damage > 0) {
+      game.hitVignette.flash();
+      if (game.settings.vibration) HapticFeedback.lightImpact();
+    }
     final revives = isDead ? reviveHps : const <double>[];
     if (_revivesUsed < revives.length) {
       hp = maxHp * revives[_revivesUsed++];
@@ -348,6 +351,7 @@ class Player extends PositionComponent
     hit.scale(multiplier);
 
     final dealt = enemy.takeDamage(hit.total);
+    world.showDamage(enemy.position, dealt, crit: hit.crit);
     _applyAilments(enemy, hit, random);
     if (!secondary &&
         effects.contains(UniqueEffect.chainLightning) &&

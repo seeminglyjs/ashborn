@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../../components/effects/burst.dart';
+import '../../components/effects/damage_number.dart';
 import '../../components/enemies/boss.dart';
 import '../../components/enemies/death_puff.dart';
 import '../../components/enemies/enemy.dart';
@@ -276,6 +277,24 @@ class RunWorld extends World
   }
 
   /// 잿불 폭발: [at] 주변 적에게 화염 피해.
+  /// 떠 있는 [DamageNumber] 수.
+  int damageNumbers = 0;
+
+  /// [at] 의 적 위로 피해 숫자를 띄운다. 너무 많이 떠 있으면 건너뛴다.
+  void showDamage(Vector2 at, double amount, {required bool crit}) {
+    if (amount < 0.5 || damageNumbers >= DamageNumber.maxAlive) return;
+    add(
+      DamageNumber(
+        position: Vector2(
+          at.x + (game.random.nextDouble() * 2 - 1) * 8,
+          at.y - Balance.enemyRadius,
+        ),
+        amount: amount,
+        crit: crit,
+      ),
+    );
+  }
+
   void emberBurst(Vector2 at) {
     add(
       Burst(

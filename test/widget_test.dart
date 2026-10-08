@@ -111,6 +111,30 @@ void main() {
     expect(game.stats.hp.value, Roster.knight.maxHp);
   });
 
+  testWidgets('HUD 가 떠 있어도 화면을 끌면 누른 곳의 조이스틱으로 움직인다', (tester) async {
+    useScreen(tester, phoneLandscape);
+    await tester.pumpWidget(gameScreen(Roster.witch));
+    await settle(tester, 100);
+
+    final game = tester
+        .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
+        .game!;
+    final start = game.world.player.position.clone();
+
+    final gesture = await tester.startGesture(const Offset(600, 250));
+    await gesture.moveBy(const Offset(20, 0));
+    await gesture.moveBy(const Offset(80, 0));
+    expect(game.joystick.isHeld, isTrue);
+    expect(game.joystick.origin.x, closeTo(600, 1));
+
+    await settle(tester, 200);
+    expect(game.world.player.position.x, greaterThan(start.x));
+
+    await gesture.up();
+    await tester.pump();
+    expect(game.joystick.isHeld, isFalse);
+  });
+
   testWidgets('레벨이 오르면 게임이 멈추고 고른 만큼 강해진다', (tester) async {
     useScreen(tester, phoneLandscape);
     await tester.pumpWidget(gameScreen(Roster.witch));
