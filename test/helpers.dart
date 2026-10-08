@@ -2,6 +2,8 @@ import 'package:ashborn/components/enemies/enemy.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/data/profile.dart';
+import 'package:ashborn/data/progress.dart';
 import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/game/ashborn_game.dart';
@@ -19,11 +21,12 @@ Future<void> advance(AshbornGame game, double seconds) async {
 AshbornGame Function() gameWith(
   CharacterDef character, {
   Inventory? inventory,
+  Progress? progress,
   Stage stage = Stage.first,
 }) =>
     () => AshbornGame(
       character: character,
-      inventory: inventory ?? Inventory(),
+      profile: Profile(inventory: inventory, progress: progress),
       startStage: stage,
     );
 

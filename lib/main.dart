@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'data/inventory.dart';
-import 'data/inventory_store.dart';
-import 'ui/inventory_scope.dart';
+import 'data/profile.dart';
+import 'ui/profile_scope.dart';
 import 'ui/screens/splash_screen.dart';
 import 'ui/theme.dart';
 
@@ -15,19 +14,19 @@ Future<void> main() async {
     DeviceOrientation.landscapeRight,
   ]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  final inventory = await InventoryStore.load();
-  runApp(AshbornApp(inventory: inventory));
+  final profile = await Profile.load();
+  runApp(AshbornApp(profile: profile));
 }
 
 class AshbornApp extends StatelessWidget {
-  const AshbornApp({super.key, required this.inventory});
+  const AshbornApp({super.key, required this.profile});
 
-  final Inventory inventory;
+  final Profile profile;
 
   @override
   Widget build(BuildContext context) {
-    return InventoryScope(
-      inventory: inventory,
+    return ProfileScope(
+      profile: profile,
       child: MaterialApp(
         title: 'Ashborn',
         debugShowCheckedModeBanner: false,

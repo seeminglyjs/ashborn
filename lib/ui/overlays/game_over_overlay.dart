@@ -29,7 +29,8 @@ class GameOverOverlay extends StatelessWidget {
               Text('재가 되었다', style: ashTitleStyle(34)),
               const SizedBox(height: 4),
               Text(
-                game.character.name,
+                '${game.character.name} · ${game.world.stage.name} '
+                '(Lv ${game.world.stage.level})',
                 style: const TextStyle(color: AshColors.ash, fontSize: 13),
               ),
               const SizedBox(height: 20),
@@ -49,7 +50,8 @@ class GameOverOverlay extends StatelessWidget {
                     label: '다시 일어서기',
                     icon: Icons.local_fire_department,
                     fontSize: 17,
-                    onPressed: game.restart,
+                    // 쓰러진 스테이지부터 다시.
+                    onPressed: () => game.restart(stage: game.world.stage),
                   ),
                   AshButton(
                     label: '캐릭터 선택',

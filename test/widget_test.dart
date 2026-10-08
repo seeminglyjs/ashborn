@@ -3,13 +3,16 @@ import 'dart:math' as math;
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/data/profile.dart';
+import 'package:ashborn/data/progress.dart';
+import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/main.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:ashborn/ui/equipment/equipment_screen.dart';
-import 'package:ashborn/ui/inventory_scope.dart';
+import 'package:ashborn/ui/profile_scope.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
 import 'package:ashborn/ui/screens/splash_screen.dart';
@@ -38,8 +41,8 @@ Future<void> settle(WidgetTester tester, [int ms = 1000]) async {
 }
 
 Widget gameScreen(CharacterDef character, {Inventory? inventory}) =>
-    InventoryScope(
-      inventory: inventory ?? Inventory(),
+    ProfileScope(
+      profile: Profile(inventory: inventory),
       child: MaterialApp(home: GameScreen(character: character)),
     );
 
@@ -48,7 +51,7 @@ void main() {
     testWidgets('스플래시 → 메인 → 캐릭터 선택 → 게임 (${size.width.toInt()}x'
         '${size.height.toInt()})', (tester) async {
       useScreen(tester, size);
-      await tester.pumpWidget(AshbornApp(inventory: Inventory()));
+      await tester.pumpWidget(AshbornApp(profile: Profile()));
       expect(find.byType(SplashScreen), findsOneWidget);
 
       await settle(tester, SplashScreen.duration.inMilliseconds + 100);
@@ -73,7 +76,7 @@ void main() {
   }
 
   testWidgets('스플래시는 탭하면 건너뛴다', (tester) async {
-    await tester.pumpWidget(AshbornApp(inventory: Inventory()));
+    await tester.pumpWidget(AshbornApp(profile: Profile()));
     await settle(tester, 300);
 
     await tester.tapAt(const Offset(10, 10));
@@ -195,8 +198,8 @@ void main() {
       final inventory = Inventory();
       fill(inventory);
       await tester.pumpWidget(
-        InventoryScope(
-          inventory: inventory,
+        ProfileScope(
+          profile: Profile(inventory: inventory),
           child: const MaterialApp(home: CharacterSelectScreen()),
         ),
       );
@@ -307,5 +310,39 @@ void main() {
       expect(find.byKey(const Key('confirm-discard')), findsNothing);
       expect(inventory.bag, isEmpty);
     });
+  });
+
+  testWidgets('출정할 스테이지는 클리어한 다음 스테이지까지 고를 수 있다', (tester) async {
+    useScreen(tester, phoneLandscape);
+    final progress = Progress()..recordClear(const Stage(5));
+    await tester.pumpWidget(
+      ProfileScope(
+        profile: Profile(progress: progress),
+        child: const MaterialApp(home: CharacterSelectScreen()),
+      ),
+    );
+    await settle(tester, 300);
+
+    String shown() =>
+        tester.widget<Text>(find.byKey(const Key('stage-name'))).data!;
+    expect(shown(), const Stage(6).name);
+
+    await tester.tap(find.byKey(const Key('stage-next')));
+    await tester.pump();
+    expect(shown(), const Stage(6).name);
+
+    for (var i = 0; i < 6; i++) {
+      await tester.tap(find.byKey(const Key('stage-prev')));
+      await tester.pump();
+    }
+    expect(shown(), Stage.first.name);
+
+    await tester.tap(find.byKey(const Key('stage-next')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('depart')));
+    await settle(tester);
+
+    final screen = tester.widget<GameScreen>(find.byType(GameScreen));
+    expect(screen.stage, const Stage(1));
   });
 }

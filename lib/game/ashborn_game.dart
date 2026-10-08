@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 
 import '../data/characters.dart';
 import '../data/inventory.dart';
+import '../data/profile.dart';
+import '../data/progress.dart';
 import '../data/stages.dart';
 import '../systems/level_system.dart';
 import 'notices.dart';
@@ -18,7 +20,7 @@ class AshbornGame extends FlameGame<RunWorld>
     with HasKeyboardHandlerComponents {
   AshbornGame({
     required this.character,
-    required this.inventory,
+    required this.profile,
     this.startStage = Stage.first,
   }) : super(world: RunWorld(character, stage: startStage)) {
     camera.viewport.add(joystick);
@@ -38,8 +40,11 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 이 런을 시작한 스테이지.
   final Stage startStage;
 
-  /// 런이 끝나도 유지되는 장비.
-  final Inventory inventory;
+  /// 런이 끝나도 유지되는 기록.
+  final Profile profile;
+
+  Inventory get inventory => profile.inventory;
+  Progress get progress => profile.progress;
 
   /// 이 캐릭터가 낀 장비.
   late final gear = inventory.gear(character.id);
@@ -130,7 +135,8 @@ class AshbornGame extends FlameGame<RunWorld>
     if (overlays.add(levelUpOverlay)) pauseEngine();
   }
 
-  void restart() {
+  /// [stage] 부터 새 런을 시작한다. 기본은 이 런을 시작한 스테이지.
+  void restart({Stage? stage}) {
     _pendingLevelUps = 0;
     notices.clear();
     overlays.removeAll([
@@ -139,7 +145,7 @@ class AshbornGame extends FlameGame<RunWorld>
       equipmentOverlay,
       stageClearOverlay,
     ]);
-    world = RunWorld(character, stage: startStage);
+    world = RunWorld(character, stage: stage ?? startStage);
     resumeEngine();
   }
 }

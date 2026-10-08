@@ -132,6 +132,7 @@ class RunWorld extends World
   void onBossDefeated(Boss defeated) {
     boss = null;
     _clearTimer = Balance.stageClearDelay;
+    game.progress.recordClear(stage);
     for (final enemy in enemies.toList()) {
       if (enemy == defeated) continue;
       add(DeathPuff(position: enemy.position.clone()));

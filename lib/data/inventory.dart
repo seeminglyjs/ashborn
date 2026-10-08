@@ -8,7 +8,7 @@ import 'equipment.dart';
 import 'stats.dart';
 
 /// 모든 캐릭터가 함께 쓰는 가방과, 캐릭터마다 따로인 장착 칸.
-/// 런이 끝나도 유지된다 ([InventoryStore]).
+/// 런이 끝나도 유지된다 ([Profile]).
 class Inventory extends ChangeNotifier {
   Inventory();
 

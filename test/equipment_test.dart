@@ -5,7 +5,7 @@ import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
-import 'package:ashborn/data/inventory_store.dart';
+import 'package:ashborn/data/profile.dart';
 import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -315,13 +315,13 @@ void main() {
 
     test('바뀔 때마다 기기에 저장되고 다음 실행에 불러온다', () async {
       SharedPreferences.setMockInitialValues({});
-      final first = await InventoryStore.load();
+      final first = (await Profile.load()).inventory;
       first
           .gear(CharacterId.hunter)
           .add(item(ItemType.boots, rarity: Rarity.epic, value: 0.12));
       await pumpEventQueue();
 
-      final second = await InventoryStore.load();
+      final second = (await Profile.load()).inventory;
 
       final boots = second.gear(CharacterId.hunter).equipped[EquipSlot.boots]!;
       expect(boots.rarity, Rarity.epic);
