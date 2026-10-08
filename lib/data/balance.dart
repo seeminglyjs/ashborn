@@ -17,6 +17,9 @@ abstract final class Balance {
   static const double xpBase = 5;
   static const double xpGrowth = 5;
 
+  /// 레벨업 때 제시되는 선택지 수.
+  static const int levelUpChoices = 3;
+
   // 적 (재의 무리)
   static const double enemyRadius = 14;
   static const double enemySpeed = 70;

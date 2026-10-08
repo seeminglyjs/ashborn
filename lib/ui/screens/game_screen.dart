@@ -5,6 +5,7 @@ import '../../data/characters.dart';
 import '../../game/ashborn_game.dart';
 import '../hud/hud.dart';
 import '../overlays/game_over_overlay.dart';
+import '../overlays/level_up_overlay.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key, required this.character});
@@ -29,6 +30,8 @@ class _GameScreenState extends State<GameScreen> {
             game: game,
             onChooseCharacter: () => Navigator.of(context).pop(),
           ),
+          AshbornGame.levelUpOverlay: (context, game) =>
+              LevelUpOverlay(game: game),
         },
         initialActiveOverlays: const [AshbornGame.hudOverlay],
       ),

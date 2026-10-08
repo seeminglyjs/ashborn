@@ -6,6 +6,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 import '../data/characters.dart';
+import '../systems/level_system.dart';
 import 'run_stats.dart';
 import 'world/run_world.dart';
 
@@ -18,12 +19,18 @@ class AshbornGame extends FlameGame<RunWorld>
 
   static const hudOverlay = 'hud';
   static const gameOverOverlay = 'gameOver';
+  static const levelUpOverlay = 'levelUp';
 
   /// 화면 짧은 변에 보이는 월드 크기. 기기 해상도와 상관없이 시야를 고정한다.
   static const double viewShortSide = 540;
 
   final CharacterDef character;
   final stats = RunStats();
+  final random = math.Random();
+
+  /// 레벨업 오버레이에 보여 줄 선택지.
+  final levelUpOptions = ValueNotifier<List<LevelUpOption>>(const []);
+  int _pendingLevelUps = 0;
 
   final joystick = JoystickComponent(
     knob: CircleComponent(
@@ -51,8 +58,35 @@ class AshbornGame extends FlameGame<RunWorld>
     overlays.add(gameOverOverlay);
   }
 
+  /// 한꺼번에 여러 레벨이 오르면 한 장씩 차례로 고른다.
+  void onLevelUp(int levels) {
+    _pendingLevelUps += levels;
+    if (!overlays.isActive(levelUpOverlay)) _offerLevelUp();
+  }
+
+  void chooseLevelUp(LevelUpOption option) {
+    option.apply(world.player);
+    _pendingLevelUps--;
+    _offerLevelUp();
+  }
+
+  void _offerLevelUp() {
+    final options = _pendingLevelUps > 0
+        ? LevelSystem.roll(world.player, random)
+        : const <LevelUpOption>[];
+    levelUpOptions.value = options;
+    if (options.isEmpty) {
+      // 모두 최대 레벨이면 고를 것이 없으니 넘어간다.
+      _pendingLevelUps = 0;
+      if (overlays.remove(levelUpOverlay)) resumeEngine();
+      return;
+    }
+    if (overlays.add(levelUpOverlay)) pauseEngine();
+  }
+
   void restart() {
-    overlays.remove(gameOverOverlay);
+    _pendingLevelUps = 0;
+    overlays.removeAll([gameOverOverlay, levelUpOverlay]);
     world = RunWorld(character);
     resumeEngine();
   }

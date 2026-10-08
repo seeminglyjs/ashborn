@@ -1,6 +1,7 @@
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/main.dart';
+import 'package:ashborn/systems/level_system.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
 import 'package:ashborn/ui/screens/splash_screen.dart';
@@ -90,5 +91,40 @@ void main() {
     expect(find.text('재가 되었다'), findsNothing);
     expect(game.world.player.isDead, isFalse);
     expect(game.stats.hp.value, Roster.knight.maxHp);
+  });
+
+  testWidgets('레벨이 오르면 게임이 멈추고 고른 만큼 강해진다', (tester) async {
+    useScreen(tester, phoneLandscape);
+    await tester.pumpWidget(
+      const MaterialApp(home: GameScreen(character: Roster.witch)),
+    );
+    await settle(tester, 100);
+    final game = tester
+        .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
+        .game!;
+    final player = game.world.player;
+    int totalLevels() =>
+        player.weapons.fold(0, (sum, w) => sum + w.level) +
+        player.passives.values.fold(0, (sum, l) => sum + l);
+    final before = totalLevels();
+
+    // 두 레벨이 한꺼번에 오른다.
+    game.world.gainXp(LevelSystem.xpToNext(1) + LevelSystem.xpToNext(2));
+    await tester.pump();
+
+    expect(game.paused, isTrue);
+    expect(find.text('레벨 업'), findsOneWidget);
+    expect(find.byKey(const Key('level-up-2')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('level-up-0')));
+    await tester.pump();
+    expect(totalLevels(), before + 1);
+    expect(find.text('레벨 업'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('level-up-1')));
+    await tester.pump();
+    expect(totalLevels(), before + 2);
+    expect(find.text('레벨 업'), findsNothing);
+    expect(game.paused, isFalse);
   });
 }

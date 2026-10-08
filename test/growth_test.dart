@@ -1,11 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:ashborn/components/pickups/ash_shard.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/passives.dart';
+import 'package:ashborn/data/weapons.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/systems/level_system.dart';
+
 import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
@@ -74,6 +79,11 @@ void main() {
       await game.ready();
       final stats = game.stats;
       final toLv3 = LevelSystem.xpToNext(1) + LevelSystem.xpToNext(2);
+      // 위젯 없이 돌리므로 레벨업 오버레이 자리만 등록해 둔다.
+      game.overlays.addEntry(
+        AshbornGame.levelUpOverlay,
+        (_, _) => const SizedBox(),
+      );
 
       game.world.gainXp(toLv3 + 2);
 
@@ -124,6 +134,65 @@ void main() {
         player.magnetRange,
         Balance.magnetRange * (1 + Balance.passiveMagnetPerLevel),
       );
+    });
+  });
+
+  group('레벨업 선택지', () {
+    testWithGame<AshbornGame>(
+      '가진 무기는 다음 레벨, 없는 무기와 패시브는 1레벨로 나온다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        final options = LevelSystem.available(game.world.player);
+
+        String describe(LevelUpOption o) => switch (o) {
+          WeaponOption(:final id) => '${id.name} ${o.level}',
+          PassiveOption(:final id) => '${id.name} ${o.level}',
+        };
+        expect(options.map(describe), [
+          'flameBlade 1',
+          'emberOrb 2',
+          'fireCrossbow 1',
+          'vitality 1',
+          'swiftness 1',
+          'magnetism 1',
+        ]);
+      },
+    );
+
+    testWithGame<AshbornGame>('최대 레벨은 선택지에서 빠진다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      await game.ready();
+      final player = game.world.player;
+      for (var i = 1; i < WeaponId.maxLevel; i++) {
+        player.gainWeapon(WeaponId.emberOrb);
+      }
+      for (var i = 0; i < PassiveId.maxLevel; i++) {
+        player.gainPassive(PassiveId.vitality);
+      }
+
+      final options = LevelSystem.available(player);
+
+      expect(
+        options.whereType<WeaponOption>().map((o) => o.id),
+        isNot(contains(WeaponId.emberOrb)),
+      );
+      expect(
+        options.whereType<PassiveOption>().map((o) => o.id),
+        isNot(contains(PassiveId.vitality)),
+      );
+    });
+
+    testWithGame<AshbornGame>('한 번에 서로 다른 세 장을 뽑는다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      await game.ready();
+
+      final options = LevelSystem.roll(game.world.player, math.Random(1));
+
+      expect(options, hasLength(Balance.levelUpChoices));
+      expect(options.map((o) => o.title).toSet(), hasLength(3));
     });
   });
 }

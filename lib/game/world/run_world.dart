@@ -45,12 +45,15 @@ class RunWorld extends World
   void gainXp(double amount) {
     final stats = game.stats;
     var xp = stats.xp.value + amount;
+    var levels = 0;
     while (xp >= stats.xpToNext.value) {
       xp -= stats.xpToNext.value;
       stats.level.value++;
       stats.xpToNext.value = LevelSystem.xpToNext(stats.level.value);
+      levels++;
     }
     stats.xp.value = xp;
+    if (levels > 0) game.onLevelUp(levels);
   }
 
   /// [from] 에서 [maxDistance] 안에 있는 가장 가까운 적.
