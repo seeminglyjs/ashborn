@@ -7,11 +7,13 @@ import 'package:flutter/material.dart';
 
 import '../data/characters.dart';
 import '../data/equipment.dart';
+import '../data/fates.dart';
 import '../data/inventory.dart';
 import '../data/profile.dart';
 import '../data/progress.dart';
 import '../data/settings.dart';
 import '../data/stages.dart';
+import '../systems/fate_system.dart';
 import '../systems/level_system.dart';
 import 'notices.dart';
 import 'run_stats.dart';
@@ -60,6 +62,9 @@ class AshbornGame extends FlameGame<RunWorld>
   final levelUpOptions = ValueNotifier<List<LevelUpOption>>(const []);
   int _pendingLevelUps = 0;
 
+  /// 스테이지 클리어 때 고를 운명 카드.
+  final fateOptions = ValueNotifier<List<FateCard>>(const []);
+
   final joystick = JoystickComponent(
     knob: CircleComponent(
       radius: 24,
@@ -103,9 +108,25 @@ class AshbornGame extends FlameGame<RunWorld>
     overlays.add(gameOverOverlay);
   }
 
-  /// 보스를 잡고 전리품을 주울 시간이 끝나면 다음 지역 선택을 띄운다.
+  /// 보스를 잡고 전리품을 주울 시간이 끝나면 운명 카드와 다음 지역 선택을 띄운다.
   void onStageCleared() {
+    fateOptions.value = FateSystem.roll(world.player, random);
     if (overlays.add(stageClearOverlay)) pauseEngine();
+  }
+
+  void rerollFate() {
+    final fate = world.fate;
+    if (fate.rerolls <= 0) return;
+    fate.rerolls--;
+    fateOptions.value = FateSystem.roll(world.player, random);
+  }
+
+  /// 운명을 고르면 다음 지역으로 간다. 레벨업 같은 효과가 바로 이어지도록
+  /// 게임을 다시 돌린 뒤에 적용한다.
+  void chooseFate(FateCard card) {
+    continueToNextStage();
+    FateSystem.apply(card, world);
+    notify('운명: ${card.title}', color: card.tier.color);
   }
 
   void continueToNextStage() {

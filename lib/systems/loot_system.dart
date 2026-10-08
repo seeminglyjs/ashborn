@@ -17,8 +17,14 @@ abstract final class LootSystem {
 
   /// [stage] 에서 적 하나를 처치했을 때. 대부분은 null.
   /// 장비 레벨은 스테이지 레벨이고, 타락 단계가 높을수록 자주, 좋게 떨어진다.
-  static Item? rollDrop(math.Random random, [Stage stage = Stage.first]) =>
-      random.nextDouble() < Balance.itemDropChance * stage.dropChanceMultiplier
+  /// [chanceMultiplier] 는 저주처럼 드랍 확률만 키우는 배율.
+  static Item? rollDrop(
+    math.Random random, [
+    Stage stage = Stage.first,
+    double chanceMultiplier = 1,
+  ]) =>
+      random.nextDouble() <
+          Balance.itemDropChance * stage.dropChanceMultiplier * chanceMultiplier
       ? generate(
           random,
           level: stage.level,

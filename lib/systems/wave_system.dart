@@ -39,14 +39,17 @@ class WaveSystem extends Component
     final region = stage.region;
     final room = Balance.maxEnemies - world.enemies.length;
     final count = math.min(batchSize(time), room);
-    final hp = enemyHp(time) * stage.enemyHpMultiplier;
+    final fate = world.fate;
+    final hp = enemyHp(time) * stage.enemyHpMultiplier * fate.enemyHpMultiplier;
     for (var i = 0; i < count; i++) {
       world.add(
         Enemy(
           position: world.offscreenPoint(),
           maxHp: hp,
           contactDamage:
-              Balance.enemyContactDamage * stage.enemyDamageMultiplier,
+              Balance.enemyContactDamage *
+              stage.enemyDamageMultiplier *
+              fate.enemyDamageMultiplier,
           damageType: region.damageType,
           speed: Balance.enemySpeed * stage.enemySpeedMultiplier,
           color: region.enemy,

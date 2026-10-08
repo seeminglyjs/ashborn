@@ -16,6 +16,7 @@ import '../../data/damage.dart';
 import '../../data/equipment.dart';
 import '../../data/stages.dart';
 import '../../systems/crowd_system.dart';
+import '../../systems/fate_system.dart';
 import '../../systems/level_system.dart';
 import '../../systems/loot_system.dart';
 import '../../systems/wave_system.dart';
@@ -59,6 +60,9 @@ class RunWorld extends World
 
   /// 이번 런에서 얻은 잔불.
   int runEmber = 0;
+
+  /// 이번 런에서 고른 운명.
+  final fate = RunFate();
 
   @override
   Future<void> onLoad() async {
@@ -115,10 +119,12 @@ class RunWorld extends World
       maxHp:
           WaveSystem.enemyHp(Balance.stageDuration) *
           stage.enemyHpMultiplier *
+          fate.enemyHpMultiplier *
           Balance.bossHpMultiplier,
       contactDamage:
           Balance.enemyContactDamage *
           stage.enemyDamageMultiplier *
+          fate.enemyDamageMultiplier *
           Balance.bossDamageMultiplier,
       damageType: region.damageType,
       speed:
@@ -175,10 +181,11 @@ class RunWorld extends World
   }
 
   /// 모아 둔 잔불과 [bonus] 를 인벤토리에 넣고 넣은 양을 돌려준다.
+  /// 저주로 늘어난 잔불 획득량은 처치와 [bonus] 모두에 붙는다.
   int bankEmber({int bonus = 0}) {
     final whole = _pendingEmber.floor();
     _pendingEmber -= whole;
-    final amount = whole + bonus;
+    final amount = whole + (bonus * fate.emberMultiplier).round();
     game.inventory.addEmber(amount);
     runEmber += amount;
     return amount;
@@ -204,10 +211,10 @@ class RunWorld extends World
   void onEnemyKilled(Vector2 position) {
     game.stats.kills.value++;
     add(AshShard(position: position));
-    _pendingEmber += Balance.killEmber * stage.level;
-    final item = LootSystem.rollDrop(game.random, stage);
+    _pendingEmber += Balance.killEmber * stage.level * fate.emberMultiplier;
+    final item = LootSystem.rollDrop(game.random, stage, fate.dropMultiplier);
     if (item != null) add(ItemDrop(position: position.clone(), item: item));
-    if (game.gear.effects.contains(UniqueEffect.emberBurst) &&
+    if (player.effects.contains(UniqueEffect.emberBurst) &&
         game.random.nextDouble() < Balance.emberBurstChance) {
       emberBurst(position);
     }

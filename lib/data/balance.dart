@@ -210,6 +210,42 @@ abstract final class Balance {
   static const double rollMagnetRange = 0.1;
   static const double rollXpGain = 0.05;
 
+  // 운명: 스테이지를 클리어하면 카드 몇 장 중 하나를 고른다.
+  static const int fateChoices = 3;
+
+  /// 런마다 운명 카드를 다시 뽑을 수 있는 횟수.
+  static const int fateRerolls = 1;
+
+  /// 카드 한 장의 등급 가중치 (일반, 희귀, 영웅, 전설, 저주).
+  static const List<double> fateTierWeights = [55, 25, 10, 3, 7];
+
+  // 운명 카드 수치
+  static const double fateMaxHp = 20;
+  static const double fateMoveSpeed = 0.08;
+  static const double fateDamage = 0.1;
+  static const double fateMagnetRange = 0.4;
+  static const double fateArmor = 15;
+
+  /// 잔불 줍기: 스테이지 레벨마다 이만큼.
+  static const double fateEmber = 10;
+  static const int fateWeaponLevels = 2;
+  static const double fateAttackSpeed = 0.15;
+  static const double fateCritChance = 0.08;
+
+  /// 재의 홍수: 이만큼 레벨이 오른다.
+  static const int fateLevels = 2;
+  static const double fateLifeSteal = 0.03;
+  static const double fateLordDamage = 0.3;
+  static const double fateLordMaxHp = 50;
+
+  // 저주: 페널티와 보상을 함께 준다. 같은 저주를 또 고르면 곱해진다.
+  static const double curseEnemyHp = 1.3;
+  static const double curseEmber = 2;
+  static const double curseEnemyDamage = 1.3;
+  static const double curseDrop = 2;
+  static const double curseMaxHp = -30;
+  static const double curseDamage = 0.4;
+
   // 무기 공통
   static const int weaponMaxLevel = 5;
 
