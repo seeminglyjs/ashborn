@@ -17,8 +17,14 @@ abstract final class LootSystem {
 
   /// [stage] 에서 적 하나를 처치했을 때. 대부분은 null.
   /// 장비 레벨은 스테이지 레벨이고, 타락 단계가 높을수록 자주, 좋게 떨어진다.
-  static Item? rollDrop(math.Random random, [Stage stage = Stage.first]) =>
-      random.nextDouble() < Balance.itemDropChance * stage.dropChanceMultiplier
+  /// [chanceMultiplier] 는 저주처럼 드랍 확률만 키우는 배율.
+  static Item? rollDrop(
+    math.Random random, [
+    Stage stage = Stage.first,
+    double chanceMultiplier = 1,
+  ]) =>
+      random.nextDouble() <
+          Balance.itemDropChance * stage.dropChanceMultiplier * chanceMultiplier
       ? generate(
           random,
           level: stage.level,
@@ -41,10 +47,15 @@ abstract final class LootSystem {
   ];
 
   /// [luck] 만큼 높은 등급 가중치가 커진다 (타락 보상).
-  static Rarity rollRarity(math.Random random, {double luck = 0}) => _roll(
+  /// [ratio] 는 한 등급 오를 때마다 줄어드는 가중치 배율.
+  static Rarity rollRarity(
+    math.Random random, {
+    double luck = 0,
+    double ratio = Balance.rarityDropRatio,
+  }) => _roll(
     random,
     Rarity.unique,
-    math.min(Balance.rarityDropRatio * (1 + luck), Balance.maxRarityRatio),
+    math.min(ratio * (1 + luck), Balance.maxRarityRatio),
   );
 
   /// 옵션 등급. 장비 등급 [cap] 을 넘지 않는다.

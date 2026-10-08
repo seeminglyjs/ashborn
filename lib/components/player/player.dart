@@ -50,8 +50,8 @@ class Player extends PositionComponent
   /// 마지막 피격 후 지난 시간. 에너지 보호막 재충전에 쓴다.
   double _sinceHit = 0;
 
-  /// 불사조의 재는 런마다 한 번.
-  bool _phoenixUsed = false;
+  /// 이번 런에서 되살아난 횟수.
+  int _revivesUsed = 0;
 
   final _keyDirection = Vector2.zero();
   final _move = Vector2.zero();
@@ -61,9 +61,9 @@ class Player extends PositionComponent
 
   bool get isDead => hp <= 0;
 
-  /// 패시브와 장비로 오른 [stat] 의 합.
+  /// 패시브, 장비, 운명으로 오른 [stat] 의 합.
   double bonus(StatType stat) {
-    var total = game.gear.bonus(stat);
+    var total = game.gear.bonus(stat) + world.fate.bonus(stat);
     passives.forEach((id, level) {
       if (id.stat == stat) total += id.perLevel * level;
     });
@@ -74,12 +74,32 @@ class Player extends PositionComponent
   double get speed => character.speed * (1 + bonus(StatType.moveSpeed));
   double get magnetRange =>
       Balance.magnetRange * (1 + bonus(StatType.magnetRange));
-  Set<UniqueEffect> get effects => game.gear.effects;
+  Set<UniqueEffect> get effects => {
+    ...game.gear.effects,
+    ...world.fate.effects,
+  };
+
+  /// [effect] 의 세기. 고유 장비는 1, 운명 카드는 등급만큼. 없으면 0.
+  double effectPower(UniqueEffect effect) => math.max(
+    game.gear.effects.contains(effect) ? 1 : 0,
+    world.fate.effectPower(effect),
+  );
+
+  /// 되살아날 때마다 차례로 쓸 체력 비율. 불사조의 재는 런마다 한 번,
+  /// 불사조의 깃털은 고른 순서대로 한 장마다 한 번.
+  List<double> get reviveHps => [
+    if (game.gear.effects.contains(UniqueEffect.phoenix)) Balance.phoenixHp,
+    ...world.fate.reviveHps,
+  ];
 
   double get damageMultiplier {
     var multiplier = 1 + bonus(StatType.damage);
     if (effects.contains(UniqueEffect.berserk)) {
-      multiplier *= 1 + (1 - hp / maxHp) * Balance.berserkScale;
+      multiplier *=
+          1 +
+          (1 - hp / maxHp) *
+              Balance.berserkScale *
+              effectPower(UniqueEffect.berserk);
     }
     return multiplier;
   }
@@ -102,12 +122,17 @@ class Player extends PositionComponent
 
   void gainPassive(PassiveId id) {
     passives.update(id, (level) => level + 1, ifAbsent: () => 1);
-    _syncMaxHp();
+    syncMaxHp();
+  }
+
+  void heal(double amount) {
+    hp = math.min(maxHp, hp + amount);
+    game.stats.hp.value = hp;
   }
 
   /// 최대 체력이 바뀌면 현재 체력도 같은 비율로 맞춘다.
   /// 장비를 뺐다 껴서 체력을 채우는 일이 없도록 비율을 쓴다.
-  void _syncMaxHp() {
+  void syncMaxHp() {
     final after = maxHp;
     if (after != _knownMaxHp) {
       hp = hp * after / _knownMaxHp;
@@ -128,12 +153,12 @@ class Player extends PositionComponent
   @override
   void onMount() {
     super.onMount();
-    game.inventory.addListener(_syncMaxHp);
+    game.inventory.addListener(syncMaxHp);
   }
 
   @override
   void onRemove() {
-    game.inventory.removeListener(_syncMaxHp);
+    game.inventory.removeListener(syncMaxHp);
     super.onRemove();
   }
 
@@ -246,14 +271,11 @@ class Player extends PositionComponent
 
     hp = (hp - damage).clamp(0, maxHp);
     if (damage > 0 && game.settings.vibration) HapticFeedback.lightImpact();
-    if (isDead && effects.contains(UniqueEffect.phoenix) && !_phoenixUsed) {
-      _phoenixUsed = true;
-      hp = maxHp * Balance.phoenixHp;
+    final revives = isDead ? reviveHps : const <double>[];
+    if (_revivesUsed < revives.length) {
+      hp = maxHp * revives[_revivesUsed++];
       _invulnerable = Balance.phoenixInvulnerableTime;
-      game.notify(
-        '${UniqueEffect.phoenix.label}: 재에서 다시 일어섰다',
-        color: Rarity.unique.color,
-      );
+      game.notify('재에서 다시 일어섰다', color: Rarity.unique.color);
     }
     _publish();
     if (isDead) game.onPlayerDied();
@@ -268,7 +290,10 @@ class Player extends PositionComponent
       ),
     );
     for (final enemy in world.enemiesNear(position, Balance.frostArmorRadius)) {
-      enemy.ailments.chill(Balance.frostArmorSlow, Balance.frostArmorDuration);
+      enemy.ailments.chill(
+        Balance.frostArmorSlow,
+        Balance.frostArmorDuration * effectPower(UniqueEffect.frostArmor),
+      );
     }
   }
 
@@ -302,7 +327,12 @@ class Player extends PositionComponent
     if (!secondary &&
         effects.contains(UniqueEffect.chainLightning) &&
         random.nextDouble() < Balance.chainLightningChance) {
-      _chainLightning(enemy, hit.total * Balance.chainLightningRatio);
+      _chainLightning(
+        enemy,
+        hit.total *
+            Balance.chainLightningRatio *
+            effectPower(UniqueEffect.chainLightning),
+      );
     }
 
     final steal = bonus(StatType.lifeSteal);

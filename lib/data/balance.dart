@@ -210,6 +210,59 @@ abstract final class Balance {
   static const double rollMagnetRange = 0.1;
   static const double rollXpGain = 0.05;
 
+  // 운명: 스테이지를 클리어하면 카드 몇 장 중 하나를 고른다.
+  static const int fateChoices = 3;
+
+  /// 한 번에 나오는 같은 종류 카드 수 상한. 보상 카드는 더 적다.
+  static const int fateTypeLimit = 2;
+  static const int fateRewardLimit = 1;
+
+  /// 런마다 운명 카드를 다시 뽑을 수 있는 횟수.
+  static const int fateRerolls = 1;
+
+  /// 카드 등급은 장비와 같은 6등급. 한 등급 오를 때마다 나올 가중치가 이 배율로 준다
+  /// (장비보다 완만하다). 타락 단계의 등급 운도 똑같이 붙는다.
+  static const double fateRarityRatio = 0.4;
+
+  /// 카드 최소 등급 위로 한 등급마다 수치가 이 배율로 는다.
+  static const double fateRarityGrowth = 1.4;
+
+  /// 카드 한 장이 저주로 나올 확률 (저주가 있는 종류에서만).
+  static const double fateCurseChance = 0.1;
+
+  // 운명 카드 수치
+  static const double fateMaxHp = 20;
+  static const double fateMoveSpeed = 0.08;
+  static const double fateDamage = 0.1;
+  static const double fateMagnetRange = 0.4;
+  static const double fateArmor = 15;
+
+  /// 숨 고르기: 최대 체력의 이 비율을 회복한다.
+  static const double fateHeal = 0.5;
+
+  /// 잔불 줍기: 스테이지 레벨마다 이만큼.
+  static const double fateEmber = 10;
+  static const double fateXpGain = 0.2;
+  static const double fateEmberGain = 0.3;
+  static const double fateDropGain = 0.3;
+  static const int fateWeaponLevels = 2;
+  static const double fateAttackSpeed = 0.15;
+  static const double fateCritChance = 0.08;
+
+  /// 재의 홍수: 이만큼 레벨이 오른다.
+  static const int fateLevels = 2;
+  static const double fateLifeSteal = 0.03;
+  static const double fateLordDamage = 0.3;
+  static const double fateLordMaxHp = 50;
+
+  // 저주: 고정 페널티와 등급만큼 커지는 보상을 함께 준다. 같은 저주를 또 고르면 곱해진다.
+  static const double curseEnemyHp = 1.3;
+  static const double curseEmberGain = 1;
+  static const double curseEnemyDamage = 1.3;
+  static const double curseDropGain = 1;
+  static const double curseMaxHp = -30;
+  static const double curseDamage = 0.4;
+
   // 무기 공통
   static const int weaponMaxLevel = 5;
 
