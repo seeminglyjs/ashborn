@@ -198,6 +198,34 @@ abstract final class Balance {
   /// 강화 1단계마다 모든 옵션 수치 증가율.
   static const double enhanceStatBonus = 0.1;
 
+  // 초월: 최대 강화(+20) 영웅 이상 장비에 초월 옵션을 하나씩 더한다.
+  // 초월석과 골드를 쓰고 확률로 성공한다. 실패하면 재료만 사라진다.
+  /// 등급별 최대 초월 단계 (노말부터 고유).
+  static const List<int> maxTranscend = [0, 0, 1, 2, 3, 3];
+
+  /// 지금 초월 단계에서 다음 단계로 갈 때 드는 초월석과 성공 확률.
+  static const List<int> transcendStones = [1, 2, 3];
+  static const List<double> transcendChances = [0.5, 0.35, 0.2];
+
+  /// 초월 골드 = transcendGold × transcendGoldGrowth^단계 × 장비 레벨 배율.
+  static const double transcendGold = 3000;
+  static const double transcendGoldGrowth = 2;
+
+  /// 보스가 초월석을 떨어뜨릴 확률. 타락 단계마다 더해진다.
+  static const double transcendStoneChance = 0.25;
+  static const double transcendStoneChancePerCorruption = 0.05;
+
+  // 초월 옵션 기본 수치
+  static const double transcendProjectiles = 1;
+  static const double transcendBossDamage = 0.25;
+  static const double transcendHealOnKill = 0.5;
+  static const double transcendThorns = 0.5;
+  static const double transcendLastStand = 0.3;
+  static const double transcendGoldFind = 0.3;
+
+  /// 불굴은 체력이 이 비율 이하일 때만 붙는다.
+  static const double lastStandThreshold = 0.3;
+
   /// 공용 가방에 넣을 수 있는 장비 수.
   static const int bagCapacity = 60;
 

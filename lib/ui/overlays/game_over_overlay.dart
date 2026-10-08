@@ -44,7 +44,8 @@ class GameOverOverlay extends StatelessWidget {
               Text('잔불  +${game.world.runEmber}', style: statStyle),
               const SizedBox(height: 6),
               Text(
-                '골드  +${game.world.runGold} · 강화석  +${game.world.runStones}',
+                '골드  +${game.world.runGold} · 강화석  +${game.world.runStones}'
+                '${game.world.runTranscendStones > 0 ? ' · 초월석  +${game.world.runTranscendStones}' : ''}',
                 style: statStyle,
               ),
               const SizedBox(height: 4),

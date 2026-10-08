@@ -20,7 +20,8 @@ class FireCrossbow extends Weapon {
       bonusCount +
       (awakened ? Balance.stormPierceBonus : 0);
 
-  int get arrowCount => awakened ? Balance.stormArrows : 1;
+  int get arrowCount =>
+      (awakened ? Balance.stormArrows : 1) + world.player.extraProjectiles;
 
   @override
   bool fire() {

@@ -294,7 +294,7 @@ void main() {
       expect(helm.enhance, 1);
       expect((inventory.gold, inventory.stones), (0, 0));
       expect(find.text('강화 성공! +1'), findsOneWidget);
-      expect(find.text('골드 0 · 강화석 0'), findsOneWidget);
+      expect(find.text('골드 0 · 강화석 0 · 초월석 0'), findsOneWidget);
     });
 
     testWidgets('영웅 이상 장비는 분해하기 전에 한 번 더 묻는다', (tester) async {

@@ -74,13 +74,19 @@ class _AshButtonState extends State<AshButton> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    widget.label,
-                    style: TextStyle(
-                      color: enabled ? AshColors.parchment : AshColors.ash,
-                      fontSize: widget.fontSize,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: widget.fontSize * 0.15,
+                  // 좁은 자리에서는 글씨를 줄여 버튼 안에 다 보이게 한다.
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        widget.label,
+                        style: TextStyle(
+                          color: enabled ? AshColors.parchment : AshColors.ash,
+                          fontSize: widget.fontSize,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: widget.fontSize * 0.15,
+                        ),
+                      ),
                     ),
                   ),
                   if (widget.icon != null) ...[

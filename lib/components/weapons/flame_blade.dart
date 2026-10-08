@@ -26,7 +26,8 @@ class FlameBlade extends PositionComponent
   int get bladeCount =>
       Balance.flameBladeCount +
       bonusCount +
-      (awakened ? Balance.infernoBladeBonus : 0);
+      (awakened ? Balance.infernoBladeBonus : 0) +
+      world.player.extraProjectiles;
 
   double get orbitRadius =>
       Balance.flameBladeOrbitRadius *
@@ -62,6 +63,8 @@ class FlameBlade extends PositionComponent
   @override
   void update(double dt) {
     super.update(dt);
+    // 초월 옵션이 붙은 장비를 바꿔 끼면 칼날 수가 바뀐다.
+    if (_blades.length != bladeCount) _buildBlades();
     angle +=
         Balance.flameBladeAngularSpeed *
         world.player.attackSpeedMultiplier *

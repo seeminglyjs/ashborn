@@ -7,6 +7,7 @@ import 'balance.dart';
 import 'characters.dart';
 import 'equipment.dart';
 import 'stats.dart';
+import 'transcend.dart';
 
 /// 모든 캐릭터가 함께 쓰는 가방과, 캐릭터마다 따로인 장착 칸.
 /// 런이 끝나도 유지된다 ([Profile]).
@@ -17,7 +18,8 @@ class Inventory extends ChangeNotifier {
     final inventory = Inventory()
       .._ember = json['ember'] as int
       .._gold = json['gold'] as int? ?? 0
-      .._stones = json['stones'] as int? ?? 0;
+      .._stones = json['stones'] as int? ?? 0
+      .._transcendStones = json['transcendStones'] as int? ?? 0;
     for (final item in json['bag'] as List) {
       inventory._bag.add(Item.fromJson(item as Map<String, dynamic>));
     }
@@ -42,15 +44,18 @@ class Inventory extends ChangeNotifier {
 
   int _gold = 0;
   int _stones = 0;
+  int _transcendStones = 0;
 
-  /// 골드와 강화석. 장비 강화에 쓴다.
+  /// 골드와 강화석은 장비 강화에, 초월석은 골드와 함께 초월에 쓴다.
   int get gold => _gold;
   int get stones => _stones;
+  int get transcendStones => _transcendStones;
 
-  void addLoot({int gold = 0, int stones = 0}) {
-    if (gold <= 0 && stones <= 0) return;
+  void addLoot({int gold = 0, int stones = 0, int transcendStones = 0}) {
+    if (gold <= 0 && stones <= 0 && transcendStones <= 0) return;
     _gold += gold;
     _stones += stones;
+    _transcendStones += transcendStones;
     notifyListeners();
   }
 
@@ -83,6 +88,29 @@ class Inventory extends ChangeNotifier {
     return success;
   }
 
+  bool canTranscend(Item item) =>
+      item.canTranscend &&
+      _transcendStones >= item.transcendStones &&
+      _gold >= item.transcendGold;
+
+  /// 초월석과 골드를 써서 [item] 초월을 시도하고 성공했는지 돌려준다.
+  /// 성공하면 아직 없는 초월 옵션이 하나 붙는다. 실패하면 재료만 사라진다.
+  bool transcend(Item item, math.Random random) {
+    assert(canTranscend(item), '재료가 모자라거나 초월할 수 없다');
+    _transcendStones -= item.transcendStones;
+    _gold -= item.transcendGold;
+    final success = random.nextDouble() < item.transcendChance;
+    if (success) {
+      item.transcends.add(
+        TranscendOption.roll(random, {
+          for (final t in item.transcends) t.option,
+        }),
+      );
+    }
+    notifyListeners();
+    return success;
+  }
+
   /// 가방의 [item] 을 분해해 잔불로 바꾼다.
   void salvage(Item item) {
     if (!_bag.remove(item)) return;
@@ -103,6 +131,7 @@ class Inventory extends ChangeNotifier {
     'ember': _ember,
     'gold': _gold,
     'stones': _stones,
+    'transcendStones': _transcendStones,
     'bag': [for (final item in _bag) item.toJson()],
     'equipped': {
       for (final MapEntry(key: character, value: slots) in _equipped.entries)
@@ -140,6 +169,10 @@ class Gear {
     }
     return total;
   }
+
+  /// 장착한 장비의 [option] 초월 수치 합.
+  double transcend(TranscendOption option) =>
+      _slots.values.fold(0, (sum, item) => sum + item.transcend(option));
 
   /// 장착한 고유 장비의 특수 효과.
   Set<UniqueEffect> get effects => {

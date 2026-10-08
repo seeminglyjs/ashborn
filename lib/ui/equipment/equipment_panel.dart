@@ -7,6 +7,7 @@ import '../../data/characters.dart';
 import '../../data/equipment.dart';
 import '../../data/inventory.dart';
 import '../../data/stats.dart';
+import '../../data/transcend.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
 
@@ -40,8 +41,9 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
   /// 선택한 장비가 장착 중이면 그 칸.
   EquipSlot? _selectedSlot;
 
-  /// 마지막 강화 시도 결과. 다른 장비를 고르면 지운다.
+  /// 마지막 강화 · 초월 시도 결과. 다른 장비를 고르면 지운다.
   bool? _enhanced;
+  bool? _transcended;
   final _random = math.Random();
 
   Inventory get _inventory => widget.inventory;
@@ -51,10 +53,18 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
     _selected = item;
     _selectedSlot = slot;
     _enhanced = null;
+    _transcended = null;
   });
 
-  void _enhance(Item item) =>
-      setState(() => _enhanced = _inventory.enhance(item, _random));
+  void _enhance(Item item) => setState(() {
+    _enhanced = _inventory.enhance(item, _random);
+    _transcended = null;
+  });
+
+  void _transcend(Item item) => setState(() {
+    _transcended = _inventory.transcend(item, _random);
+    _enhanced = null;
+  });
 
   Future<void> _salvage(Item item) async {
     if (item.rarity.index >= confirmSalvageFrom.index &&
@@ -107,7 +117,8 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                     Text(widget.character.name, style: _Text.heading),
                     const Spacer(),
                     Text(
-                      '골드 ${_inventory.gold} · 강화석 ${_inventory.stones}',
+                      '골드 ${_inventory.gold} · 강화석 ${_inventory.stones}'
+                      ' · 초월석 ${_inventory.transcendStones}',
                       key: const Key('materials'),
                       style: _Text.heading.copyWith(color: AshColors.gold),
                     ),
@@ -182,13 +193,20 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
           const Text('장비 능력치', style: _Text.heading),
           const SizedBox(height: 4),
           if (effects.isEmpty &&
-              StatType.values.every((s) => _gear.bonus(s) == 0))
+              StatType.values.every((s) => _gear.bonus(s) == 0) &&
+              TranscendOption.values.every((o) => _gear.transcend(o) == 0))
             const Text('없음', style: _Text.dim),
           for (final effect in effects)
             Text(
               effect.label,
               style: _Text.body.copyWith(color: Rarity.unique.color),
             ),
+          for (final option in TranscendOption.values)
+            if (_gear.transcend(option) case final value when value > 0)
+              Text(
+                option.format(value),
+                style: _Text.body.copyWith(color: TranscendOption.color),
+              ),
           for (final group in StatGroup.values)
             if (StatType.values
                     .where((s) => s.group == group && _gear.bonus(s) > 0)
@@ -268,17 +286,36 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
             _inventory.canEnhance(item) ? () => _enhance(item) : null,
           ),
           if (_enhanced case final success?)
+            _result(
+              'enhance-result',
+              success ? '강화 성공! +${item.enhance}' : '강화 실패: 재료만 사라졌습니다',
+              success,
+            ),
+          // 초월은 최대 강화한 영웅 이상 장비만 할 수 있다.
+          if (item.canTranscend) ...[
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 4),
               child: Text(
-                success ? '강화 성공! +${item.enhance}' : '강화 실패: 재료만 사라졌습니다',
-                key: const Key('enhance-result'),
-                style: TextStyle(
-                  color: success ? AshColors.gold : AshColors.ash,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+                '초월석 ${item.transcendStones} · 골드 ${item.transcendGold}'
+                ' · 성공 ${(item.transcendChance * 100).round()}%',
+                key: const Key('transcend-cost'),
+                style: _Text.tag,
               ),
+            ),
+            _action(
+              'transcend',
+              '초월 ★${item.transcends.length + 1}'
+                  '/${item.rarity.maxTranscend}',
+              _inventory.canTranscend(item) ? () => _transcend(item) : null,
+            ),
+          ],
+          if (_transcended case final success?)
+            _result(
+              'transcend-result',
+              success
+                  ? '초월 성공! ${item.transcends.last.option.label}'
+                  : '초월 실패: 재료만 사라졌습니다',
+              success,
             ),
           if (slot != null)
             _action('unequip', '해제', () {
@@ -311,6 +348,19 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
       ),
     );
   }
+
+  Widget _result(String key, String text, bool success) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      key: Key(key),
+      style: TextStyle(
+        color: success ? AshColors.gold : AshColors.ash,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
 
   Widget _action(String key, String label, VoidCallback? onPressed) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
@@ -370,6 +420,18 @@ class ItemDetails extends StatelessWidget {
             style: _Text.main.copyWith(color: Rarity.unique.color),
           ),
           Text(effect.description, style: _Text.dim),
+        ],
+        if (item.transcends.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            '초월 ★${item.transcends.length}',
+            style: _Text.main.copyWith(color: TranscendOption.color),
+          ),
+          for (final t in item.transcends)
+            Text(
+              t.option.format(t.value),
+              style: _Text.body.copyWith(color: TranscendOption.color),
+            ),
         ],
       ],
     );
