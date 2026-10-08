@@ -6,6 +6,7 @@ import '../equipment/equipment_screen.dart';
 import '../hearth/hearth_screen.dart';
 import '../profile_scope.dart';
 import '../routes.dart';
+import '../format.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
 import '../widgets/title_art.dart';
@@ -27,12 +28,50 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   Stage get _currentStage =>
       _stage ?? ProfileScope.of(context).progress.unlocked;
 
+  /// 아직 공개하지 않은 캐릭터 자리. 앞으로 더 늘어난다는 느낌을 준다.
+  static const upcoming = 3;
+
+  bool get _owned => ProfileScope.of(context).progress.owns(_selected);
+
   Future<void> _depart() async {
+    if (!_owned) return _unlock();
     await Navigator.of(
       context,
     ).push(fadeRoute(GameScreen(character: _selected, stage: _currentStage)));
     // 돌아오면 새로 열린 가장 먼 스테이지를 기본으로 보여 준다.
     if (mounted) setState(() => _stage = null);
+  }
+
+  /// 고른 캐릭터를 골드로 해금할지 묻고 해금한다.
+  Future<void> _unlock() async {
+    final profile = ProfileScope.of(context);
+    final character = _selected;
+    if (!profile.progress.canUnlock(character, profile.inventory)) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AshColors.panel,
+        title: Text(character.name, style: TextStyle(color: character.color)),
+        content: Text(
+          '골드 ${formatGold(character.price)}을(를) 써서 해금합니다.',
+          style: const TextStyle(color: AshColors.parchment),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            key: const Key('confirm-unlock'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('해금', style: TextStyle(color: AshColors.gold)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      setState(() => profile.progress.unlock(character, profile.inventory));
+    }
   }
 
   void _openEquipment() =>
@@ -44,6 +83,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = ProfileScope.of(context);
     return Scaffold(
       body: Stack(
         children: [
@@ -51,67 +91,71 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Column(
-                children: [
-                  _Header(onBack: () => Navigator.of(context).maybePop()),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: Row(
+              child: ListenableBuilder(
+                listenable: Listenable.merge([
+                  profile.inventory,
+                  profile.progress,
+                ]),
+                builder: (context, _) => Column(
+                  children: [
+                    _Header(
+                      gold: profile.inventory.gold,
+                      onBack: () => Navigator.of(context).maybePop(),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(child: _cards(profile.inventory.gold)),
+                    const SizedBox(height: 8),
+                    _StagePicker(
+                      stage: _currentStage,
+                      unlocked: profile.progress.unlocked,
+                      onChanged: (stage) => setState(() => _stage = stage),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
                       children: [
-                        for (final c in Roster.all)
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ),
-                              child: _CharacterCard(
-                                character: c,
-                                selected: c == _selected,
-                                onTap: () => c == _selected
-                                    ? _depart()
-                                    : setState(() => _selected = c),
-                              ),
-                            ),
+                        AshButton(
+                          key: const Key('open-hearth'),
+                          label: '화톳불',
+                          icon: Icons.upgrade,
+                          fontSize: 17,
+                          onPressed: _openHearth,
+                        ),
+                        AshButton(
+                          key: const Key('open-equipment'),
+                          label: '장비',
+                          icon: Icons.backpack,
+                          fontSize: 17,
+                          onPressed: _openEquipment,
+                        ),
+                        if (_owned)
+                          AshButton(
+                            key: const Key('depart'),
+                            label: '출정하기',
+                            icon: Icons.local_fire_department,
+                            fontSize: 17,
+                            onPressed: _depart,
+                          )
+                        else
+                          AshButton(
+                            key: const Key('unlock'),
+                            label: '해금 · 골드 ${formatGold(_selected.price)}',
+                            icon: Icons.lock_open,
+                            fontSize: 17,
+                            onPressed:
+                                profile.progress.canUnlock(
+                                  _selected,
+                                  profile.inventory,
+                                )
+                                ? _unlock
+                                : null,
                           ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _StagePicker(
-                    stage: _currentStage,
-                    unlocked: ProfileScope.of(context).progress.unlocked,
-                    onChanged: (stage) => setState(() => _stage = stage),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      AshButton(
-                        key: const Key('open-hearth'),
-                        label: '화톳불',
-                        icon: Icons.upgrade,
-                        fontSize: 17,
-                        onPressed: _openHearth,
-                      ),
-                      AshButton(
-                        key: const Key('open-equipment'),
-                        label: '장비',
-                        icon: Icons.backpack,
-                        fontSize: 17,
-                        onPressed: _openEquipment,
-                      ),
-                      AshButton(
-                        key: const Key('depart'),
-                        label: '출정하기',
-                        icon: Icons.local_fire_department,
-                        fontSize: 17,
-                        onPressed: _depart,
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -119,6 +163,40 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
       ),
     );
   }
+
+  /// 캐릭터 카드와 그 뒤의 공개 예정 카드. 넓으면 한 화면에 다 보이고,
+  /// 좁으면 옆으로 넘겨 본다. 다음 카드가 살짝 보이도록 폭을 잡는다.
+  Widget _cards(int gold) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = (constraints.maxWidth / 3.4).clamp(170.0, 260.0);
+      final progress = ProfileScope.of(context).progress;
+      return ListView(
+        key: const Key('character-list'),
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final c in Roster.all)
+            Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: _CharacterCard(
+                character: c,
+                selected: c == _selected,
+                locked: !progress.owns(c),
+                gold: gold,
+                onTap: () =>
+                    c == _selected ? _depart() : setState(() => _selected = c),
+              ),
+            ),
+          for (var i = 0; i < upcoming; i++)
+            Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: const _UpcomingCard(),
+            ),
+        ],
+      );
+    },
+  );
 }
 
 /// 출정할 스테이지 고르기. 클리어한 다음 스테이지까지 고를 수 있다.
@@ -183,8 +261,9 @@ class _StagePicker extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
+  const _Header({required this.gold, required this.onBack});
 
+  final int gold;
   final VoidCallback onBack;
 
   @override
@@ -200,6 +279,18 @@ class _Header extends StatelessWidget {
               tooltip: '뒤로',
               onPressed: onBack,
               icon: const Icon(Icons.arrow_back, color: AshColors.gold),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '골드 ${formatGold(gold)}',
+              key: const Key('select-gold'),
+              style: const TextStyle(
+                color: AshColors.gold,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           Column(
@@ -222,11 +313,17 @@ class _CharacterCard extends StatelessWidget {
   const _CharacterCard({
     required this.character,
     required this.selected,
+    required this.locked,
+    required this.gold,
     required this.onTap,
   });
 
   final CharacterDef character;
   final bool selected;
+
+  /// 아직 해금하지 않았다. 해금 골드까지 얼마나 모았는지 보여 준다.
+  final bool locked;
+  final int gold;
   final VoidCallback onTap;
 
   @override
@@ -266,7 +363,14 @@ class _CharacterCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(child: _Portrait(character: character)),
+                  Expanded(
+                    child: _Portrait(
+                      character: character,
+                      lock: locked
+                          ? _LockOverlay(price: character.price, gold: gold)
+                          : null,
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
                     child: Column(
@@ -301,9 +405,12 @@ class _CharacterCard extends StatelessWidget {
 }
 
 class _Portrait extends StatelessWidget {
-  const _Portrait({required this.character});
+  const _Portrait({required this.character, this.lock});
 
   final CharacterDef character;
+
+  /// 해금 전이면 그림 위, 이름 아래에 덮는다.
+  final Widget? lock;
 
   @override
   Widget build(BuildContext context) {
@@ -330,6 +437,7 @@ class _Portrait extends StatelessWidget {
             ),
           ),
         ),
+        ?lock,
         Positioned(
           left: 10,
           right: 10,
@@ -446,6 +554,115 @@ class _Rating extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 해금하지 않은 캐릭터 위에 덮는 자물쇠와 모은 골드.
+/// 그림은 어둡게 가리고, 이름과 겹치지 않도록 위쪽에 놓는다.
+class _LockOverlay extends StatelessWidget {
+  const _LockOverlay({required this.price, required this.gold});
+
+  final int price;
+  final int gold;
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = gold >= price;
+    return ColoredBox(
+      color: const Color(0x99000000),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    ready ? Icons.lock_open : Icons.lock,
+                    color: AshColors.gold,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${formatGold(gold.clamp(0, price))} / ${formatGold(price)}',
+                    style: const TextStyle(
+                      color: AshColors.gold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: (gold / price).clamp(0, 1),
+                  minHeight: 4,
+                  color: AshColors.gold,
+                  backgroundColor: const Color(0x33FFFFFF),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 아직 공개하지 않은 캐릭터 자리. 실루엣만 보인다.
+class _UpcomingCard extends StatelessWidget {
+  const _UpcomingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: 0.55,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AshColors.panel,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0x22E8C887)),
+          gradient: const RadialGradient(
+            center: Alignment(0, -0.2),
+            radius: 0.8,
+            colors: [Color(0x40FF6B35), AshColors.panel],
+          ),
+        ),
+        child: const Column(
+          children: [
+            Expanded(
+              child: FittedBox(
+                child: Icon(
+                  Icons.person,
+                  color: Color(0xFF050404),
+                  shadows: [Shadow(color: Color(0x88FF6B35), blurRadius: 12)],
+                ),
+              ),
+            ),
+            Text(
+              '???',
+              style: TextStyle(
+                color: AshColors.parchment,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              '아직 재 속에 잠들어 있다',
+              style: TextStyle(color: AshColors.ash, fontSize: 11),
+            ),
+            SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }

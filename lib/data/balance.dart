@@ -1,5 +1,9 @@
 /// 전투 밸런스 수치. 튜닝은 이 파일에서만 한다.
 abstract final class Balance {
+  // 캐릭터 해금: 골드로 산다. 잿불 기사는 처음부터 쓸 수 있다.
+  static const int witchPrice = 1500;
+  static const int hunterPrice = 3000;
+
   // 플레이어
   static const double playerRadius = 16;
   static const double playerSpeed = 160;

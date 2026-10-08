@@ -20,6 +20,7 @@ class CharacterDef {
     this.cooldownMultiplier = 1,
     this.damageTakenMultiplier = 1,
     required this.ratings,
+    this.price = 0,
   });
 
   final CharacterId id;
@@ -37,6 +38,9 @@ class CharacterDef {
 
   /// 선택 화면에 표시할 체력, 속도, 화력 등급 (1에서 5).
   final ({int hp, int speed, int power}) ratings;
+
+  /// 해금 골드. 0이면 처음부터 쓸 수 있다.
+  final int price;
 
   String get weaponName => startWeapon.label;
   String get weaponDescription => startWeapon.description;
@@ -69,6 +73,7 @@ abstract final class Roster {
     speed: Balance.playerSpeed,
     cooldownMultiplier: 0.8,
     ratings: (hp: 2, speed: 3, power: 4),
+    price: Balance.witchPrice,
   );
 
   static const hunter = CharacterDef(
@@ -82,6 +87,7 @@ abstract final class Roster {
     maxHp: 100,
     speed: Balance.playerSpeed * 1.2,
     ratings: (hp: 3, speed: 5, power: 3),
+    price: Balance.hunterPrice,
   );
 
   static const all = [knight, witch, hunter];
