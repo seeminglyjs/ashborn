@@ -57,7 +57,10 @@ class FlameBlade extends PositionComponent
   @override
   void update(double dt) {
     super.update(dt);
-    angle += Balance.flameBladeAngularSpeed * dt;
+    angle +=
+        Balance.flameBladeAngularSpeed *
+        world.player.attackSpeedMultiplier *
+        dt;
     if (_lastHit.length > 64) _lastHit.removeWhere((e, _) => e.isDead);
   }
 
@@ -65,7 +68,9 @@ class FlameBlade extends PositionComponent
     if (enemy.isDead) return;
     final now = world.elapsed;
     final last = _lastHit[enemy];
-    if (last != null && now - last < Balance.flameBladeHitInterval) return;
+    final interval =
+        Balance.flameBladeHitInterval / world.player.attackSpeedMultiplier;
+    if (last != null && now - last < interval) return;
     _lastHit[enemy] = now;
     enemy.takeDamage(Balance.flameBladeDamage * damageMultiplier);
   }

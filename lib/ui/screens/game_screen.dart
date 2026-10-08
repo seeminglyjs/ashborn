@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../data/characters.dart';
 import '../../game/ashborn_game.dart';
 import '../hud/hud.dart';
+import '../inventory_scope.dart';
 import '../overlays/game_over_overlay.dart';
 import '../overlays/level_up_overlay.dart';
 
@@ -17,7 +18,10 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  late final _game = AshbornGame(character: widget.character);
+  late final _game = AshbornGame(
+    character: widget.character,
+    inventory: InventoryScope.of(context),
+  );
 
   @override
   Widget build(BuildContext context) {

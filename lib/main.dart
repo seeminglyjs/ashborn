@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'data/inventory.dart';
+import 'data/inventory_store.dart';
+import 'ui/inventory_scope.dart';
 import 'ui/screens/splash_screen.dart';
 import 'ui/theme.dart';
 
@@ -12,19 +15,25 @@ Future<void> main() async {
     DeviceOrientation.landscapeRight,
   ]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  runApp(const AshbornApp());
+  final inventory = await InventoryStore.load();
+  runApp(AshbornApp(inventory: inventory));
 }
 
 class AshbornApp extends StatelessWidget {
-  const AshbornApp({super.key});
+  const AshbornApp({super.key, required this.inventory});
+
+  final Inventory inventory;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Ashborn',
-      debugShowCheckedModeBanner: false,
-      theme: buildAshTheme(),
-      home: const SplashScreen(),
+    return InventoryScope(
+      inventory: inventory,
+      child: MaterialApp(
+        title: 'Ashborn',
+        debugShowCheckedModeBanner: false,
+        theme: buildAshTheme(),
+        home: const SplashScreen(),
+      ),
     );
   }
 }

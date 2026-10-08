@@ -1,5 +1,6 @@
 import 'package:ashborn/components/enemies/enemy.dart';
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:flame/components.dart';
 
@@ -12,8 +13,12 @@ Future<void> advance(AshbornGame game, double seconds) async {
   }
 }
 
-AshbornGame Function() gameWith(CharacterDef character) =>
-    () => AshbornGame(character: character);
+AshbornGame Function() gameWith(
+  CharacterDef character, {
+  Inventory? inventory,
+}) =>
+    () =>
+        AshbornGame(character: character, inventory: inventory ?? Inventory());
 
 /// 웨이브 스폰과 섞이지 않도록 기존 적을 모두 치운다.
 Future<void> clearEnemies(AshbornGame game) async {

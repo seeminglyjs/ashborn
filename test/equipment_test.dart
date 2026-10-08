@@ -1,14 +1,23 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:ashborn/components/pickups/ash_shard.dart';
+import 'package:ashborn/components/pickups/item_drop.dart';
+import 'package:ashborn/components/weapons/fire_crossbow.dart';
 import 'package:ashborn/data/balance.dart';
+import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/inventory_store.dart';
 import 'package:ashborn/data/stats.dart';
+import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/systems/loot_system.dart';
+import 'package:flame/components.dart';
+import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'helpers.dart';
 
 Item item(ItemType type, {Rarity rarity = Rarity.normal, double value = 1}) =>
     Item(
@@ -222,5 +231,127 @@ void main() {
       expect(boots.rarity, Rarity.epic);
       expect(boots.stats.single.value, 0.12);
     });
+  });
+
+  group('런에 적용', () {
+    Inventory geared() => Inventory()
+      ..add(item(ItemType.head, value: 20))
+      ..add(item(ItemType.boots, value: 0.1))
+      ..add(item(ItemType.twoHand, value: 0.5))
+      ..add(item(ItemType.gloves, value: 0.25))
+      ..add(item(ItemType.belt, value: 100))
+      ..add(item(ItemType.necklace, value: 1));
+
+    testWithGame<AshbornGame>(
+      '장착한 장비 능력치가 플레이어에 반영된다',
+      gameWith(Roster.witch, inventory: geared()),
+      (game) async {
+        await game.ready();
+        final player = game.world.player;
+
+        expect(player.maxHp, Roster.witch.maxHp + 20);
+        expect(player.hp, player.maxHp);
+        expect(game.stats.maxHp.value, player.maxHp);
+        expect(player.speed, closeTo(Roster.witch.speed * 1.1, 1e-9));
+        expect(player.damageMultiplier, 1.5);
+        expect(player.attackSpeedMultiplier, 1.25);
+        // 방어력 100 이면 받는 피해가 절반.
+        expect(player.damageTakenMultiplier, 0.5);
+        expect(player.xpMultiplier, 2);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '공격력과 공격 속도가 무기에 적용된다',
+      gameWith(Roster.hunter, inventory: geared()),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        final enemy = await addEnemy(game, Vector2(120, 0));
+        final weapon = game.world.player.weapons.single as FireCrossbow;
+
+        expect(weapon.cooldown, closeTo(Balance.crossbowCooldown / 1.25, 1e-9));
+        weapon.fire();
+        await advance(game, 0.5);
+
+        expect(
+          enemy.hp,
+          closeTo(enemy.maxHp - Balance.crossbowDamage * 1.5, 1e-9),
+        );
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '경험치 획득량이 재의 결정에 적용된다',
+      gameWith(Roster.witch, inventory: geared()),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        await game.world.add(AshShard(position: game.world.player.position));
+
+        await advance(game, 0.1);
+
+        expect(game.stats.xp.value, Balance.ashShardXp * 2);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '런 도중 장비를 바꾸면 체력은 같은 비율을 유지한다',
+      gameWith(Roster.witch, inventory: geared()),
+      (game) async {
+        await game.ready();
+        final player = game.world.player;
+        player.takeDamage(40); // 방어력 덕에 20만 깎인다.
+        final ratio = player.hp / player.maxHp;
+
+        game.inventory.unequip(EquipSlot.head);
+        expect(player.maxHp, Roster.witch.maxHp);
+        expect(player.hp / player.maxHp, closeTo(ratio, 1e-9));
+
+        // 뺐다 다시 껴도 체력이 공짜로 차지 않는다.
+        game.inventory.equip(game.inventory.bag.single, EquipSlot.head);
+        expect(player.hp / player.maxHp, closeTo(ratio, 1e-9));
+        expect(game.stats.hp.value, player.hp);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '초당 회복으로 체력이 찬다',
+      gameWith(
+        Roster.witch,
+        inventory: Inventory()..add(item(ItemType.ring, value: 2)),
+      ),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        final player = game.world.player;
+        player.takeDamage(10);
+
+        player.update(1);
+
+        expect(player.hp, Roster.witch.maxHp - 8);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '바닥의 장비를 주우면 인벤토리에 들어간다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        final helm = item(ItemType.head, rarity: Rarity.unique);
+        await game.world.add(
+          ItemDrop(
+            position: game.world.player.position + Vector2(20, 0),
+            item: helm,
+          ),
+        );
+
+        await advance(game, 0.5);
+
+        expect(game.inventory.equipped[EquipSlot.head], helm);
+        expect(game.world.children.whereType<ItemDrop>(), isEmpty);
+      },
+    );
   });
 }

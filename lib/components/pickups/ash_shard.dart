@@ -15,7 +15,7 @@ class AshShard extends Pickup {
 
   @override
   bool collect() {
-    world.gainXp(Balance.ashShardXp);
+    world.gainXp(Balance.ashShardXp * world.player.xpMultiplier);
     return true;
   }
 

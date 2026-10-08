@@ -10,9 +10,8 @@ class RunStats {
   final xp = ValueNotifier<double>(0);
   final xpToNext = ValueNotifier<double>(1);
 
-  void reset({required double maxHp, required double xpToNext}) {
-    this.maxHp.value = maxHp;
-    hp.value = maxHp;
+  /// 체력은 [Player] 가 로드될 때 채운다.
+  void reset({required double xpToNext}) {
     elapsedSeconds.value = 0;
     kills.value = 0;
     level.value = 1;

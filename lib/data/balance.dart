@@ -5,6 +5,9 @@ abstract final class Balance {
   static const double playerSpeed = 160;
   static const double playerInvulnerableTime = 0.5;
 
+  /// 방어력 D 이면 받는 피해가 defenseScale / (defenseScale + D) 배.
+  static const double defenseScale = 100;
+
   /// 바닥 아이템이 끌려오기 시작하는 거리.
   static const double magnetRange = 70;
 

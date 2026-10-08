@@ -1,7 +1,9 @@
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/main.dart';
 import 'package:ashborn/systems/level_system.dart';
+import 'package:ashborn/ui/inventory_scope.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
 import 'package:ashborn/ui/screens/splash_screen.dart';
@@ -27,12 +29,18 @@ Future<void> settle(WidgetTester tester, [int ms = 1000]) async {
   await tester.pump(const Duration(milliseconds: 16));
 }
 
+Widget gameScreen(CharacterDef character, {Inventory? inventory}) =>
+    InventoryScope(
+      inventory: inventory ?? Inventory(),
+      child: MaterialApp(home: GameScreen(character: character)),
+    );
+
 void main() {
   for (final size in [phoneLandscape, desktop]) {
     testWidgets('스플래시 → 메인 → 캐릭터 선택 → 게임 (${size.width.toInt()}x'
         '${size.height.toInt()})', (tester) async {
       useScreen(tester, size);
-      await tester.pumpWidget(const AshbornApp());
+      await tester.pumpWidget(AshbornApp(inventory: Inventory()));
       expect(find.byType(SplashScreen), findsOneWidget);
 
       await settle(tester, SplashScreen.duration.inMilliseconds + 100);
@@ -57,7 +65,7 @@ void main() {
   }
 
   testWidgets('스플래시는 탭하면 건너뛴다', (tester) async {
-    await tester.pumpWidget(const AshbornApp());
+    await tester.pumpWidget(AshbornApp(inventory: Inventory()));
     await settle(tester, 300);
 
     await tester.tapAt(const Offset(10, 10));
@@ -68,9 +76,7 @@ void main() {
 
   testWidgets('죽으면 게임 오버가 뜨고 다시 일어서면 런이 초기화된다', (tester) async {
     useScreen(tester, phoneLandscape);
-    await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(character: Roster.knight)),
-    );
+    await tester.pumpWidget(gameScreen(Roster.knight));
     await settle(tester, 100);
 
     final game = tester
@@ -95,9 +101,7 @@ void main() {
 
   testWidgets('레벨이 오르면 게임이 멈추고 고른 만큼 강해진다', (tester) async {
     useScreen(tester, phoneLandscape);
-    await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(character: Roster.witch)),
-    );
+    await tester.pumpWidget(gameScreen(Roster.witch));
     await settle(tester, 100);
     final game = tester
         .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))

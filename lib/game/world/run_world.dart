@@ -2,10 +2,12 @@ import 'package:flame/components.dart';
 
 import '../../components/enemies/enemy.dart';
 import '../../components/pickups/ash_shard.dart';
+import '../../components/pickups/item_drop.dart';
 import '../../components/player/player.dart';
 import '../../data/characters.dart';
 import '../../systems/crowd_system.dart';
 import '../../systems/level_system.dart';
+import '../../systems/loot_system.dart';
 import '../../systems/wave_system.dart';
 import '../ashborn_game.dart';
 import 'ground_grid.dart';
@@ -25,7 +27,7 @@ class RunWorld extends World
 
   @override
   Future<void> onLoad() async {
-    game.stats.reset(maxHp: player.maxHp, xpToNext: LevelSystem.xpToNext(1));
+    game.stats.reset(xpToNext: LevelSystem.xpToNext(1));
     addAll([GroundGrid(), player, WaveSystem(), CrowdSystem()]);
     game.camera.follow(player);
   }
@@ -40,6 +42,8 @@ class RunWorld extends World
   void onEnemyKilled(Vector2 position) {
     game.stats.kills.value++;
     add(AshShard(position: position));
+    final item = LootSystem.rollDrop(game.random);
+    if (item != null) add(ItemDrop(position: position.clone(), item: item));
   }
 
   void gainXp(double amount) {

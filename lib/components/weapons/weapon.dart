@@ -4,7 +4,7 @@ import '../../data/weapons.dart';
 import '../../game/world/run_world.dart';
 
 /// 플레이어가 지닌 무기. 레벨업 선택으로 강해진다.
-mixin LeveledWeapon on Component {
+mixin LeveledWeapon on HasWorldReference<RunWorld> {
   WeaponId get id;
 
   int _level = 1;
@@ -19,7 +19,9 @@ mixin LeveledWeapon on Component {
 
   void onLevelChanged() {}
 
-  double get damageMultiplier => WeaponId.damageMultiplier(_level);
+  /// 무기 레벨과 플레이어 공격력을 모두 반영한 피해 배율.
+  double get damageMultiplier =>
+      WeaponId.damageMultiplier(_level) * world.player.damageMultiplier;
 
   int get bonusCount => id.bonusCount(_level);
 }
@@ -33,7 +35,9 @@ abstract class Weapon extends Component
   double _charge = 0;
 
   double get cooldown =>
-      baseCooldown * world.player.character.cooldownMultiplier;
+      baseCooldown *
+      world.player.character.cooldownMultiplier /
+      world.player.attackSpeedMultiplier;
 
   @override
   void update(double dt) {

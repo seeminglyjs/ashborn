@@ -35,7 +35,11 @@ class Player extends PositionComponent
   /// 얻은 패시브와 그 레벨.
   final passives = <PassiveId, int>{};
 
-  late double hp = maxHp;
+  /// 레벨업으로 게임이 멈춘 동안 붙인 무기는 아직 마운트 전이므로 직접 들고 있는다.
+  final _weapons = <LeveledWeapon>[];
+
+  late double hp;
+  late double _knownMaxHp;
   double _invulnerable = 0;
 
   final _keyDirection = Vector2.zero();
@@ -46,9 +50,9 @@ class Player extends PositionComponent
 
   bool get isDead => hp <= 0;
 
-  /// 패시브로 오른 [stat] 의 합.
+  /// 패시브와 장비로 오른 [stat] 의 합.
   double bonus(StatType stat) {
-    var total = 0.0;
+    var total = game.inventory.bonus(stat);
     passives.forEach((id, level) {
       if (id.stat == stat) total += id.perLevel * level;
     });
@@ -59,30 +63,55 @@ class Player extends PositionComponent
   double get speed => character.speed * (1 + bonus(StatType.moveSpeed));
   double get magnetRange =>
       Balance.magnetRange * (1 + bonus(StatType.magnetRange));
+  double get damageMultiplier => 1 + bonus(StatType.damage);
+  double get attackSpeedMultiplier => 1 + bonus(StatType.attackSpeed);
+  double get xpMultiplier => 1 + bonus(StatType.xpGain);
+  double get damageTakenMultiplier =>
+      character.damageTakenMultiplier *
+      Balance.defenseScale /
+      (Balance.defenseScale + bonus(StatType.defense));
 
   void gainPassive(PassiveId id) {
-    final before = maxHp;
     passives.update(id, (level) => level + 1, ifAbsent: () => 1);
-    _onMaxHpChanged(before);
+    _syncMaxHp();
   }
 
-  /// 최대 체력이 늘면 늘어난 만큼 현재 체력도 채운다.
-  void _onMaxHpChanged(double before) {
+  /// 최대 체력이 바뀌면 현재 체력도 같은 비율로 맞춘다.
+  /// 장비를 뺐다 껴서 체력을 채우는 일이 없도록 비율을 쓴다.
+  void _syncMaxHp() {
     final after = maxHp;
-    if (after > before) hp += after - before;
-    hp = hp.clamp(0, after);
+    if (after == _knownMaxHp) return;
+    hp = hp * after / _knownMaxHp;
+    _knownMaxHp = after;
     game.stats
       ..maxHp.value = after
       ..hp.value = hp;
   }
 
   @override
-  Future<void> onLoad() async {
-    // isSolid: 적이 플레이어 안에 완전히 들어와도 충돌로 친다.
-    addAll([CircleHitbox(isSolid: true), _createWeapon(character.startWeapon)]);
+  void onMount() {
+    super.onMount();
+    game.inventory.addListener(_syncMaxHp);
   }
 
-  Iterable<LeveledWeapon> get weapons => children.whereType<LeveledWeapon>();
+  @override
+  void onRemove() {
+    game.inventory.removeListener(_syncMaxHp);
+    super.onRemove();
+  }
+
+  @override
+  Future<void> onLoad() async {
+    hp = _knownMaxHp = maxHp;
+    game.stats
+      ..maxHp.value = maxHp
+      ..hp.value = hp;
+    // isSolid: 적이 플레이어 안에 완전히 들어와도 충돌로 친다.
+    add(CircleHitbox(isSolid: true));
+    gainWeapon(character.startWeapon);
+  }
+
+  List<LeveledWeapon> get weapons => List.unmodifiable(_weapons);
 
   LeveledWeapon? weapon(WeaponId id) =>
       weapons.where((w) => w.id == id).firstOrNull;
@@ -93,7 +122,9 @@ class Player extends PositionComponent
     if (owned != null) {
       owned.levelUp();
     } else {
-      add(_createWeapon(id));
+      final weapon = _createWeapon(id);
+      _weapons.add(weapon);
+      add(weapon);
     }
   }
 
@@ -107,6 +138,11 @@ class Player extends PositionComponent
   void update(double dt) {
     super.update(dt);
     if (_invulnerable > 0) _invulnerable -= dt;
+    final regen = bonus(StatType.hpRegen);
+    if (regen > 0 && hp < maxHp) {
+      hp = (hp + regen * dt).clamp(0, maxHp);
+      game.stats.hp.value = hp;
+    }
 
     _move
       ..setFrom(_keyDirection)
@@ -147,7 +183,7 @@ class Player extends PositionComponent
 
   void takeDamage(double amount) {
     if (_invulnerable > 0 || isDead) return;
-    hp = (hp - amount * character.damageTakenMultiplier).clamp(0, maxHp);
+    hp = (hp - amount * damageTakenMultiplier).clamp(0, maxHp);
     _invulnerable = Balance.playerInvulnerableTime;
     game.stats.hp.value = hp;
     if (isDead) game.onPlayerDied();

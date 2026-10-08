@@ -6,6 +6,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 import '../data/characters.dart';
+import '../data/inventory.dart';
 import '../systems/level_system.dart';
 import 'run_stats.dart';
 import 'world/run_world.dart';
@@ -13,7 +14,8 @@ import 'world/run_world.dart';
 /// Ashborn 게임 루트. 런 하나가 [RunWorld] 하나에 대응한다.
 class AshbornGame extends FlameGame<RunWorld>
     with HasKeyboardHandlerComponents {
-  AshbornGame({required this.character}) : super(world: RunWorld(character)) {
+  AshbornGame({required this.character, required this.inventory})
+    : super(world: RunWorld(character)) {
     camera.viewport.add(joystick);
   }
 
@@ -25,6 +27,9 @@ class AshbornGame extends FlameGame<RunWorld>
   static const double viewShortSide = 540;
 
   final CharacterDef character;
+
+  /// 런이 끝나도 유지되는 장비.
+  final Inventory inventory;
   final stats = RunStats();
   final random = math.Random();
 

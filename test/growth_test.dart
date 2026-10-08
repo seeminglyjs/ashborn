@@ -95,7 +95,7 @@ void main() {
 
   group('패시브', () {
     testWithGame<AshbornGame>(
-      '최대 체력이 늘면 현재 체력도 같이 는다',
+      '최대 체력이 늘면 현재 체력도 같은 비율로 는다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
@@ -106,7 +106,10 @@ void main() {
 
         final max = Roster.witch.maxHp + Balance.passiveMaxHpPerLevel;
         expect(player.maxHp, max);
-        expect(player.hp, max - 30);
+        expect(
+          player.hp,
+          closeTo((Roster.witch.maxHp - 30) * max / Roster.witch.maxHp, 1e-9),
+        );
         expect(game.stats.maxHp.value, max);
         expect(game.stats.hp.value, player.hp);
       },
@@ -183,6 +186,23 @@ void main() {
         isNot(contains(PassiveId.vitality)),
       );
     });
+
+    testWithGame<AshbornGame>(
+      '멈춘 동안 얻은 무기도 바로 선택지에 반영된다',
+      gameWith(Roster.knight),
+      (game) async {
+        await game.ready();
+        final player = game.world.player;
+
+        // 레벨업 중에는 엔진이 멈춰 있어 새 무기가 아직 마운트되지 않는다.
+        player.gainWeapon(WeaponId.emberOrb);
+
+        final orb = LevelSystem.available(player)
+            .whereType<WeaponOption>()
+            .where((o) => o.id == WeaponId.emberOrb);
+        expect(orb.single.level, 2);
+      },
+    );
 
     testWithGame<AshbornGame>('한 번에 서로 다른 세 장을 뽑는다', gameWith(Roster.witch), (
       game,
