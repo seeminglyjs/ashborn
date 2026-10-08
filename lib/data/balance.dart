@@ -40,6 +40,9 @@ abstract final class Balance {
   static const double stageHpGrowth = 1.35;
   static const double stageDamageGrowth = 1.15;
 
+  /// 첫 스테이지들의 적 체력 · 피해 배율. 그 뒤는 1.
+  static const List<double> earlyStageEase = [0.5, 0.7, 0.85];
+
   /// 스테이지 시작 후 이 시간(초)이 지나면 보스가 나온다.
   static const double stageDuration = 120;
 

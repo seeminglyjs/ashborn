@@ -98,10 +98,15 @@ class Stage {
       corruption == 0 ? region.label : '타락 $corruption · ${region.label}';
 
   double get enemyHpMultiplier =>
-      math.pow(Balance.stageHpGrowth, index) * region.hp;
+      math.pow(Balance.stageHpGrowth, index) * region.hp * _ease;
 
   double get enemyDamageMultiplier =>
-      math.pow(Balance.stageDamageGrowth, index).toDouble();
+      math.pow(Balance.stageDamageGrowth, index) * _ease;
+
+  /// 처음 몇 스테이지는 적이 약하다. 처음 하는 사람도 바로바로 넘어가도록.
+  double get _ease => index < Balance.earlyStageEase.length
+      ? Balance.earlyStageEase[index]
+      : 1;
 
   double get enemySpeedMultiplier =>
       region.speed *
