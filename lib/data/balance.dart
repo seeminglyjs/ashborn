@@ -52,6 +52,30 @@ abstract final class Balance {
   static const double passiveMoveSpeedPerLevel = 0.08;
   static const double passiveMagnetPerLevel = 0.25;
 
+  // 장비 드랍: 처치당 드랍 확률, 등급이 오를 때마다 드랍 가중치는 이 배율로 준다.
+  static const double itemDropChance = 0.02;
+  static const double rarityDropRatio = 0.25;
+
+  /// 등급이 오를 때마다 장비 수치가 이 배율로 는다.
+  static const double rarityStatGrowth = 1.4;
+
+  /// 추가옵션은 주옵션 기준 수치의 이 비율.
+  static const double affixScale = 0.5;
+  static const double twoHandMainScale = 2;
+
+  /// 수치가 기준값의 ±이 비율 안에서 무작위로 정해진다.
+  static const double statVariance = 0.2;
+
+  // 노말 장비 주옵션 기준 수치
+  static const double rollMaxHp = 10;
+  static const double rollMoveSpeed = 0.03;
+  static const double rollMagnetRange = 0.1;
+  static const double rollDamage = 0.05;
+  static const double rollAttackSpeed = 0.04;
+  static const double rollDefense = 5;
+  static const double rollHpRegen = 0.3;
+  static const double rollXpGain = 0.05;
+
   // 무기 공통
   static const int weaponMaxLevel = 5;
 
