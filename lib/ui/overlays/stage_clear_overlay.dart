@@ -52,7 +52,7 @@ class StageClearOverlay extends StatelessWidget {
               const SizedBox(height: 12),
               ValueListenableBuilder(
                 valueListenable: game.fateOptions,
-                builder: (context, cards, _) {
+                builder: (context, fates, _) {
                   final rerolls = game.world.fate.rerolls;
                   return Column(
                     children: [
@@ -61,11 +61,11 @@ class StageClearOverlay extends StatelessWidget {
                         runSpacing: 12,
                         alignment: WrapAlignment.center,
                         children: [
-                          for (final (i, card) in cards.indexed)
+                          for (final (i, fate) in fates.indexed)
                             _FateCardView(
                               key: Key('fate-$i'),
-                              card: card,
-                              onTap: () => game.chooseFate(card),
+                              fate: fate,
+                              onTap: () => game.chooseFate(fate),
                             ),
                         ],
                       ),
@@ -97,24 +97,28 @@ class StageClearOverlay extends StatelessWidget {
 }
 
 class _FateCardView extends StatelessWidget {
-  const _FateCardView({super.key, required this.card, required this.onTap});
+  const _FateCardView({super.key, required this.fate, required this.onTap});
 
-  final FateCard card;
+  final Fate fate;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = card.tier.color;
+    final color = fate.rarity.color;
+    final card = fate.card;
     return Semantics(
       button: true,
-      label: card.title,
+      label: '${card.title} ${fate.rarity.label}',
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           width: 200,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AshColors.panel,
+            color: Color.alphaBlend(
+              color.withValues(alpha: 0.08),
+              AshColors.panel,
+            ),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: color, width: 1.5),
           ),
@@ -124,13 +128,32 @@ class _FateCardView extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    card.tier.label,
+                    fate.rarity.label,
                     style: TextStyle(
                       color: color,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  // 에픽 등급도 붉은색이라 저주는 채운 딱지로 따로 보인다.
+                  if (card.curse) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3A0D0D),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        '저주',
+                        style: TextStyle(
+                          color: Color(0xFFFF9C8C),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                   const Spacer(),
                   Text(
                     card.type.label,
@@ -149,7 +172,7 @@ class _FateCardView extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                card.description,
+                fate.description,
                 style: const TextStyle(color: AshColors.ash, fontSize: 13),
               ),
             ],

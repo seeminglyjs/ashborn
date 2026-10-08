@@ -79,15 +79,27 @@ class Player extends PositionComponent
     ...world.fate.effects,
   };
 
-  /// 불사조의 재는 런마다 한 번, 불사조의 깃털은 한 장마다 한 번.
-  int get revives =>
-      (game.gear.effects.contains(UniqueEffect.phoenix) ? 1 : 0) +
-      world.fate.revives;
+  /// [effect] 의 세기. 고유 장비는 1, 운명 카드는 등급만큼. 없으면 0.
+  double effectPower(UniqueEffect effect) => math.max(
+    game.gear.effects.contains(effect) ? 1 : 0,
+    world.fate.effectPower(effect),
+  );
+
+  /// 되살아날 때마다 차례로 쓸 체력 비율. 불사조의 재는 런마다 한 번,
+  /// 불사조의 깃털은 고른 순서대로 한 장마다 한 번.
+  List<double> get reviveHps => [
+    if (game.gear.effects.contains(UniqueEffect.phoenix)) Balance.phoenixHp,
+    ...world.fate.reviveHps,
+  ];
 
   double get damageMultiplier {
     var multiplier = 1 + bonus(StatType.damage);
     if (effects.contains(UniqueEffect.berserk)) {
-      multiplier *= 1 + (1 - hp / maxHp) * Balance.berserkScale;
+      multiplier *=
+          1 +
+          (1 - hp / maxHp) *
+              Balance.berserkScale *
+              effectPower(UniqueEffect.berserk);
     }
     return multiplier;
   }
@@ -259,9 +271,9 @@ class Player extends PositionComponent
 
     hp = (hp - damage).clamp(0, maxHp);
     if (damage > 0 && game.settings.vibration) HapticFeedback.lightImpact();
-    if (isDead && _revivesUsed < revives) {
-      _revivesUsed++;
-      hp = maxHp * Balance.phoenixHp;
+    final revives = isDead ? reviveHps : const <double>[];
+    if (_revivesUsed < revives.length) {
+      hp = maxHp * revives[_revivesUsed++];
       _invulnerable = Balance.phoenixInvulnerableTime;
       game.notify('재에서 다시 일어섰다', color: Rarity.unique.color);
     }
@@ -278,7 +290,10 @@ class Player extends PositionComponent
       ),
     );
     for (final enemy in world.enemiesNear(position, Balance.frostArmorRadius)) {
-      enemy.ailments.chill(Balance.frostArmorSlow, Balance.frostArmorDuration);
+      enemy.ailments.chill(
+        Balance.frostArmorSlow,
+        Balance.frostArmorDuration * effectPower(UniqueEffect.frostArmor),
+      );
     }
   }
 
@@ -312,7 +327,12 @@ class Player extends PositionComponent
     if (!secondary &&
         effects.contains(UniqueEffect.chainLightning) &&
         random.nextDouble() < Balance.chainLightningChance) {
-      _chainLightning(enemy, hit.total * Balance.chainLightningRatio);
+      _chainLightning(
+        enemy,
+        hit.total *
+            Balance.chainLightningRatio *
+            effectPower(UniqueEffect.chainLightning),
+      );
     }
 
     final steal = bonus(StatType.lifeSteal);

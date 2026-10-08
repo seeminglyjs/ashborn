@@ -232,7 +232,7 @@ class RunWorld extends World
     for (final enemy in enemiesNear(at, Balance.emberBurstRadius)) {
       player.strike(
         enemy,
-        Balance.emberBurstDamage,
+        Balance.emberBurstDamage * player.effectPower(UniqueEffect.emberBurst),
         DamageType.fire,
         secondary: true,
       );

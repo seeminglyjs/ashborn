@@ -47,10 +47,15 @@ abstract final class LootSystem {
   ];
 
   /// [luck] 만큼 높은 등급 가중치가 커진다 (타락 보상).
-  static Rarity rollRarity(math.Random random, {double luck = 0}) => _roll(
+  /// [ratio] 는 한 등급 오를 때마다 줄어드는 가중치 배율.
+  static Rarity rollRarity(
+    math.Random random, {
+    double luck = 0,
+    double ratio = Balance.rarityDropRatio,
+  }) => _roll(
     random,
     Rarity.unique,
-    math.min(Balance.rarityDropRatio * (1 + luck), Balance.maxRarityRatio),
+    math.min(ratio * (1 + luck), Balance.maxRarityRatio),
   );
 
   /// 옵션 등급. 장비 등급 [cap] 을 넘지 않는다.

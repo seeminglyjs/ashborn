@@ -63,7 +63,7 @@ class AshbornGame extends FlameGame<RunWorld>
   int _pendingLevelUps = 0;
 
   /// 스테이지 클리어 때 고를 운명 카드.
-  final fateOptions = ValueNotifier<List<FateCard>>(const []);
+  final fateOptions = ValueNotifier<List<Fate>>(const []);
 
   final joystick = JoystickComponent(
     knob: CircleComponent(
@@ -123,10 +123,13 @@ class AshbornGame extends FlameGame<RunWorld>
 
   /// 운명을 고르면 다음 지역으로 간다. 레벨업 같은 효과가 바로 이어지도록
   /// 게임을 다시 돌린 뒤에 적용한다.
-  void chooseFate(FateCard card) {
+  void chooseFate(Fate fate) {
     continueToNextStage();
-    FateSystem.apply(card, world);
-    notify('운명: ${card.title}', color: card.tier.color);
+    FateSystem.apply(fate, world);
+    notify(
+      '운명: ${fate.card.title} (${fate.rarity.label})',
+      color: fate.rarity.color,
+    );
   }
 
   void continueToNextStage() {
