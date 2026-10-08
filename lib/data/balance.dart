@@ -213,6 +213,10 @@ abstract final class Balance {
   // 운명: 스테이지를 클리어하면 카드 몇 장 중 하나를 고른다.
   static const int fateChoices = 3;
 
+  /// 한 번에 나오는 같은 종류 카드 수 상한. 보상 카드는 더 적다.
+  static const int fateTypeLimit = 2;
+  static const int fateRewardLimit = 1;
+
   /// 런마다 운명 카드를 다시 뽑을 수 있는 횟수.
   static const int fateRerolls = 1;
 
@@ -228,6 +232,9 @@ abstract final class Balance {
 
   /// 잔불 줍기: 스테이지 레벨마다 이만큼.
   static const double fateEmber = 10;
+  static const double fateXpGain = 0.2;
+  static const double fateEmberGain = 0.3;
+  static const double fateDropGain = 0.3;
   static const int fateWeaponLevels = 2;
   static const double fateAttackSpeed = 0.15;
   static const double fateCritChance = 0.08;

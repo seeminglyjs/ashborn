@@ -32,28 +32,69 @@ void stubOverlays(AshbornGame game) {
 void main() {
   group('추첨', () {
     testWithGame<AshbornGame>(
-      '서로 다른 카드 세 장, 등급은 가중치대로 나온다',
+      '서로 다른 카드 세 장. 종류는 고르게, 종류 안에서 등급은 가중치대로',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
         final random = math.Random(3);
-        final firsts = <FateTier, int>{};
-        const rolls = 5000;
+        final types = <FateType, int>{};
+        final tiers = <FateType, Map<FateTier, int>>{};
+        const rolls = 6000;
         for (var i = 0; i < rolls; i++) {
           final hand = FateSystem.roll(game.world.player, random);
           expect(hand.length, Balance.fateChoices);
           expect(hand.toSet().length, hand.length);
-          firsts.update(hand.first.tier, (n) => n + 1, ifAbsent: () => 1);
+          final first = hand.first;
+          types.update(first.type, (n) => n + 1, ifAbsent: () => 1);
+          tiers
+              .putIfAbsent(first.type, () => {})
+              .update(first.tier, (n) => n + 1, ifAbsent: () => 1);
         }
 
-        final total = FateTier.values.fold(0.0, (s, t) => s + t.weight);
-        for (final tier in FateTier.values) {
+        for (final type in FateType.values) {
           expect(
-            firsts[tier]! / rolls,
-            closeTo(tier.weight / total, 0.03),
-            reason: tier.label,
+            types[type]! / rolls,
+            closeTo(1 / 3, 0.03),
+            reason: type.label,
           );
+          final present = {
+            for (final c in FateCard.values)
+              if (c.type == type) c.tier,
+          };
+          final total = present.fold(0.0, (s, t) => s + t.weight);
+          for (final tier in present) {
+            expect(
+              tiers[type]![tier]! / types[type]!,
+              closeTo(tier.weight / total, 0.04),
+              reason: '${type.label} ${tier.label}',
+            );
+          }
         }
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '같은 종류는 두 장까지, 보상은 한 장까지. 종류 조합은 고정이 아니다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        final random = math.Random(7);
+        final combos = <String>{};
+        for (var i = 0; i < 3000; i++) {
+          final hand = FateSystem.roll(game.world.player, random);
+          expect(hand.length, Balance.fateChoices);
+          for (final type in FateType.values) {
+            expect(
+              hand.where((c) => c.type == type).length,
+              lessThanOrEqualTo(type.limit),
+            );
+          }
+          combos.add((hand.map((c) => c.type.index).toList()..sort()).join());
+        }
+
+        // 스탯 2 + 스킬 1, 스탯 1 + 스킬 1 + 보상 1 같은 여러 조합이 나온다.
+        expect(combos, containsAll(['001', '011', '012', '112', '002']));
+        expect(FateType.reward.limit, 1);
       },
     );
 
@@ -296,6 +337,27 @@ void main() {
     );
   });
 
+  testWithGame<AshbornGame>(
+    '보상 카드: 경험치, 잔불, 드랍 배율이 오른다',
+    gameWith(Roster.witch),
+    (game) async {
+      await game.ready();
+      final world = game.world;
+
+      FateSystem.apply(FateCard.learningEmber, world);
+      FateSystem.apply(FateCard.emberCollector, world);
+      FateSystem.apply(FateCard.treasureHunter, world);
+      FateSystem.apply(FateCard.thickAsh, world);
+
+      expect(world.player.xpMultiplier, 1 + Balance.fateXpGain);
+      expect(
+        world.fate.emberMultiplier,
+        closeTo(Balance.curseEmber * (1 + Balance.fateEmberGain), 1e-9),
+      );
+      expect(world.fate.dropMultiplier, 1 + Balance.fateDropGain);
+    },
+  );
+
   testWidgets('클리어 화면에 운명 카드와 남은 다시 뽑기 횟수가 보인다', (tester) async {
     final game = gameWith(Roster.witch)();
     game.fateOptions.value = [
@@ -314,6 +376,8 @@ void main() {
     expect(find.text(FateCard.hardenedAsh.title), findsOneWidget);
     expect(find.text(FateCard.thickAsh.description), findsOneWidget);
     expect(find.text(FateTier.legendary.label), findsOneWidget);
+    expect(find.text(FateType.reward.label), findsOneWidget);
+    expect(find.text(FateType.stat.label), findsOneWidget);
     expect(find.text('다시 뽑기 (0)'), findsOneWidget);
   });
 

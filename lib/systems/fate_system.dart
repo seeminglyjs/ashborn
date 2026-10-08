@@ -31,10 +31,14 @@ class RunFate {
 
   double get enemyHpMultiplier =>
       _stack(Balance.curseEnemyHp, FateCard.thickAsh);
-  double get emberMultiplier => _stack(Balance.curseEmber, FateCard.thickAsh);
+  double get emberMultiplier =>
+      _stack(Balance.curseEmber, FateCard.thickAsh) *
+      (1 + Balance.fateEmberGain * _count(FateCard.emberCollector));
   double get enemyDamageMultiplier =>
       _stack(Balance.curseEnemyDamage, FateCard.bloodOath);
-  double get dropMultiplier => _stack(Balance.curseDrop, FateCard.bloodOath);
+  double get dropMultiplier =>
+      _stack(Balance.curseDrop, FateCard.bloodOath) *
+      (1 + Balance.fateDropGain * _count(FateCard.treasureHunter));
 }
 
 /// 운명 카드 추첨과 적용.
@@ -48,18 +52,26 @@ abstract final class FateSystem {
     _ => !player.effects.contains(card.effect),
   };
 
-  /// 등급을 가중치로 먼저 뽑고 그 등급에서 카드를 뽑는다. 한 번에 같은 카드는 없다.
+  /// 종류를 고르게 먼저 뽑고, 그 종류에서 등급을 가중치로, 그 등급에서 카드를 뽑는다.
+  /// 한 번에 같은 카드는 없고, 같은 종류는 [FateType.limit] 장까지.
   static List<FateCard> roll(Player player, math.Random random) {
     final pool = FateCard.values.where((c) => available(c, player)).toList();
     final hand = <FateCard>[];
-    while (hand.length < Balance.fateChoices && pool.isNotEmpty) {
-      final tiers = {for (final card in pool) card.tier}.toList();
+    while (hand.length < Balance.fateChoices) {
+      pool.removeWhere(
+        (c) => hand.where((h) => h.type == c.type).length >= c.type.limit,
+      );
+      if (pool.isEmpty) break;
+      final types = {for (final card in pool) card.type}.toList();
+      final type = types[random.nextInt(types.length)];
+      final ofType = pool.where((c) => c.type == type);
+      final tiers = {for (final card in ofType) card.tier}.toList();
       var pick = random.nextDouble() * tiers.fold(0.0, (s, t) => s + t.weight);
       final tier = tiers.firstWhere(
         (t) => (pick -= t.weight) < 0,
         orElse: () => tiers.last,
       );
-      final cards = pool.where((c) => c.tier == tier).toList();
+      final cards = ofType.where((c) => c.tier == tier).toList();
       final card = cards[random.nextInt(cards.length)];
       hand.add(card);
       pool.remove(card);

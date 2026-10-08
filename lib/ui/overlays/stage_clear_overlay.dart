@@ -121,13 +121,22 @@ class _FateCardView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                card.tier.label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Text(
+                    card.tier.label,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    card.type.label,
+                    style: const TextStyle(color: AshColors.ash, fontSize: 12),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               Text(

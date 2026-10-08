@@ -20,40 +20,57 @@ enum FateTier {
   double get weight => Balance.fateTierWeights[index];
 }
 
+/// 운명 카드 종류. 한 번에 같은 종류는 [limit] 장까지만 나온다.
+enum FateType {
+  stat('스탯', Balance.fateTypeLimit),
+  skill('스킬', Balance.fateTypeLimit),
+  reward('보상', Balance.fateRewardLimit);
+
+  const FateType(this.label, this.limit);
+
+  final String label;
+  final int limit;
+}
+
 /// 스테이지를 클리어하면 고르는 운명 카드. 효과는 그 런이 끝날 때까지 간다.
 enum FateCard {
-  hardenedAsh(FateTier.common, '단단한 재'),
-  ashWind(FateTier.common, '재바람의 잔향'),
-  sharpEmber(FateTier.common, '날 선 불씨'),
-  emberPull(FateTier.common, '불씨 자석'),
-  ashArmor(FateTier.common, '재의 갑옷'),
-  breather(FateTier.common, '숨 고르기'),
-  emberGather(FateTier.common, '잔불 줍기'),
-  smithsTouch(FateTier.rare, '대장장이의 손길'),
-  newArms(FateTier.rare, '낯선 무기'),
-  quickHands(FateTier.rare, '빠른 손'),
-  hawkEye(FateTier.rare, '매의 눈'),
-  ashFlood(FateTier.rare, '재의 홍수'),
-  emberBurst(FateTier.heroic, '잿불 폭발'),
-  frostArmor(FateTier.heroic, '서리 갑옷'),
-  chainLightning(FateTier.heroic, '연쇄 번개'),
-  bloodThirst(FateTier.heroic, '피의 갈증'),
-  phoenixFeather(FateTier.legendary, '불사조의 깃털'),
-  berserk(FateTier.legendary, '광전사의 분노'),
-  ashLord(FateTier.legendary, '재의 군주'),
-  thickAsh(FateTier.curse, '짙어지는 재'),
-  bloodOath(FateTier.curse, '피의 맹세'),
-  burningPrice(FateTier.curse, '타오르는 대가');
+  hardenedAsh(FateTier.common, FateType.stat, '단단한 재'),
+  ashWind(FateTier.common, FateType.stat, '재바람의 잔향'),
+  sharpEmber(FateTier.common, FateType.stat, '날 선 불씨'),
+  emberPull(FateTier.common, FateType.stat, '불씨 자석'),
+  ashArmor(FateTier.common, FateType.stat, '재의 갑옷'),
+  breather(FateTier.common, FateType.reward, '숨 고르기'),
+  emberGather(FateTier.common, FateType.reward, '잔불 줍기'),
+  learningEmber(FateTier.common, FateType.reward, '배움의 불씨'),
+  emberCollector(FateTier.rare, FateType.reward, '잔불 수집가'),
+  treasureHunter(FateTier.rare, FateType.reward, '보물 사냥꾼'),
+  smithsTouch(FateTier.rare, FateType.skill, '대장장이의 손길'),
+  newArms(FateTier.rare, FateType.skill, '낯선 무기'),
+  quickHands(FateTier.rare, FateType.stat, '빠른 손'),
+  hawkEye(FateTier.rare, FateType.stat, '매의 눈'),
+  ashFlood(FateTier.rare, FateType.reward, '재의 홍수'),
+  emberBurst(FateTier.heroic, FateType.skill, '잿불 폭발'),
+  frostArmor(FateTier.heroic, FateType.skill, '서리 갑옷'),
+  chainLightning(FateTier.heroic, FateType.skill, '연쇄 번개'),
+  bloodThirst(FateTier.heroic, FateType.stat, '피의 갈증'),
+  phoenixFeather(FateTier.legendary, FateType.skill, '불사조의 깃털'),
+  berserk(FateTier.legendary, FateType.skill, '광전사의 분노'),
+  ashLord(FateTier.legendary, FateType.stat, '재의 군주'),
+  thickAsh(FateTier.curse, FateType.reward, '짙어지는 재'),
+  bloodOath(FateTier.curse, FateType.reward, '피의 맹세'),
+  burningPrice(FateTier.curse, FateType.stat, '타오르는 대가');
 
-  const FateCard(this.tier, this.title);
+  const FateCard(this.tier, this.type, this.title);
 
   final FateTier tier;
+  final FateType type;
   final String title;
 
   /// 런 동안 오르는 능력치.
   Map<StatType, double> get stats => switch (this) {
     hardenedAsh => const {StatType.maxHp: Balance.fateMaxHp},
     ashWind => const {StatType.moveSpeed: Balance.fateMoveSpeed},
+    learningEmber => const {StatType.xpGain: Balance.fateXpGain},
     sharpEmber => const {StatType.damage: Balance.fateDamage},
     emberPull => const {StatType.magnetRange: Balance.fateMagnetRange},
     ashArmor => const {StatType.armor: Balance.fateArmor},
@@ -86,6 +103,8 @@ enum FateCard {
     smithsTouch => '가진 무기 하나가 바로 +${Balance.fateWeaponLevels}레벨',
     newArms => '아직 없는 무기 하나를 얻는다',
     ashFlood => '바로 ${Balance.fateLevels}레벨 오른다',
+    emberCollector => '잔불 획득량 ${_percent(1 + Balance.fateEmberGain)}',
+    treasureHunter => '장비 드랍 확률 ${_percent(1 + Balance.fateDropGain)}',
     phoenixFeather =>
       '쓰러지면 한 번 더, 체력 ${(Balance.phoenixHp * 100).round()}%로 되살아난다',
     thickAsh =>
