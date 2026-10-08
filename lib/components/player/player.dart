@@ -224,7 +224,9 @@ class Player extends PositionComponent
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
-    if (other is Enemy) takeDamage(other.contactDamage);
+    if (other is Enemy) {
+      takeDamage(other.contactDamage, type: other.damageType);
+    }
   }
 
   /// 회피 → 피해 감소(저항, 방어력) → 에너지 보호막 → 체력 순으로 처리한다.

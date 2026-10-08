@@ -11,6 +11,7 @@ import '../../data/balance.dart';
 import '../../data/characters.dart';
 import '../../data/damage.dart';
 import '../../data/equipment.dart';
+import '../../data/stages.dart';
 import '../../systems/crowd_system.dart';
 import '../../systems/level_system.dart';
 import '../../systems/loot_system.dart';
@@ -21,7 +22,8 @@ import 'ground_grid.dart';
 /// 런 하나의 월드. 재시작하면 통째로 새로 만든다.
 class RunWorld extends World
     with HasGameReference<AshbornGame>, HasCollisionDetection {
-  RunWorld(this.character) : player = Player(character);
+  RunWorld(this.character, {this.stage = Stage.first})
+    : player = Player(character);
 
   final CharacterDef character;
   final Player player;
@@ -29,7 +31,14 @@ class RunWorld extends World
   /// 살아 있는 적 목록. [Enemy] 가 마운트/제거될 때 스스로 갱신한다.
   final enemies = <Enemy>[];
 
+  /// 런 전체 시간.
   double elapsed = 0;
+
+  /// 지금 스테이지. 보스를 잡으면 다음으로 넘어간다.
+  Stage stage;
+
+  /// 지금 스테이지에서 지난 시간. 웨이브 강도와 보스 등장을 정한다.
+  double stageTime = 0;
 
   @override
   Future<void> onLoad() async {
@@ -42,6 +51,7 @@ class RunWorld extends World
   void update(double dt) {
     super.update(dt);
     elapsed += dt;
+    stageTime += dt;
     game.stats.elapsedSeconds.value = elapsed.floor();
   }
 

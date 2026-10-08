@@ -2,6 +2,7 @@ import 'package:ashborn/components/enemies/enemy.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:flame/components.dart';
@@ -18,9 +19,13 @@ Future<void> advance(AshbornGame game, double seconds) async {
 AshbornGame Function() gameWith(
   CharacterDef character, {
   Inventory? inventory,
+  Stage stage = Stage.first,
 }) =>
-    () =>
-        AshbornGame(character: character, inventory: inventory ?? Inventory());
+    () => AshbornGame(
+      character: character,
+      inventory: inventory ?? Inventory(),
+      startStage: stage,
+    );
 
 /// 웨이브 스폰과 섞이지 않도록 기존 적을 모두 치운다.
 Future<void> clearEnemies(AshbornGame game) async {
@@ -56,3 +61,26 @@ Item item(
     ...extra,
   ],
 );
+
+/// 능력치 하나만 올려 주는 장비를 낀 인벤토리. 목걸이부터 차례로 칸을 채운다.
+Inventory wearing(
+  Map<StatType, double> stats, {
+  CharacterId character = CharacterId.witch,
+}) {
+  final inv = Inventory();
+  final types = [
+    ItemType.necklace,
+    ItemType.head,
+    ItemType.boots,
+    ItemType.gloves,
+    ItemType.belt,
+    ItemType.ring,
+    ItemType.ring,
+    ItemType.earring,
+    ItemType.earring,
+  ];
+  for (final (i, MapEntry(:key, :value)) in stats.entries.indexed) {
+    inv.gear(character).add(item(types[i], stat: key, value: value));
+  }
+  return inv;
+}

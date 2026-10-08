@@ -4,27 +4,34 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
+import '../../data/damage.dart';
 import '../../game/world/run_world.dart';
 import 'ailments.dart';
 import 'death_puff.dart';
 
 /// 재의 무리(Hollow). 플레이어를 향해 곧장 걸어온다.
+/// 지역에 따라 색, 속도, 닿았을 때 주는 피해의 속성이 다르다.
 class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
-  Enemy({required super.position, required this.maxHp})
-    : hp = maxHp,
-      super(
-        radius: Balance.enemyRadius,
-        anchor: Anchor.center,
-        paint: Paint()..color = baseColor,
-      );
+  Enemy({
+    required super.position,
+    required this.maxHp,
+    this.contactDamage = Balance.enemyContactDamage,
+    this.damageType = DamageType.physical,
+    this.speed = Balance.enemySpeed,
+    this.color = const Color(0xFF8A7F7A),
+    super.radius = Balance.enemyRadius,
+    super.priority,
+  }) : hp = maxHp,
+       super(anchor: Anchor.center, paint: Paint()..color = color);
 
-  static const baseColor = Color(0xFF8A7F7A);
   static const flashColor = Color(0xFFFFFFFF);
 
   final double maxHp;
   double hp;
-  final double speed = Balance.enemySpeed;
-  final double contactDamage = Balance.enemyContactDamage;
+  double speed;
+  final double contactDamage;
+  final DamageType damageType;
+  final Color color;
 
   /// [CrowdSystem] 이 매 프레임 채워 주는 밀어내기 속도.
   final separation = Vector2.zero();
@@ -71,7 +78,7 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
     position.addScaled(_velocity, dt);
 
     if (_flash > 0) _flash -= dt;
-    paint.color = _flash > 0 ? flashColor : ailments.tint ?? baseColor;
+    paint.color = _flash > 0 ? flashColor : ailments.tint ?? color;
 
     final dot = ailments.tick(dt);
     if (dot > 0) takeDamage(dot, flash: false);

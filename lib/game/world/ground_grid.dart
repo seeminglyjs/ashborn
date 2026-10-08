@@ -5,17 +5,17 @@ import 'package:flame/components.dart';
 import '../ashborn_game.dart';
 
 /// 끝없는 바닥 격자. 이동감을 주기 위해 카메라가 보는 영역에만 그린다.
+/// 색은 지금 지역을 따른다.
 class GroundGrid extends Component with HasGameReference<AshbornGame> {
   GroundGrid() : super(priority: -100);
 
   static const double spacing = 64;
 
-  final _paint = Paint()
-    ..color = const Color(0x1FFFFFFF)
-    ..strokeWidth = 1;
+  final _paint = Paint()..strokeWidth = 1;
 
   @override
   void render(Canvas canvas) {
+    _paint.color = game.world.stage.region.grid;
     final rect = game.camera.visibleWorldRect;
     for (
       var x = (rect.left / spacing).floor() * spacing;

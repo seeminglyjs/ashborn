@@ -26,13 +26,28 @@ abstract final class Balance {
   static const double enemyBaseHp = 20;
   static const double enemyContactDamage = 10;
 
-  /// 이 시간(초)이 지날 때마다 적 체력이 기본값만큼 늘어난다.
-  static const double enemyHpGrowthPeriod = 90;
+  /// 한 스테이지 안에서 이 시간(초)이 지날 때마다 적 체력이 기본값만큼 늘어난다.
+  static const double enemyHpGrowthPeriod = 240;
 
   /// 겹친 적끼리 밀어내는 속도.
   static const double enemySeparationStrength = 120;
 
-  // 웨이브
+  // 스테이지: 레벨(1부터)이 오를 때마다 적 체력과 피해가 이 배율로 는다.
+  static const double stageHpGrowth = 1.35;
+  static const double stageDamageGrowth = 1.15;
+
+  /// 스테이지 시작 후 이 시간(초)이 지나면 보스가 나온다.
+  static const double stageDuration = 120;
+
+  /// 타락 단계마다 적 이동 속도 증가율과 그 상한 배율.
+  static const double corruptionSpeedBonus = 0.04;
+  static const double maxCorruptionSpeed = 1.4;
+
+  /// 타락 단계마다 장비 드랍 확률 증가율과 높은 등급 가중치 증가율.
+  static const double corruptionDropBonus = 0.25;
+  static const double corruptionRarityLuck = 0.2;
+
+  // 웨이브 (스테이지마다 처음부터)
   static const double baseSpawnInterval = 1.2;
   static const double minSpawnInterval = 0.3;
 

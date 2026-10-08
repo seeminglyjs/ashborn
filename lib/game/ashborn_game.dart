@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../data/characters.dart';
 import '../data/inventory.dart';
+import '../data/stages.dart';
 import '../systems/level_system.dart';
 import 'notices.dart';
 import 'run_stats.dart';
@@ -15,8 +16,11 @@ import 'world/run_world.dart';
 /// Ashborn 게임 루트. 런 하나가 [RunWorld] 하나에 대응한다.
 class AshbornGame extends FlameGame<RunWorld>
     with HasKeyboardHandlerComponents {
-  AshbornGame({required this.character, required this.inventory})
-    : super(world: RunWorld(character)) {
+  AshbornGame({
+    required this.character,
+    required this.inventory,
+    this.startStage = Stage.first,
+  }) : super(world: RunWorld(character, stage: startStage)) {
     camera.viewport.add(joystick);
   }
 
@@ -29,6 +33,9 @@ class AshbornGame extends FlameGame<RunWorld>
   static const double viewShortSide = 540;
 
   final CharacterDef character;
+
+  /// 이 런을 시작한 스테이지.
+  final Stage startStage;
 
   /// 런이 끝나도 유지되는 장비.
   final Inventory inventory;
@@ -56,7 +63,7 @@ class AshbornGame extends FlameGame<RunWorld>
   );
 
   @override
-  Color backgroundColor() => const Color(0xFF1A1414);
+  Color backgroundColor() => world.stage.region.background;
 
   @override
   void onGameResize(Vector2 size) {
@@ -116,7 +123,7 @@ class AshbornGame extends FlameGame<RunWorld>
     _pendingLevelUps = 0;
     notices.clear();
     overlays.removeAll([gameOverOverlay, levelUpOverlay, equipmentOverlay]);
-    world = RunWorld(character);
+    world = RunWorld(character, stage: startStage);
     resumeEngine();
   }
 }

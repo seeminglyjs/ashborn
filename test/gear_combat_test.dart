@@ -5,7 +5,6 @@ import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/damage.dart';
 import 'package:ashborn/data/equipment.dart';
-import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:flame/components.dart';
@@ -13,29 +12,6 @@ import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
-
-/// 능력치 하나만 올려 주는 장비를 낀 인벤토리. 목걸이부터 차례로 칸을 채운다.
-Inventory wearing(
-  Map<StatType, double> stats, {
-  CharacterId character = CharacterId.witch,
-}) {
-  final inv = Inventory();
-  final types = [
-    ItemType.necklace,
-    ItemType.head,
-    ItemType.boots,
-    ItemType.gloves,
-    ItemType.belt,
-    ItemType.ring,
-    ItemType.ring,
-    ItemType.earring,
-    ItemType.earring,
-  ];
-  for (final (i, MapEntry(:key, :value)) in stats.entries.indexed) {
-    inv.gear(character).add(item(types[i], stat: key, value: value));
-  }
-  return inv;
-}
 
 void main() {
   group('능력치', () {
