@@ -6,12 +6,14 @@ import 'package:flutter/services.dart';
 
 import '../../data/balance.dart';
 import '../../data/characters.dart';
+import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
 import '../enemies/enemy.dart';
 import '../weapons/ember_orb.dart';
 import '../weapons/fire_crossbow.dart';
 import '../weapons/flame_blade.dart';
+import '../weapons/weapon.dart';
 
 class Player extends PositionComponent
     with
@@ -44,13 +46,28 @@ class Player extends PositionComponent
   @override
   Future<void> onLoad() async {
     // isSolid: 적이 플레이어 안에 완전히 들어와도 충돌로 친다.
-    addAll([CircleHitbox(isSolid: true), _startWeapon()]);
+    addAll([CircleHitbox(isSolid: true), _createWeapon(character.startWeapon)]);
   }
 
-  Component _startWeapon() => switch (character.id) {
-    CharacterId.knight => FlameBlade(),
-    CharacterId.witch => EmberOrb(),
-    CharacterId.hunter => FireCrossbow(),
+  Iterable<LeveledWeapon> get weapons => children.whereType<LeveledWeapon>();
+
+  LeveledWeapon? weapon(WeaponId id) =>
+      weapons.where((w) => w.id == id).firstOrNull;
+
+  /// 처음 얻는 무기는 1레벨로 붙이고, 이미 있으면 레벨을 올린다.
+  void gainWeapon(WeaponId id) {
+    final owned = weapon(id);
+    if (owned != null) {
+      owned.levelUp();
+    } else {
+      add(_createWeapon(id));
+    }
+  }
+
+  static LeveledWeapon _createWeapon(WeaponId id) => switch (id) {
+    WeaponId.flameBlade => FlameBlade(),
+    WeaponId.emberOrb => EmberOrb(),
+    WeaponId.fireCrossbow => FireCrossbow(),
   };
 
   @override

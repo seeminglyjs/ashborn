@@ -3,6 +3,7 @@ import 'package:ashborn/components/weapons/fire_crossbow.dart';
 import 'package:ashborn/components/weapons/flame_blade.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/weapons.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
@@ -169,5 +170,84 @@ void main() {
         }
       },
     );
+  });
+
+  group('무기 레벨', () {
+    test('레벨업 효과 설명', () {
+      expect(WeaponId.emberOrb.upgradeText(2), '피해 +20%');
+      expect(WeaponId.emberOrb.upgradeText(3), '피해 +20%, 구체 +1');
+      expect(WeaponId.fireCrossbow.upgradeText(2), '피해 +20%, 관통 +1');
+    });
+
+    testWithGame<AshbornGame>('레벨이 오르면 피해와 관통이 는다', gameWith(Roster.hunter), (
+      game,
+    ) async {
+      await game.ready();
+      await clearEnemies(game);
+      final player = game.world.player;
+      player
+        ..gainWeapon(WeaponId.fireCrossbow)
+        ..gainWeapon(WeaponId.fireCrossbow);
+      final weapon = player.children.whereType<FireCrossbow>().single;
+      expect(weapon.level, 3);
+      expect(weapon.pierce, Balance.crossbowPierce + 2);
+
+      final enemy = await addEnemy(game, Vector2(120, 0));
+      weapon.fire();
+      await advance(game, 0.5);
+
+      expect(
+        enemy.hp,
+        closeTo(enemy.maxHp - Balance.crossbowDamage * 1.4, 1e-9),
+      );
+    });
+
+    testWithGame<AshbornGame>('잔불 구체는 3레벨에 두 발을 쏜다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      await game.ready();
+      await clearEnemies(game);
+      final player = game.world.player;
+      player
+        ..gainWeapon(WeaponId.emberOrb)
+        ..gainWeapon(WeaponId.emberOrb);
+      await addEnemy(game, Vector2(150, 0));
+
+      player.children.whereType<EmberOrb>().single.fire();
+      await game.ready();
+
+      expect(game.world.children.whereType<EmberBolt>(), hasLength(2));
+    });
+
+    testWithGame<AshbornGame>('불꽃 대검은 3레벨에 칼날이 셋', gameWith(Roster.knight), (
+      game,
+    ) async {
+      await game.ready();
+      final player = game.world.player;
+      player
+        ..gainWeapon(WeaponId.flameBlade)
+        ..gainWeapon(WeaponId.flameBlade);
+      await game.ready();
+
+      final blade = player.children.whereType<FlameBlade>().single;
+      expect(blade.bladeCount, 3);
+      expect(blade.children.whereType<PositionComponent>(), hasLength(3));
+    });
+
+    testWithGame<AshbornGame>('다른 캐릭터의 무기도 얻을 수 있다', gameWith(Roster.knight), (
+      game,
+    ) async {
+      await game.ready();
+      final player = game.world.player;
+
+      player.gainWeapon(WeaponId.emberOrb);
+      await game.ready();
+
+      expect(player.weapons.map((w) => w.id), [
+        WeaponId.flameBlade,
+        WeaponId.emberOrb,
+      ]);
+      expect(player.weapon(WeaponId.emberOrb)!.level, 1);
+    });
   });
 }

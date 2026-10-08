@@ -4,12 +4,19 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
+import '../../data/weapons.dart';
 import 'projectile.dart';
 import 'weapon.dart';
 
 /// 잔불 구체 (재의 마녀): 가장 가까운 적에게 불씨를 쏜다.
+/// 여러 발이면 부채꼴로 퍼진다.
 class EmberOrb extends Weapon {
   EmberOrb() : super(baseCooldown: Balance.emberOrbCooldown);
+
+  @override
+  WeaponId get id => WeaponId.emberOrb;
+
+  int get boltCount => 1 + bonusCount;
 
   @override
   bool fire() {
@@ -19,21 +26,32 @@ class EmberOrb extends Weapon {
       maxDistance: Balance.emberOrbRange,
     );
     if (target == null) return false;
-    world.add(
-      EmberBolt(position: origin.clone(), direction: target.position - origin),
-    );
+    final aim = target.position - origin;
+    final damage = Balance.emberOrbDamage * damageMultiplier;
+    for (var i = 0; i < boltCount; i++) {
+      final offset = (i - (boltCount - 1) / 2) * Balance.emberOrbSpread;
+      world.add(
+        EmberBolt(
+          position: origin.clone(),
+          direction: aim.clone()..rotate(offset),
+          damage: damage,
+        ),
+      );
+    }
     return true;
   }
 }
 
 class EmberBolt extends Projectile {
-  EmberBolt({required super.position, required super.direction})
-    : super(
-        speed: Balance.emberOrbSpeed,
-        damage: Balance.emberOrbDamage,
-        lifetime: Balance.emberOrbLifetime,
-        size: Vector2.all(Balance.emberOrbRadius * 2),
-      );
+  EmberBolt({
+    required super.position,
+    required super.direction,
+    required super.damage,
+  }) : super(
+         speed: Balance.emberOrbSpeed,
+         lifetime: Balance.emberOrbLifetime,
+         size: Vector2.all(Balance.emberOrbRadius * 2),
+       );
 
   static final _glow = Paint()..color = const Color(0x55FF8C42);
   static final _core = Paint()..color = const Color(0xFFFFD27A);

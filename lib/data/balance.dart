@@ -43,6 +43,12 @@ abstract final class Balance {
   /// 화면 밖 스폰 거리 여유분.
   static const double spawnMargin = 60;
 
+  // 무기 공통
+  static const int weaponMaxLevel = 5;
+
+  /// 레벨당 무기 피해 증가율.
+  static const double weaponDamagePerLevel = 0.2;
+
   // 무기: 잔불 구체 (재의 마녀)
   static const double emberOrbCooldown = 0.6;
   static const double emberOrbDamage = 12;
@@ -50,6 +56,9 @@ abstract final class Balance {
   static const double emberOrbSpeed = 520;
   static const double emberOrbLifetime = 1.2;
   static const double emberOrbRadius = 6;
+
+  /// 구체를 여러 발 쏠 때 사이 각도(라디안).
+  static const double emberOrbSpread = 0.2;
 
   // 무기: 불꽃 대검 (잿불 기사)
   static const int flameBladeCount = 2;
