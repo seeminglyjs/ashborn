@@ -33,12 +33,18 @@ class Inventory extends ChangeNotifier {
   final _equipped = <CharacterId, Map<EquipSlot, Item>>{};
   int _ember = 0;
 
-  /// 잔불. 장비 강화에 쓴다.
+  /// 잔불. 장비 강화와 화톳불 영구 강화에 쓴다.
   int get ember => _ember;
 
   void addEmber(int amount) {
     if (amount <= 0) return;
     _ember += amount;
+    notifyListeners();
+  }
+
+  void spendEmber(int amount) {
+    assert(amount <= _ember, '잔불이 모자란다');
+    _ember -= amount;
     notifyListeners();
   }
 

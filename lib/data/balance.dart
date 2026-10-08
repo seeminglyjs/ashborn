@@ -263,6 +263,20 @@ abstract final class Balance {
   static const double curseMaxHp = -30;
   static const double curseDamage = 0.4;
 
+  // 화톳불 영구 강화: 레벨마다 오르는 양. 다음 레벨 비용은 이 배율씩 는다.
+  static const double upgradeCostGrowth = 1.5;
+  static const double upgradeMaxHp = 10;
+  static const double upgradeDamage = 0.05;
+  static const double upgradeMoveSpeed = 0.03;
+  static const double upgradeArmor = 5;
+  static const double upgradeHpRegen = 0.2;
+  static const double upgradeMagnetRange = 0.1;
+  static const double upgradeXpGain = 0.05;
+  static const double upgradeEmberGain = 0.05;
+
+  /// 운명 카드 등급 운. 타락 단계의 등급 운에 더해진다.
+  static const double upgradeFateLuck = 0.1;
+
   // 무기 공통
   static const int weaponMaxLevel = 5;
 

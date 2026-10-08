@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/characters.dart';
 import '../../data/stages.dart';
 import '../equipment/equipment_screen.dart';
+import '../hearth/hearth_screen.dart';
 import '../profile_scope.dart';
 import '../routes.dart';
 import '../theme.dart';
@@ -37,6 +38,9 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   void _openEquipment() =>
       Navigator.of(context)
           .push(fadeRoute(EquipmentScreen(character: _selected)));
+
+  void _openHearth() =>
+      Navigator.of(context).push(fadeRoute(const HearthScreen()));
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +85,16 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 16,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
                     children: [
+                      AshButton(
+                        key: const Key('open-hearth'),
+                        label: '화톳불',
+                        icon: Icons.upgrade,
+                        fontSize: 17,
+                        onPressed: _openHearth,
+                      ),
                       AshButton(
                         key: const Key('open-equipment'),
                         label: '장비',

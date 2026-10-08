@@ -12,6 +12,7 @@ import 'package:ashborn/main.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:ashborn/ui/equipment/equipment_screen.dart';
+import 'package:ashborn/ui/hearth/hearth_screen.dart';
 import 'package:ashborn/ui/profile_scope.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
@@ -310,6 +311,27 @@ void main() {
       expect(find.byKey(const Key('confirm-salvage')), findsNothing);
       expect(inventory.bag, isEmpty);
     });
+  });
+
+  testWidgets('캐릭터 선택에서 화톳불을 열어 강화를 살 수 있다', (tester) async {
+    useScreen(tester, phoneLandscape);
+    await tester.pumpWidget(
+      ProfileScope(
+        profile: Profile(),
+        child: const MaterialApp(home: CharacterSelectScreen()),
+      ),
+    );
+    await settle(tester, 300);
+
+    await tester.tap(find.byKey(const Key('open-hearth')));
+    await settle(tester);
+
+    expect(find.byType(HearthScreen), findsOneWidget);
+    await tester.tap(find.byKey(const Key('close-hearth')));
+    // 첫 프레임에 닫는 전환이 시작된다.
+    await tester.pump();
+    await settle(tester);
+    expect(find.byType(HearthScreen), findsNothing);
   });
 
   testWidgets('출정할 스테이지는 클리어한 다음 스테이지까지 고를 수 있다', (tester) async {
