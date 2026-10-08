@@ -276,7 +276,6 @@ class RunWorld extends World
     }
   }
 
-  /// 잿불 폭발: [at] 주변 적에게 화염 피해.
   /// 떠 있는 [DamageNumber] 수.
   int damageNumbers = 0;
 
@@ -295,6 +294,7 @@ class RunWorld extends World
     );
   }
 
+  /// 잿불 폭발: [at] 주변 적에게 화염 피해.
   void emberBurst(Vector2 at) {
     add(
       Burst(
