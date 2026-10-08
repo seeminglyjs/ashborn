@@ -6,6 +6,7 @@ import 'package:ashborn/data/profile.dart';
 import 'package:ashborn/data/progress.dart';
 import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
+import 'package:ashborn/data/upgrades.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,13 +24,18 @@ AshbornGame Function() gameWith(
   CharacterDef character, {
   Inventory? inventory,
   Progress? progress,
+  Upgrades? upgrades,
   Stage stage = Stage.first,
 }) => () {
   // 진동 같은 플랫폼 호출이 있어 바인딩이 필요하다.
   TestWidgetsFlutterBinding.ensureInitialized();
   return AshbornGame(
     character: character,
-    profile: Profile(inventory: inventory, progress: progress),
+    profile: Profile(
+      inventory: inventory,
+      progress: progress,
+      upgrades: upgrades,
+    ),
     startStage: stage,
   );
 };

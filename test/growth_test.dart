@@ -150,6 +150,7 @@ void main() {
 
         String describe(LevelUpOption o) => switch (o) {
           WeaponOption(:final id) => '${id.name} ${o.level}',
+          AwakenOption(:final id) => 'awaken ${id.name}',
           PassiveOption(:final id) => '${id.name} ${o.level}',
         };
         expect(options.map(describe), [

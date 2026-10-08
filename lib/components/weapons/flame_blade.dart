@@ -23,7 +23,14 @@ class FlameBlade extends PositionComponent
   @override
   WeaponId get id => WeaponId.flameBlade;
 
-  int get bladeCount => Balance.flameBladeCount + bonusCount;
+  int get bladeCount =>
+      Balance.flameBladeCount +
+      bonusCount +
+      (awakened ? Balance.infernoBladeBonus : 0);
+
+  double get orbitRadius =>
+      Balance.flameBladeOrbitRadius *
+      (awakened ? Balance.infernoOrbitScale : 1);
 
   @override
   Future<void> onLoad() async => _buildBlades();
@@ -38,9 +45,7 @@ class FlameBlade extends PositionComponent
       final theta = math.pi * 2 * i / bladeCount;
       _blades.add(
         _Blade(
-          position:
-              Vector2(math.cos(theta), math.sin(theta)) *
-              Balance.flameBladeOrbitRadius,
+          position: Vector2(math.cos(theta), math.sin(theta)) * orbitRadius,
           angle: theta,
         ),
       );

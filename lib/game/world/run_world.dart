@@ -15,6 +15,7 @@ import '../../data/characters.dart';
 import '../../data/damage.dart';
 import '../../data/equipment.dart';
 import '../../data/stages.dart';
+import '../../data/upgrades.dart';
 import '../../systems/crowd_system.dart';
 import '../../systems/fate_system.dart';
 import '../../systems/level_system.dart';
@@ -64,8 +65,13 @@ class RunWorld extends World
   /// 이번 런에서 고른 운명.
   final fate = RunFate();
 
+  /// 운명 저주 · 보상 카드와 화톳불 강화로 늘어난 잔불 획득량.
+  double get emberMultiplier =>
+      fate.emberMultiplier * (1 + game.upgrades.value(Upgrade.emberGain));
+
   @override
   Future<void> onLoad() async {
+    fate.rerolls += game.upgrades.value(Upgrade.fateRerolls).round();
     game.stats.reset(xpToNext: LevelSystem.xpToNext(1));
     _publishStage();
     addAll([GroundGrid(), player, WaveSystem(), CrowdSystem()]);
@@ -181,11 +187,11 @@ class RunWorld extends World
   }
 
   /// 모아 둔 잔불과 [bonus] 를 인벤토리에 넣고 넣은 양을 돌려준다.
-  /// 저주로 늘어난 잔불 획득량은 처치와 [bonus] 모두에 붙는다.
+  /// 늘어난 잔불 획득량은 처치와 [bonus] 모두에 붙는다.
   int bankEmber({int bonus = 0}) {
     final whole = _pendingEmber.floor();
     _pendingEmber -= whole;
-    final amount = whole + (bonus * fate.emberMultiplier).round();
+    final amount = whole + (bonus * emberMultiplier).round();
     game.inventory.addEmber(amount);
     runEmber += amount;
     return amount;
@@ -211,7 +217,7 @@ class RunWorld extends World
   void onEnemyKilled(Vector2 position) {
     game.stats.kills.value++;
     add(AshShard(position: position));
-    _pendingEmber += Balance.killEmber * stage.level * fate.emberMultiplier;
+    _pendingEmber += Balance.killEmber * stage.level * emberMultiplier;
     final item = LootSystem.rollDrop(game.random, stage, fate.dropMultiplier);
     if (item != null) add(ItemDrop(position: position.clone(), item: item));
     if (player.effects.contains(UniqueEffect.emberBurst) &&

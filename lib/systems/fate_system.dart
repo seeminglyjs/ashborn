@@ -5,6 +5,7 @@ import '../data/balance.dart';
 import '../data/equipment.dart';
 import '../data/fates.dart';
 import '../data/stats.dart';
+import '../data/upgrades.dart';
 import '../data/weapons.dart';
 import '../game/world/run_world.dart';
 import 'level_system.dart';
@@ -65,11 +66,16 @@ abstract final class FateSystem {
     _ => true,
   };
 
-  /// 카드 [Balance.fateChoices] 장. 종류는 같은 종류 상한 안에서 고르게 뽑고,
-  /// 그 종류에서 등급과 카드를 뽑는다. 한 번에 같은 카드는 없다.
+  /// 카드 [Balance.fateChoices] 장 (화톳불 강화로 늘어난다). 종류는 같은 종류
+  /// 상한 안에서 고르게 뽑고, 그 종류에서 등급과 카드를 뽑는다. 한 번에 같은 카드는 없다.
   static List<Fate> roll(Player player, math.Random random) {
+    final upgrades = player.game.upgrades;
+    final count =
+        Balance.fateChoices + upgrades.value(Upgrade.fateChoices).round();
+    final luck =
+        player.world.stage.rarityLuck + upgrades.value(Upgrade.fateLuck);
     final hand = <Fate>[];
-    while (hand.length < Balance.fateChoices) {
+    while (hand.length < count) {
       final types =
           FateType.values
               .where(
@@ -79,7 +85,7 @@ abstract final class FateSystem {
             ..shuffle(random);
       Fate? fate;
       for (final type in types) {
-        fate = _draw(type, hand, player, random);
+        fate = _draw(type, hand, player, random, luck);
         if (fate != null) break;
       }
       if (fate == null) break;
@@ -95,6 +101,7 @@ abstract final class FateSystem {
     List<Fate> hand,
     Player player,
     math.Random random,
+    double luck,
   ) {
     var cards = FateCard.values
         .where((c) => c.type == type && hand.every((f) => f.card != c))
@@ -107,7 +114,7 @@ abstract final class FateSystem {
 
     var rarity = LootSystem.rollRarity(
       random,
-      luck: player.world.stage.rarityLuck,
+      luck: luck,
       ratio: Balance.fateRarityRatio,
     );
     final floor = cards

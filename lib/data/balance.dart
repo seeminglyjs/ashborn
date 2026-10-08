@@ -263,8 +263,38 @@ abstract final class Balance {
   static const double curseMaxHp = -30;
   static const double curseDamage = 0.4;
 
+  // 화톳불 영구 강화: 레벨마다 오르는 양. 다음 레벨 비용은 이 배율씩 는다.
+  static const double upgradeCostGrowth = 1.5;
+  static const double upgradeMaxHp = 10;
+  static const double upgradeDamage = 0.05;
+  static const double upgradeMoveSpeed = 0.03;
+  static const double upgradeArmor = 5;
+  static const double upgradeHpRegen = 0.2;
+  static const double upgradeMagnetRange = 0.1;
+  static const double upgradeXpGain = 0.05;
+  static const double upgradeEmberGain = 0.05;
+
+  /// 운명 카드 등급 운. 타락 단계의 등급 운에 더해진다.
+  static const double upgradeFateLuck = 0.1;
+
   // 무기 공통
   static const int weaponMaxLevel = 5;
+
+  // 무기 각성: 최대 레벨 무기 + 짝이 되는 패시브가 있으면 레벨업 때 고를 수 있다.
+  static const double awakenDamageMultiplier = 1.5;
+
+  /// 업화의 대검: 칼날 수 증가와 궤도 반지름 배율.
+  static const int infernoBladeBonus = 2;
+  static const double infernoOrbitScale = 1.3;
+
+  /// 유성 잔불: 맞힌 자리에서 터져 주변에 원래 피해의 이 비율을 준다.
+  static const double meteorRadius = 70;
+  static const double meteorRatio = 0.6;
+
+  /// 폭풍 석궁: 한 번에 쏘는 화살 수, 사이 각도(라디안), 추가 관통.
+  static const int stormArrows = 3;
+  static const double stormSpread = 0.15;
+  static const int stormPierceBonus = 3;
 
   /// 레벨당 무기 피해 증가율.
   static const double weaponDamagePerLevel = 0.2;

@@ -13,6 +13,7 @@ import '../data/profile.dart';
 import '../data/progress.dart';
 import '../data/settings.dart';
 import '../data/stages.dart';
+import '../data/upgrades.dart';
 import '../systems/fate_system.dart';
 import '../systems/level_system.dart';
 import 'notices.dart';
@@ -51,6 +52,7 @@ class AshbornGame extends FlameGame<RunWorld>
   Inventory get inventory => profile.inventory;
   Progress get progress => profile.progress;
   Settings get settings => profile.settings;
+  Upgrades get upgrades => profile.upgrades;
 
   /// 이 캐릭터가 낀 장비.
   late final gear = inventory.gear(character.id);

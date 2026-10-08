@@ -1,5 +1,6 @@
 import 'package:flame/components.dart';
 
+import '../../data/balance.dart';
 import '../../data/weapons.dart';
 import '../../game/world/run_world.dart';
 
@@ -12,15 +13,27 @@ mixin LeveledWeapon on HasWorldReference<RunWorld> {
 
   bool get isMaxLevel => _level >= WeaponId.maxLevel;
 
+  bool _awakened = false;
+  bool get awakened => _awakened;
+
   void levelUp() {
     _level++;
     onLevelChanged();
   }
 
+  /// 최대 레벨 무기를 각성시킨다. 무기마다 [onLevelChanged] 에서 모양을 바꾼다.
+  void awaken() {
+    assert(isMaxLevel && !_awakened, '최대 레벨이고 아직 각성 전이어야 한다');
+    _awakened = true;
+    onLevelChanged();
+  }
+
   void onLevelChanged() {}
 
-  /// 무기 레벨에 따른 피해 배율. 장비와 패시브는 [Player.strike] 가 더한다.
-  double get damageMultiplier => WeaponId.damageMultiplier(_level);
+  /// 무기 레벨과 각성에 따른 피해 배율. 장비와 패시브는 [Player.strike] 가 더한다.
+  double get damageMultiplier =>
+      WeaponId.damageMultiplier(_level) *
+      (_awakened ? Balance.awakenDamageMultiplier : 1);
 
   int get bonusCount => id.bonusCount(_level);
 }

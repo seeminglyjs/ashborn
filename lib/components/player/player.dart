@@ -61,9 +61,12 @@ class Player extends PositionComponent
 
   bool get isDead => hp <= 0;
 
-  /// 패시브, 장비, 운명으로 오른 [stat] 의 합.
+  /// 패시브, 장비, 운명, 화톳불 강화로 오른 [stat] 의 합.
   double bonus(StatType stat) {
-    var total = game.gear.bonus(stat) + world.fate.bonus(stat);
+    var total =
+        game.gear.bonus(stat) +
+        world.fate.bonus(stat) +
+        game.upgrades.bonus(stat);
     passives.forEach((id, level) {
       if (id.stat == stat) total += id.perLevel * level;
     });
