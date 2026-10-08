@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
@@ -13,7 +14,10 @@ class Inventory extends ChangeNotifier {
   Inventory();
 
   factory Inventory.fromJson(Map<String, dynamic> json) {
-    final inventory = Inventory().._ember = json['ember'] as int;
+    final inventory = Inventory()
+      .._ember = json['ember'] as int
+      .._gold = json['gold'] as int? ?? 0
+      .._stones = json['stones'] as int? ?? 0;
     for (final item in json['bag'] as List) {
       inventory._bag.add(Item.fromJson(item as Map<String, dynamic>));
     }
@@ -33,8 +37,22 @@ class Inventory extends ChangeNotifier {
   final _equipped = <CharacterId, Map<EquipSlot, Item>>{};
   int _ember = 0;
 
-  /// 잔불. 장비 강화와 화톳불 영구 강화에 쓴다.
+  /// 잔불. 화톳불 영구 강화에 쓴다.
   int get ember => _ember;
+
+  int _gold = 0;
+  int _stones = 0;
+
+  /// 골드와 강화석. 장비 강화에 쓴다.
+  int get gold => _gold;
+  int get stones => _stones;
+
+  void addLoot({int gold = 0, int stones = 0}) {
+    if (gold <= 0 && stones <= 0) return;
+    _gold += gold;
+    _stones += stones;
+    notifyListeners();
+  }
 
   void addEmber(int amount) {
     if (amount <= 0) return;
@@ -49,14 +67,20 @@ class Inventory extends ChangeNotifier {
   }
 
   bool canEnhance(Item item) =>
-      !item.isMaxEnhance && _ember >= item.enhanceCost;
+      !item.isMaxEnhance &&
+      _stones >= item.enhanceStones &&
+      _gold >= item.enhanceGold;
 
-  /// 잔불을 써서 [item] 을 한 단계 강화한다. 장착 중인 장비도 된다.
-  void enhance(Item item) {
-    assert(canEnhance(item), '잔불이 모자라거나 최대 강화다');
-    _ember -= item.enhanceCost;
-    item.enhance++;
+  /// 강화석과 골드를 써서 [item] 강화를 시도하고 성공했는지 돌려준다.
+  /// 실패하면 재료만 사라진다. 장착 중인 장비도 된다.
+  bool enhance(Item item, math.Random random) {
+    assert(canEnhance(item), '재료가 모자라거나 최대 강화다');
+    _stones -= item.enhanceStones;
+    _gold -= item.enhanceGold;
+    final success = random.nextDouble() < item.enhanceChance;
+    if (success) item.enhance++;
     notifyListeners();
+    return success;
   }
 
   /// 가방의 [item] 을 분해해 잔불로 바꾼다.
@@ -77,6 +101,8 @@ class Inventory extends ChangeNotifier {
 
   Map<String, dynamic> toJson() => {
     'ember': _ember,
+    'gold': _gold,
+    'stones': _stones,
     'bag': [for (final item in _bag) item.toJson()],
     'equipped': {
       for (final MapEntry(key: character, value: slots) in _equipped.entries)

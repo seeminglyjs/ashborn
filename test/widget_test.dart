@@ -270,6 +270,33 @@ void main() {
       expect(find.text('▲ 화염 저항 +10%'), findsOneWidget);
     });
 
+    testWidgets('강화석과 골드로 강화하고 비용 · 확률 · 결과를 보여 준다', (tester) async {
+      final helm = item(ItemType.head);
+      final inventory = await openFor(
+        tester,
+        Roster.witch,
+        fill: (inv) => inv
+          ..addLoot(gold: helm.enhanceGold, stones: helm.enhanceStones)
+          ..gear(CharacterId.witch).add(helm)
+          ..gear(CharacterId.witch).unequip(EquipSlot.head),
+      );
+
+      await tester.tap(find.byKey(const Key('bag-0')));
+      await tester.pump();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('enhance-cost'))).data,
+        '강화석 ${helm.enhanceStones} · 골드 ${helm.enhanceGold} · 성공 100%',
+      );
+
+      await tester.tap(find.byKey(const Key('enhance')));
+      await tester.pump();
+
+      expect(helm.enhance, 1);
+      expect((inventory.gold, inventory.stones), (0, 0));
+      expect(find.text('강화 성공! +1'), findsOneWidget);
+      expect(find.text('골드 0 · 강화석 0'), findsOneWidget);
+    });
+
     testWidgets('영웅 이상 장비는 분해하기 전에 한 번 더 묻는다', (tester) async {
       final hero = item(ItemType.ring, rarity: Rarity.hero);
       final normal = item(ItemType.ring);

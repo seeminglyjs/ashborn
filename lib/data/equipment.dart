@@ -115,7 +115,7 @@ typedef StatRoll = ({StatType stat, double value, Rarity rarity});
 
 /// 장비 한 개. [stats] 의 첫 줄이 주옵션(장비와 같은 등급)이다.
 ///
-/// [level] 은 떨어진 스테이지 레벨이고, [enhance] 는 잔불로 올리는 강화 단계다.
+/// [level] 은 떨어진 스테이지 레벨이고, [enhance] 는 강화석과 골드로 올리는 강화 단계다.
 class Item {
   Item({
     required this.type,
@@ -171,14 +171,20 @@ class Item {
 
   double get _levelFactor => 1 + Balance.emberPerItemLevel * (level - 1);
 
-  /// 다음 강화에 드는 잔불.
-  int get enhanceCost =>
-      (Balance.enhanceCost *
-              (enhance + 1) *
-              (enhance + 1) *
+  /// 다음 강화에 드는 강화석.
+  int get enhanceStones =>
+      Balance.enhanceStones + Balance.enhanceStonesPerStep * enhance;
+
+  /// 다음 강화에 드는 골드.
+  int get enhanceGold =>
+      (Balance.enhanceGold *
+              math.pow(Balance.enhanceGoldGrowth, enhance) *
               math.pow(Balance.enhanceRarityGrowth, rarity.index) *
               _levelFactor)
           .round();
+
+  /// 다음 강화가 성공할 확률.
+  double get enhanceChance => Balance.enhanceChances[enhance];
 
   /// 분해하면 얻는 잔불.
   int get salvageValue =>

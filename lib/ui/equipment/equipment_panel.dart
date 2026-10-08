@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../data/balance.dart';
@@ -38,13 +40,21 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
   /// 선택한 장비가 장착 중이면 그 칸.
   EquipSlot? _selectedSlot;
 
+  /// 마지막 강화 시도 결과. 다른 장비를 고르면 지운다.
+  bool? _enhanced;
+  final _random = math.Random();
+
   Inventory get _inventory => widget.inventory;
   late final Gear _gear = _inventory.gear(widget.character.id);
 
   void _select(Item? item, [EquipSlot? slot]) => setState(() {
     _selected = item;
     _selectedSlot = slot;
+    _enhanced = null;
   });
+
+  void _enhance(Item item) =>
+      setState(() => _enhanced = _inventory.enhance(item, _random));
 
   Future<void> _salvage(Item item) async {
     if (item.rarity.index >= confirmSalvageFrom.index &&
@@ -96,6 +106,12 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                     const SizedBox(width: 10),
                     Text(widget.character.name, style: _Text.heading),
                     const Spacer(),
+                    Text(
+                      '골드 ${_inventory.gold} · 강화석 ${_inventory.stones}',
+                      key: const Key('materials'),
+                      style: _Text.heading.copyWith(color: AshColors.gold),
+                    ),
+                    const SizedBox(width: 10),
                     Text(
                       '잔불 ${_inventory.ember}',
                       key: const Key('ember'),
@@ -236,13 +252,34 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
         children: [
           ItemDetails(item: item),
           const SizedBox(height: 12),
+          if (!item.isMaxEnhance)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '강화석 ${item.enhanceStones} · 골드 ${item.enhanceGold} · '
+                '성공 ${(item.enhanceChance * 100).round()}%',
+                key: const Key('enhance-cost'),
+                style: _Text.tag,
+              ),
+            ),
           _action(
             'enhance',
-            item.isMaxEnhance ? '최대 강화' : '강화 (잔불 ${item.enhanceCost})',
-            _inventory.canEnhance(item)
-                ? () => setState(() => _inventory.enhance(item))
-                : null,
+            item.isMaxEnhance ? '최대 강화' : '강화',
+            _inventory.canEnhance(item) ? () => _enhance(item) : null,
           ),
+          if (_enhanced case final success?)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                success ? '강화 성공! +${item.enhance}' : '강화 실패: 재료만 사라졌습니다',
+                key: const Key('enhance-result'),
+                style: TextStyle(
+                  color: success ? AshColors.gold : AshColors.ash,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           if (slot != null)
             _action('unequip', '해제', () {
               _gear.unequip(slot);

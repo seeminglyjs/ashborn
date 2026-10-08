@@ -149,19 +149,51 @@ abstract final class Balance {
   static const int bossChestItems = 3;
   static const double bossChestRadius = 40;
 
-  // 잔불: 스테이지 클리어와 처치로 얻고, 장비 분해로도 얻는다. 장비 강화에 쓴다.
+  // 잔불: 스테이지 클리어와 처치로 얻고, 장비 분해로도 얻는다. 화톳불 영구 강화에 쓴다.
   static const double stageClearEmber = 20;
   static const double killEmber = 0.2;
   static const double salvageEmber = 3;
 
-  /// 분해와 강화 비용은 등급이 오를 때마다 이 배율로 는다.
+  /// 분해 잔불은 등급이 오를 때마다 이 배율로 는다.
   static const double salvageRarityGrowth = 3;
-  static const double enhanceRarityGrowth = 2;
-  static const double enhanceCost = 10;
 
-  /// 장비 레벨 1 오를 때마다 분해 잔불과 강화 비용이 이 비율씩 는다.
+  /// 장비 레벨 1 오를 때마다 분해 잔불과 강화 골드가 이 비율씩 는다.
   static const double emberPerItemLevel = 0.1;
-  static const int maxEnhance = 10;
+
+  // 골드와 강화석: 처치와 보스로 얻고, 쓰러지거나 클리어할 때 정산된다. 장비 강화에 쓴다.
+  /// 처치당 골드 (스테이지 레벨마다).
+  static const double killGold = 1;
+
+  /// 스테이지 클리어 골드 (스테이지 레벨마다, 타락 보상 배율이 붙는다).
+  static const double stageClearGold = 50;
+
+  /// 처치당 강화석이 나올 확률 (타락 보상 배율이 붙는다).
+  static const double stoneDropChance = 0.03;
+
+  /// 보스가 주는 강화석. 타락 단계마다 하나씩 더.
+  static const int bossStones = 3;
+
+  // 장비 강화: 강화석과 골드를 쓰고 확률로 성공한다. 실패하면 재료만 사라진다.
+  static const int maxEnhance = 20;
+
+  /// 지금 단계에서 다음 단계로 성공할 확률. 길이가 [maxEnhance] 와 같다.
+  /// 최대 단계를 늘리면 여기에 확률을 덧붙인다.
+  static const List<double> enhanceChances = [
+    1, 1, 1, 1, 1, //
+    0.9, 0.85, 0.8, 0.75, 0.7,
+    0.6, 0.55, 0.5, 0.45, 0.4,
+    0.3, 0.25, 0.2, 0.15, 0.1,
+  ];
+
+  /// 다음 단계 강화석 = enhanceStones + enhanceStonesPerStep × 지금 단계.
+  static const int enhanceStones = 1;
+  static const int enhanceStonesPerStep = 1;
+
+  /// 다음 단계 골드 = enhanceGold × enhanceGoldGrowth^단계
+  /// × enhanceRarityGrowth^등급 × 장비 레벨 배율.
+  static const double enhanceGold = 50;
+  static const double enhanceGoldGrowth = 1.25;
+  static const double enhanceRarityGrowth = 1.5;
 
   /// 강화 1단계마다 모든 옵션 수치 증가율.
   static const double enhanceStatBonus = 0.1;

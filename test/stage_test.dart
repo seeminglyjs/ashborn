@@ -251,5 +251,64 @@ void main() {
         expect(game.inventory.ember, (10 * Balance.killEmber * 5).floor());
       },
     );
+
+    testWithGame<AshbornGame>(
+      '처치로 모은 골드와 강화석도 쓰러질 때 정산된다',
+      gameWith(Roster.witch, stage: const Stage(4)),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        game.overlays.addEntry(
+          AshbornGame.gameOverOverlay,
+          (_, _) => const SizedBox(),
+        );
+        for (var i = 0; i < 10; i++) {
+          final enemy = await addEnemy(game, Vector2(5000.0 + i * 50, 0));
+          enemy.takeDamage(double.infinity);
+        }
+        expect(game.inventory.gold, 0);
+
+        game.world.player.takeDamage(double.infinity);
+
+        expect(game.inventory.gold, (10 * Balance.killGold * 5).floor());
+        expect(game.world.runGold, game.inventory.gold);
+        expect(game.world.runStones, game.inventory.stones);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '보스는 클리어 골드와 강화석을 준다. 타락 단계마다 강화석이 하나씩 더',
+      gameWith(Roster.witch, stage: Stage(Region.values.length + 2)),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        game.overlays.addEntry(
+          AshbornGame.stageClearOverlay,
+          (_, _) => const SizedBox(),
+        );
+        final stage = game.world.stage;
+        game.world.spawnBoss();
+        await game.ready();
+
+        game.world.boss!.takeDamage(double.infinity);
+        await game.ready();
+
+        expect(
+          game.inventory.gold,
+          greaterThanOrEqualTo(
+            (Balance.stageClearGold * stage.level * stage.dropChanceMultiplier)
+                .round(),
+          ),
+        );
+        expect(
+          game.inventory.stones,
+          greaterThanOrEqualTo(Balance.bossStones + 1),
+        );
+        expect(
+          game.notices.value.map((n) => n.text),
+          contains(startsWith('골드 +')),
+        );
+      },
+    );
   });
 }

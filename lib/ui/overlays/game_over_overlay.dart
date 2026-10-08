@@ -42,6 +42,11 @@ class GameOverOverlay extends StatelessWidget {
               Text('처치  ${stats.kills.value}', style: statStyle),
               const SizedBox(height: 6),
               Text('잔불  +${game.world.runEmber}', style: statStyle),
+              const SizedBox(height: 6),
+              Text(
+                '골드  +${game.world.runGold} · 강화석  +${game.world.runStones}',
+                style: statStyle,
+              ),
               const SizedBox(height: 4),
               Text(
                 '보유 잔불 ${game.inventory.ember} · 화톳불에서 영구 강화에 쓸 수 있다',
