@@ -239,8 +239,9 @@ ashborn/
 
 ## 🧭 로드맵
 
-- [ ] **Phase 0 · 기반** : Flutter + Flame 프로젝트 세팅, 폴더 구조
-- [ ] **Phase 1 · 코어 전투** : 플레이어 이동, 적 스폰·추적, 자동 공격 무기 1종
+- [x] **Phase 0 · 기반** : Flutter + Flame 프로젝트 세팅, 폴더 구조
+- [x] **Phase 1 · 코어 전투** : 플레이어 이동, 적 스폰·추적, 자동 공격 무기 1종
+- [x] **Phase 1.5 · 타이틀 흐름** : 스플래시, 메인 화면, 캐릭터 선택 (캐릭터별 시작 무기 3종)
 - [ ] **Phase 2 · 런 내 성장** : 재의 결정, 레벨업 선택 UI, 무기 3종 · 패시브 3종
 - [ ] **Phase 3 · 라운드 & 지역** : 라운드 종료 조건, 보스, 지역 전환
 - [ ] **Phase 4 · 운명 시스템** : 카드 추첨 · 등급 · 리롤 · 저주
@@ -252,13 +253,26 @@ ashborn/
 
 ## 🚀 시작하기
 
-> ⚠️ 아직 프로젝트 초기 단계입니다. 코드가 추가되면 이 섹션이 업데이트됩니다.
-
 ```bash
 git clone https://github.com/seeminglyjs/ashborn.git
 cd ashborn
 flutter pub get
-flutter run
+flutter run -d windows   # 개발용 빠른 실행
+flutter run -d android   # 연결된 안드로이드 기기 / 에뮬레이터
+```
+
+### 🎮 조작법
+
+| 입력 | 동작 |
+|:---|:---|
+| 화면 왼쪽 아래 조이스틱 | 이동 (모바일) |
+| `W` `A` `S` `D` / 방향키 | 이동 (Windows) |
+| 공격 | 자동 |
+
+### 🧪 테스트
+
+```bash
+flutter test
 ```
 
 ---
