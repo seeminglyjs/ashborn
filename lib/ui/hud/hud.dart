@@ -4,8 +4,8 @@ import '../../game/ashborn_game.dart';
 import '../format.dart';
 import '../theme.dart';
 
-/// 경험치, 체력과 보호막, 생존 시간, 처치 수, 장비 버튼, 알림.
-/// 장비 버튼 밖의 터치는 게임(조이스틱)으로 그대로 통과시킨다.
+/// 경험치, 체력과 보호막, 스테이지, 처치 수, 설정·장비 버튼, 알림.
+/// 버튼 밖의 터치는 게임(조이스틱)으로 그대로 통과시킨다.
 class Hud extends StatelessWidget {
   const Hud({super.key, required this.game});
 
@@ -23,11 +23,22 @@ class Hud extends StatelessWidget {
               padding: const EdgeInsets.only(top: 52, right: 6),
               child: Material(
                 type: MaterialType.transparency,
-                child: IconButton(
-                  key: const Key('open-equipment'),
-                  tooltip: '장비',
-                  icon: const Icon(Icons.backpack, color: Colors.white70),
-                  onPressed: game.openEquipment,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      key: const Key('open-settings'),
+                      tooltip: '설정',
+                      icon: const Icon(Icons.settings, color: Colors.white70),
+                      onPressed: game.openSettings,
+                    ),
+                    IconButton(
+                      key: const Key('open-equipment'),
+                      tooltip: '장비',
+                      icon: const Icon(Icons.backpack, color: Colors.white70),
+                      onPressed: game.openEquipment,
+                    ),
+                  ],
                 ),
               ),
             ),

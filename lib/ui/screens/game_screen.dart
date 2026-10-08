@@ -9,6 +9,7 @@ import '../profile_scope.dart';
 import '../overlays/equipment_overlay.dart';
 import '../overlays/game_over_overlay.dart';
 import '../overlays/level_up_overlay.dart';
+import '../overlays/settings_overlay.dart';
 import '../overlays/stage_clear_overlay.dart';
 
 class GameScreen extends StatefulWidget {
@@ -47,6 +48,8 @@ class _GameScreenState extends State<GameScreen> {
               LevelUpOverlay(game: game),
           AshbornGame.equipmentOverlay: (context, game) =>
               EquipmentOverlay(game: game),
+          AshbornGame.settingsOverlay: (context, game) =>
+              SettingsOverlay(game: game),
           AshbornGame.stageClearOverlay: (context, game) => StageClearOverlay(
             game: game,
             onReturn: () => Navigator.of(context).pop(),

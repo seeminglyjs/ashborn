@@ -6,9 +6,11 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 import '../data/characters.dart';
+import '../data/equipment.dart';
 import '../data/inventory.dart';
 import '../data/profile.dart';
 import '../data/progress.dart';
+import '../data/settings.dart';
 import '../data/stages.dart';
 import '../systems/level_system.dart';
 import 'notices.dart';
@@ -31,6 +33,7 @@ class AshbornGame extends FlameGame<RunWorld>
   static const levelUpOverlay = 'levelUp';
   static const equipmentOverlay = 'equipment';
   static const stageClearOverlay = 'stageClear';
+  static const settingsOverlay = 'settings';
 
   /// 화면 짧은 변에 보이는 월드 크기. 기기 해상도와 상관없이 시야를 고정한다.
   static const double viewShortSide = 540;
@@ -45,6 +48,7 @@ class AshbornGame extends FlameGame<RunWorld>
 
   Inventory get inventory => profile.inventory;
   Progress get progress => profile.progress;
+  Settings get settings => profile.settings;
 
   /// 이 캐릭터가 낀 장비.
   late final gear = inventory.gear(character.id);
@@ -77,8 +81,15 @@ class AshbornGame extends FlameGame<RunWorld>
     camera.viewfinder.zoom = math.min(size.x, size.y) / viewShortSide;
   }
 
-  void notify(String text, {Color color = Colors.white}) =>
-      notices.add(text, color);
+  /// 진행 알림. 설정에서 끌 수 있다.
+  void notify(String text, {Color color = Colors.white}) {
+    if (settings.eventNotices) notices.add(text, color);
+  }
+
+  /// 장비 획득 알림. 설정한 최소 등급 이상만.
+  void notifyLoot(Item item, String text) {
+    if (settings.showsLoot(item.rarity)) notices.add(text, item.rarity.color);
+  }
 
   @override
   void update(double dt) {
@@ -100,6 +111,14 @@ class AshbornGame extends FlameGame<RunWorld>
   void continueToNextStage() {
     world.advanceStage();
     if (overlays.remove(stageClearOverlay)) resumeEngine();
+  }
+
+  void openSettings() {
+    if (overlays.add(settingsOverlay)) pauseEngine();
+  }
+
+  void closeSettings() {
+    if (overlays.remove(settingsOverlay)) resumeEngine();
   }
 
   void openEquipment() {
@@ -145,6 +164,7 @@ class AshbornGame extends FlameGame<RunWorld>
       levelUpOverlay,
       equipmentOverlay,
       stageClearOverlay,
+      settingsOverlay,
     ]);
     world = RunWorld(character, stage: stage ?? startStage);
     resumeEngine();

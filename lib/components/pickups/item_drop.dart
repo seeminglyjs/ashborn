@@ -22,10 +22,7 @@ class ItemDrop extends Pickup with HasGameReference<AshbornGame> {
   @override
   void collect() {
     final slot = game.gear.add(item);
-    game.notify(
-      '${item.name} 획득${slot == null ? '' : ' · 장착'}',
-      color: item.rarity.color,
-    );
+    game.notifyLoot(item, '${item.name} 획득${slot == null ? '' : ' · 장착'}');
   }
 
   @override

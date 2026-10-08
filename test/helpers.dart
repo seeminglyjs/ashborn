@@ -8,6 +8,7 @@ import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:flame/components.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// 게임을 [seconds] 동안 60fps 로 진행시킨다.
 Future<void> advance(AshbornGame game, double seconds) async {
@@ -23,12 +24,15 @@ AshbornGame Function() gameWith(
   Inventory? inventory,
   Progress? progress,
   Stage stage = Stage.first,
-}) =>
-    () => AshbornGame(
-      character: character,
-      profile: Profile(inventory: inventory, progress: progress),
-      startStage: stage,
-    );
+}) => () {
+  // 진동 같은 플랫폼 호출이 있어 바인딩이 필요하다.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  return AshbornGame(
+    character: character,
+    profile: Profile(inventory: inventory, progress: progress),
+    startStage: stage,
+  );
+};
 
 /// 웨이브 스폰과 섞이지 않도록 기존 적을 모두 치운다.
 Future<void> clearEnemies(AshbornGame game) async {

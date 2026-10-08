@@ -245,6 +245,7 @@ class Player extends PositionComponent
     if (effects.contains(UniqueEffect.frostArmor)) _frostArmor();
 
     hp = (hp - damage).clamp(0, maxHp);
+    if (damage > 0 && game.settings.vibration) HapticFeedback.lightImpact();
     if (isDead && effects.contains(UniqueEffect.phoenix) && !_phoenixUsed) {
       _phoenixUsed = true;
       hp = maxHp * Balance.phoenixHp;
