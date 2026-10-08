@@ -5,6 +5,18 @@ abstract final class Balance {
   static const double playerSpeed = 160;
   static const double playerInvulnerableTime = 0.5;
 
+  /// 바닥 아이템이 끌려오기 시작하는 거리.
+  static const double magnetRange = 70;
+
+  // 줍는 아이템
+  static const double pickupSpeed = 360;
+  static const double ashShardSize = 10;
+  static const double ashShardXp = 1;
+
+  // 레벨: 다음 레벨까지 xpBase + xpGrowth * (레벨 - 1) 경험치.
+  static const double xpBase = 5;
+  static const double xpGrowth = 5;
+
   // 적 (재의 무리)
   static const double enemyRadius = 14;
   static const double enemySpeed = 70;

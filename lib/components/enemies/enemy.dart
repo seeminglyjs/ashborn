@@ -85,7 +85,7 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
     _dead = true;
     world
       ..add(DeathPuff(position: position.clone()))
-      ..onEnemyKilled();
+      ..onEnemyKilled(position.clone());
     removeFromParent();
   }
 }

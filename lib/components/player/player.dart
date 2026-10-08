@@ -39,6 +39,8 @@ class Player extends PositionComponent
 
   bool get isDead => hp <= 0;
 
+  double get magnetRange => Balance.magnetRange;
+
   @override
   Future<void> onLoad() async {
     // isSolid: 적이 플레이어 안에 완전히 들어와도 충돌로 친다.

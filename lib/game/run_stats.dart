@@ -6,11 +6,17 @@ class RunStats {
   final maxHp = ValueNotifier<double>(1);
   final elapsedSeconds = ValueNotifier<int>(0);
   final kills = ValueNotifier<int>(0);
+  final level = ValueNotifier<int>(1);
+  final xp = ValueNotifier<double>(0);
+  final xpToNext = ValueNotifier<double>(1);
 
-  void reset({required double maxHp}) {
+  void reset({required double maxHp, required double xpToNext}) {
     this.maxHp.value = maxHp;
     hp.value = maxHp;
     elapsedSeconds.value = 0;
     kills.value = 0;
+    level.value = 1;
+    xp.value = 0;
+    this.xpToNext.value = xpToNext;
   }
 }

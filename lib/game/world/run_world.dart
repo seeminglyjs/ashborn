@@ -1,9 +1,11 @@
 import 'package:flame/components.dart';
 
 import '../../components/enemies/enemy.dart';
+import '../../components/pickups/ash_shard.dart';
 import '../../components/player/player.dart';
 import '../../data/characters.dart';
 import '../../systems/crowd_system.dart';
+import '../../systems/level_system.dart';
 import '../../systems/wave_system.dart';
 import '../ashborn_game.dart';
 import 'ground_grid.dart';
@@ -23,7 +25,7 @@ class RunWorld extends World
 
   @override
   Future<void> onLoad() async {
-    game.stats.reset(maxHp: player.maxHp);
+    game.stats.reset(maxHp: player.maxHp, xpToNext: LevelSystem.xpToNext(1));
     addAll([GroundGrid(), player, WaveSystem(), CrowdSystem()]);
     game.camera.follow(player);
   }
@@ -35,7 +37,21 @@ class RunWorld extends World
     game.stats.elapsedSeconds.value = elapsed.floor();
   }
 
-  void onEnemyKilled() => game.stats.kills.value++;
+  void onEnemyKilled(Vector2 position) {
+    game.stats.kills.value++;
+    add(AshShard(position: position));
+  }
+
+  void gainXp(double amount) {
+    final stats = game.stats;
+    var xp = stats.xp.value + amount;
+    while (xp >= stats.xpToNext.value) {
+      xp -= stats.xpToNext.value;
+      stats.level.value++;
+      stats.xpToNext.value = LevelSystem.xpToNext(stats.level.value);
+    }
+    stats.xp.value = xp;
+  }
 
   /// [from] 에서 [maxDistance] 안에 있는 가장 가까운 적.
   Enemy? nearestEnemy(Vector2 from, {required double maxDistance}) {
