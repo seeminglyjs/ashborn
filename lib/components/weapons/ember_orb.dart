@@ -35,6 +35,7 @@ class EmberOrb extends Weapon {
           position: origin.clone(),
           direction: aim.clone()..rotate(offset),
           damage: damage,
+          type: id.damageType,
         ),
       );
     }
@@ -47,6 +48,7 @@ class EmberBolt extends Projectile {
     required super.position,
     required super.direction,
     required super.damage,
+    required super.type,
   }) : super(
          speed: Balance.emberOrbSpeed,
          lifetime: Balance.emberOrbLifetime,

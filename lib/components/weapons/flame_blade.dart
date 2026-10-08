@@ -72,7 +72,11 @@ class FlameBlade extends PositionComponent
         Balance.flameBladeHitInterval / world.player.attackSpeedMultiplier;
     if (last != null && now - last < interval) return;
     _lastHit[enemy] = now;
-    enemy.takeDamage(Balance.flameBladeDamage * damageMultiplier);
+    world.player.strike(
+      enemy,
+      Balance.flameBladeDamage * damageMultiplier,
+      id.damageType,
+    );
   }
 }
 

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/collisions.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../../data/balance.dart';
 import '../../data/characters.dart';
+import '../../data/damage.dart';
 import '../../data/passives.dart';
 import '../../data/stats.dart';
 import '../../data/weapons.dart';
@@ -40,7 +42,11 @@ class Player extends PositionComponent
 
   late double hp;
   late double _knownMaxHp;
+  double energyShield = 0;
   double _invulnerable = 0;
+
+  /// 마지막 피격 후 지난 시간. 에너지 보호막 재충전에 쓴다.
+  double _sinceHit = 0;
 
   final _keyDirection = Vector2.zero();
   final _move = Vector2.zero();
@@ -66,10 +72,19 @@ class Player extends PositionComponent
   double get damageMultiplier => 1 + bonus(StatType.damage);
   double get attackSpeedMultiplier => 1 + bonus(StatType.attackSpeed);
   double get xpMultiplier => 1 + bonus(StatType.xpGain);
-  double get damageTakenMultiplier =>
-      character.damageTakenMultiplier *
-      Balance.defenseScale /
-      (Balance.defenseScale + bonus(StatType.defense));
+  double get critChance => bonus(StatType.critChance);
+  double get critMultiplier =>
+      Balance.critMultiplier + bonus(StatType.critDamage);
+  double get evasion => math.min(bonus(StatType.evasion), Balance.maxEvasion);
+  double get maxEnergyShield => bonus(StatType.energyShield);
+
+  /// [type] 피해 감소율. 상한이 있다.
+  double reduction(DamageType type) =>
+      math.min(bonus(type.reduction), Balance.maxReduction);
+
+  /// 방어력은 물리 피해만 줄인다.
+  double get armorMultiplier =>
+      Balance.armorScale / (Balance.armorScale + bonus(StatType.armor));
 
   void gainPassive(PassiveId id) {
     passives.update(id, (level) => level + 1, ifAbsent: () => 1);
@@ -80,12 +95,20 @@ class Player extends PositionComponent
   /// 장비를 뺐다 껴서 체력을 채우는 일이 없도록 비율을 쓴다.
   void _syncMaxHp() {
     final after = maxHp;
-    if (after == _knownMaxHp) return;
-    hp = hp * after / _knownMaxHp;
-    _knownMaxHp = after;
+    if (after != _knownMaxHp) {
+      hp = hp * after / _knownMaxHp;
+      _knownMaxHp = after;
+    }
+    energyShield = math.min(energyShield, maxEnergyShield);
+    _publish();
+  }
+
+  void _publish() {
     game.stats
-      ..maxHp.value = after
-      ..hp.value = hp;
+      ..maxHp.value = maxHp
+      ..hp.value = hp
+      ..maxEnergyShield.value = maxEnergyShield
+      ..energyShield.value = energyShield;
   }
 
   @override
@@ -103,9 +126,8 @@ class Player extends PositionComponent
   @override
   Future<void> onLoad() async {
     hp = _knownMaxHp = maxHp;
-    game.stats
-      ..maxHp.value = maxHp
-      ..hp.value = hp;
+    energyShield = maxEnergyShield;
+    _publish();
     // isSolid: 적이 플레이어 안에 완전히 들어와도 충돌로 친다.
     add(CircleHitbox(isSolid: true));
     gainWeapon(character.startWeapon);
@@ -142,6 +164,16 @@ class Player extends PositionComponent
     if (regen > 0 && hp < maxHp) {
       hp = (hp + regen * dt).clamp(0, maxHp);
       game.stats.hp.value = hp;
+    }
+    _sinceHit += dt;
+    final maxShield = maxEnergyShield;
+    if (_sinceHit >= Balance.energyShieldRechargeDelay &&
+        energyShield < maxShield) {
+      energyShield = math.min(
+        maxShield,
+        energyShield + maxShield * Balance.energyShieldRechargeRate * dt,
+      );
+      game.stats.energyShield.value = energyShield;
     }
 
     _move
@@ -181,11 +213,89 @@ class Player extends PositionComponent
     if (other is Enemy) takeDamage(other.contactDamage);
   }
 
-  void takeDamage(double amount) {
+  /// 회피 → 피해 감소(저항, 방어력) → 에너지 보호막 → 체력 순으로 처리한다.
+  void takeDamage(double amount, {DamageType type = DamageType.physical}) {
     if (_invulnerable > 0 || isDead) return;
-    hp = (hp - amount * damageTakenMultiplier).clamp(0, maxHp);
     _invulnerable = Balance.playerInvulnerableTime;
-    game.stats.hp.value = hp;
+    if (game.random.nextDouble() < evasion) return;
+
+    var damage =
+        amount * character.damageTakenMultiplier * (1 - reduction(type));
+    if (type == DamageType.physical) damage *= armorMultiplier;
+    final absorbed = math.min(energyShield, damage);
+    energyShield -= absorbed;
+    damage -= absorbed;
+    _sinceHit = 0;
+
+    hp = (hp - damage).clamp(0, maxHp);
+    _publish();
     if (isDead) game.onPlayerDied();
+  }
+
+  /// 무기의 [base] 피해에 장비의 속성 피해를 더해 [enemy] 를 때린다.
+  /// 치명타, 상태이상, 생명력 흡수를 처리하고 실제로 들어간 피해를 돌려준다.
+  ///
+  /// [secondary] 는 효과로 생긴 추가 타격: 장비 속성 피해를 다시 더하지 않는다.
+  double strike(
+    Enemy enemy,
+    double base,
+    DamageType type, {
+    bool secondary = false,
+  }) {
+    if (enemy.isDead) return 0;
+    final random = game.random;
+    final hit = Hit()..add(type, base);
+    if (!secondary) {
+      for (final t in DamageType.values) {
+        hit.add(t, bonus(t.added));
+      }
+    }
+    var multiplier = damageMultiplier;
+    if (random.nextDouble() < critChance) {
+      hit.crit = true;
+      multiplier *= critMultiplier;
+    }
+    hit.scale(multiplier);
+
+    final dealt = enemy.takeDamage(hit.total);
+    _applyAilments(enemy, hit, random);
+
+    final steal = bonus(StatType.lifeSteal);
+    if (steal > 0 && hp < maxHp) {
+      hp = math.min(maxHp, hp + dealt * steal);
+      game.stats.hp.value = hp;
+    }
+    return dealt;
+  }
+
+  void _applyAilments(Enemy enemy, Hit hit, math.Random random) {
+    bool roll(StatType chance, double portion) =>
+        portion > 0 && random.nextDouble() < bonus(chance);
+    final ailments = enemy.ailments;
+    if (roll(StatType.bleedChance, hit[DamageType.physical])) {
+      ailments.bleed(
+        hit[DamageType.physical] *
+            Balance.bleedRatio *
+            (1 + bonus(StatType.bleedDamage)),
+      );
+    }
+    if (roll(StatType.burnChance, hit[DamageType.fire])) {
+      ailments.burn(
+        hit[DamageType.fire] *
+            Balance.burnRatio *
+            (1 + bonus(StatType.burnDamage)),
+      );
+    }
+    if (roll(StatType.poisonChance, hit.total)) {
+      ailments.poison(
+        hit.total * Balance.poisonRatio * (1 + bonus(StatType.poisonDamage)),
+      );
+    }
+    if (roll(StatType.shockChance, hit[DamageType.lightning])) {
+      ailments.shock(Balance.shockEffect * (1 + bonus(StatType.shockEffect)));
+    }
+    if (roll(StatType.chillChance, hit[DamageType.cold])) {
+      ailments.chill(Balance.chillSlow, Balance.chillDuration);
+    }
   }
 }

@@ -1,6 +1,8 @@
 import 'package:ashborn/components/enemies/enemy.dart';
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:flame/components.dart';
 
@@ -38,3 +40,19 @@ Future<Enemy> addEnemy(
   await game.ready();
   return enemy;
 }
+
+/// 테스트용 장비. 주옵션은 [stat] (기본: 파츠의 첫 후보).
+Item item(
+  ItemType type, {
+  Rarity rarity = Rarity.normal,
+  StatType? stat,
+  double value = 1,
+  List<StatRoll> extra = const [],
+}) => Item(
+  type: type,
+  rarity: rarity,
+  stats: [
+    (stat: stat ?? type.mainStats.first, value: value, rarity: rarity),
+    ...extra,
+  ],
+);

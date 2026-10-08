@@ -19,9 +19,8 @@ mixin LeveledWeapon on HasWorldReference<RunWorld> {
 
   void onLevelChanged() {}
 
-  /// 무기 레벨과 플레이어 공격력을 모두 반영한 피해 배율.
-  double get damageMultiplier =>
-      WeaponId.damageMultiplier(_level) * world.player.damageMultiplier;
+  /// 무기 레벨에 따른 피해 배율. 장비와 패시브는 [Player.strike] 가 더한다.
+  double get damageMultiplier => WeaponId.damageMultiplier(_level);
 
   int get bonusCount => id.bonusCount(_level);
 }

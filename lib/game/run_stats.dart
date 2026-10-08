@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 class RunStats {
   final hp = ValueNotifier<double>(0);
   final maxHp = ValueNotifier<double>(1);
+  final energyShield = ValueNotifier<double>(0);
+  final maxEnergyShield = ValueNotifier<double>(0);
   final elapsedSeconds = ValueNotifier<int>(0);
   final kills = ValueNotifier<int>(0);
   final level = ValueNotifier<int>(1);

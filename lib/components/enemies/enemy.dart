@@ -5,6 +5,7 @@ import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
 import '../../game/world/run_world.dart';
+import 'ailments.dart';
 import 'death_puff.dart';
 
 /// 재의 무리(Hollow). 플레이어를 향해 곧장 걸어온다.
@@ -27,6 +28,8 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
 
   /// [CrowdSystem] 이 매 프레임 채워 주는 밀어내기 속도.
   final separation = Vector2.zero();
+
+  final ailments = Ailments();
 
   final _velocity = Vector2.zero();
   double _flash = 0;
@@ -62,23 +65,29 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
     if (_velocity.length2 > 1) {
       _velocity
         ..normalize()
-        ..scale(speed);
+        ..scale(speed * ailments.speedMultiplier);
     }
     _velocity.add(separation);
     position.addScaled(_velocity, dt);
 
-    if (_flash > 0) {
-      _flash -= dt;
-      paint.color = _flash > 0 ? flashColor : baseColor;
-    }
+    if (_flash > 0) _flash -= dt;
+    paint.color = _flash > 0 ? flashColor : ailments.tint ?? baseColor;
+
+    final dot = ailments.tick(dt);
+    if (dot > 0) takeDamage(dot, flash: false);
   }
 
-  void takeDamage(double amount) {
-    if (_dead) return;
-    hp -= amount;
-    _flash = 0.08;
-    paint.color = flashColor;
+  /// 감전 중이면 더 아프다. 실제로 들어간 피해를 돌려준다.
+  double takeDamage(double amount, {bool flash = true}) {
+    if (_dead) return 0;
+    final dealt = amount * ailments.damageTakenMultiplier;
+    hp -= dealt;
+    if (flash) {
+      _flash = 0.08;
+      paint.color = flashColor;
+    }
     if (hp <= 0) _die();
+    return dealt;
   }
 
   void _die() {

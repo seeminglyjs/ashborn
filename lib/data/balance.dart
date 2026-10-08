@@ -5,9 +5,6 @@ abstract final class Balance {
   static const double playerSpeed = 160;
   static const double playerInvulnerableTime = 0.5;
 
-  /// 방어력 D 이면 받는 피해가 defenseScale / (defenseScale + D) 배.
-  static const double defenseScale = 100;
-
   /// 바닥 아이템이 끌려오기 시작하는 거리.
   static const double magnetRange = 70;
 
@@ -55,6 +52,40 @@ abstract final class Balance {
   static const double passiveMoveSpeedPerLevel = 0.08;
   static const double passiveMagnetPerLevel = 0.25;
 
+  // 전투
+  /// 치명타 기본 배율. 치명타 피해 능력치가 더해진다.
+  static const double critMultiplier = 1.5;
+
+  /// 회피와 피해 감소율의 상한.
+  static const double maxEvasion = 0.75;
+  static const double maxReduction = 0.75;
+
+  /// 방어력 A 이면 받는 물리 피해가 armorScale / (armorScale + A) 배.
+  static const double armorScale = 100;
+
+  /// 에너지 보호막은 마지막 피격 후 이 시간이 지나면 초당 최대치의 일정 비율씩 찬다.
+  static const double energyShieldRechargeDelay = 3;
+  static const double energyShieldRechargeRate = 0.25;
+
+  // 상태이상: 지속 피해는 원래 타격 중 해당 속성 피해의 비율만큼을 지속 시간 동안 나눠 준다.
+  static const double bleedDuration = 4;
+  static const double bleedRatio = 1;
+  static const double burnDuration = 3;
+  static const double burnRatio = 1;
+  static const double poisonDuration = 3;
+
+  /// 중독은 타격 전체 피해의 이 비율. 여러 번 쌓인다.
+  static const double poisonRatio = 0.4;
+  static const int poisonMaxStacks = 20;
+  static const double shockDuration = 3;
+
+  /// 감전된 적이 받는 피해 증가율.
+  static const double shockEffect = 0.2;
+  static const double chillDuration = 2;
+
+  /// 동상에 걸린 적의 이동 속도 감소율.
+  static const double chillSlow = 0.3;
+
   // 장비 드랍: 처치당 드랍 확률, 등급이 오를 때마다 드랍 가중치는 이 배율로 준다.
   static const double itemDropChance = 0.02;
   static const double rarityDropRatio = 0.25;
@@ -62,21 +93,38 @@ abstract final class Balance {
   /// 등급이 오를 때마다 장비 수치가 이 배율로 는다.
   static const double rarityStatGrowth = 1.4;
 
-  /// 추가옵션은 주옵션 기준 수치의 이 비율.
+  /// 랜덤옵션 최대 개수와, 장비 등급별로 옵션 한 칸이 붙을 확률 (노말부터 고유).
+  static const int maxAffixes = 5;
+  static const List<double> affixChance = [0.1, 0.25, 0.4, 0.55, 0.7, 0.85];
+
+  /// 옵션 등급도 한 등급 오를 때마다 이 배율로 드물어진다. 장비 등급을 넘지 않는다.
+  static const double affixRarityRatio = 0.25;
+
+  /// 랜덤옵션은 주옵션 기준 수치의 이 비율.
   static const double affixScale = 0.5;
   static const double twoHandMainScale = 2;
 
   /// 수치가 기준값의 ±이 비율 안에서 무작위로 정해진다.
   static const double statVariance = 0.2;
 
-  // 노말 장비 주옵션 기준 수치
+  // 노말 등급 기준 수치
   static const double rollMaxHp = 10;
-  static const double rollMoveSpeed = 0.03;
-  static const double rollMagnetRange = 0.1;
+  static const double rollHpRegen = 0.3;
+  static const double rollLifeSteal = 0.005;
+  static const double rollAddedDamage = 2;
   static const double rollDamage = 0.05;
   static const double rollAttackSpeed = 0.04;
-  static const double rollDefense = 5;
-  static const double rollHpRegen = 0.3;
+  static const double rollCritChance = 0.03;
+  static const double rollCritDamage = 0.1;
+  static const double rollAilmentChance = 0.04;
+  static const double rollAilmentDamage = 0.1;
+  static const double rollArmor = 5;
+  static const double rollEvasion = 0.02;
+  static const double rollEnergyShield = 8;
+  static const double rollPhysicalReduction = 0.02;
+  static const double rollResist = 0.04;
+  static const double rollMoveSpeed = 0.03;
+  static const double rollMagnetRange = 0.1;
   static const double rollXpGain = 0.05;
 
   // 무기 공통

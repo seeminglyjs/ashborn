@@ -30,6 +30,7 @@ class FireCrossbow extends Weapon {
         position: origin.clone(),
         direction: target.position - origin,
         damage: Balance.crossbowDamage * damageMultiplier,
+        type: id.damageType,
         pierce: pierce,
       ),
     );
@@ -42,6 +43,7 @@ class FireArrow extends Projectile {
     required super.position,
     required super.direction,
     required super.damage,
+    required super.type,
     required super.pierce,
   }) : super(
          speed: Balance.crossbowSpeed,
