@@ -27,6 +27,7 @@ class _EquipmentOverlayState extends State<EquipmentOverlay> {
   EquipSlot? _selectedSlot;
 
   Inventory get _inventory => widget.game.inventory;
+  Gear get _gear => widget.game.gear;
 
   void _select(Item? item, [EquipSlot? slot]) => setState(() {
     _selected = item;
@@ -92,15 +93,15 @@ class _EquipmentOverlayState extends State<EquipmentOverlay> {
     runSpacing: _gap,
     children: [
       for (final slot in EquipSlot.values)
-        if (slot == EquipSlot.hand2 && _inventory.offHandBlocked)
+        if (slot == EquipSlot.hand2 && _gear.offHandBlocked)
           const _ItemTile(item: null, label: '양손 사용', dimmed: true)
         else
           _ItemTile(
             key: Key('slot-${slot.name}'),
-            item: _inventory.equipped[slot],
+            item: _gear.equipped[slot],
             label: slot.label,
             selected: _selectedSlot == slot,
-            onTap: () => _select(_inventory.equipped[slot], slot),
+            onTap: () => _select(_gear.equipped[slot], slot),
           ),
     ],
   );
@@ -108,7 +109,7 @@ class _EquipmentOverlayState extends State<EquipmentOverlay> {
   Widget _statSummary() {
     final lines = [
       for (final stat in StatType.values)
-        if (_inventory.bonus(stat) > 0) stat.format(_inventory.bonus(stat)),
+        if (_gear.bonus(stat) > 0) stat.format(_gear.bonus(stat)),
     ];
     return SingleChildScrollView(
       child: Column(
@@ -159,7 +160,7 @@ class _EquipmentOverlayState extends State<EquipmentOverlay> {
       return const Text('장비를 눌러 정보를 확인하세요', style: _Text.dim);
     }
     final slot = _selectedSlot;
-    final targets = Inventory.slotsFor(item.type);
+    final targets = Gear.slotsFor(item.type);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,7 +182,7 @@ class _EquipmentOverlayState extends State<EquipmentOverlay> {
           const SizedBox(height: 12),
           if (slot != null)
             _action('unequip', '해제', () {
-              _inventory.unequip(slot);
+              _gear.unequip(slot);
               _select(null);
             })
           else ...[
@@ -190,7 +191,7 @@ class _EquipmentOverlayState extends State<EquipmentOverlay> {
                 'equip-${target.name}',
                 targets.length == 1 ? '장착' : '${target.label}에 장착',
                 () {
-                  _inventory.equip(item, target);
+                  _gear.equip(item, target);
                   _select(null);
                 },
               ),

@@ -17,10 +17,10 @@ class ItemDrop extends Pickup with HasGameReference<AshbornGame> {
   late final _body = Paint()..color = item.rarity.color;
 
   @override
-  bool collect() {
-    game.inventory.add(item);
-    return true;
-  }
+  bool get collectable => game.gear.canAdd(item);
+
+  @override
+  void collect() => game.gear.add(item);
 
   @override
   void render(Canvas canvas) {

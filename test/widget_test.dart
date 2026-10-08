@@ -144,11 +144,14 @@ void main() {
       final inventory = Inventory();
       // 칸을 다 채우고 가방도 넉넉히 채워 레이아웃을 확인한다.
       for (var i = 0; i < 40; i++) {
-        inventory.add(LootSystem.generate(random, rarity: Rarity.unique));
+        inventory
+            .gear(CharacterId.witch)
+            .add(LootSystem.generate(random, rarity: Rarity.unique));
       }
       final ring = LootSystem.generate(random, type: ItemType.ring);
-      inventory.add(ring);
-      final oldRing = inventory.equipped[EquipSlot.ring1]!;
+      final gear = inventory.gear(CharacterId.witch);
+      gear.add(ring);
+      final oldRing = gear.equipped[EquipSlot.ring1]!;
       await tester.pumpWidget(gameScreen(Roster.witch, inventory: inventory));
       await settle(tester, 100);
       final game = tester
@@ -168,7 +171,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('equip-ring1')));
       await tester.pump();
-      expect(inventory.equipped[EquipSlot.ring1], ring);
+      expect(gear.equipped[EquipSlot.ring1], ring);
       expect(inventory.bag, contains(oldRing));
 
       await tester.tap(find.byKey(const Key('close-equipment')));

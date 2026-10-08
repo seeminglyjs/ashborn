@@ -2,40 +2,81 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 
+import 'balance.dart';
+import 'characters.dart';
 import 'equipment.dart';
 import 'stats.dart';
 
-/// 장착한 장비와 가방. 런이 끝나도 유지된다 ([InventoryStore]).
+/// 모든 캐릭터가 함께 쓰는 가방과, 캐릭터마다 따로인 장착 칸.
+/// 런이 끝나도 유지된다 ([InventoryStore]).
 class Inventory extends ChangeNotifier {
   Inventory();
 
   factory Inventory.fromJson(Map<String, dynamic> json) {
     final inventory = Inventory();
-    (json['equipped'] as Map<String, dynamic>).forEach((slot, item) {
-      inventory._equipped[EquipSlot.values.byName(slot)] = Item.fromJson(
-        item as Map<String, dynamic>,
-      );
-    });
     for (final item in json['bag'] as List) {
       inventory._bag.add(Item.fromJson(item as Map<String, dynamic>));
     }
+    (json['equipped'] as Map<String, dynamic>).forEach((character, slots) {
+      inventory._equipped[CharacterId.values.byName(character)] = {
+        for (final MapEntry(:key, :value)
+            in (slots as Map<String, dynamic>).entries)
+          EquipSlot.values.byName(key): Item.fromJson(
+            value as Map<String, dynamic>,
+          ),
+      };
+    });
     return inventory;
   }
 
-  final _equipped = <EquipSlot, Item>{};
   final _bag = <Item>[];
+  final _equipped = <CharacterId, Map<EquipSlot, Item>>{};
 
-  Map<EquipSlot, Item> get equipped => UnmodifiableMapView(_equipped);
   List<Item> get bag => UnmodifiableListView(_bag);
 
+  /// 가방이 차면 바닥의 장비를 더 주울 수 없다.
+  bool get bagFull => _bag.length >= Balance.bagCapacity;
+
+  Gear gear(CharacterId character) => Gear._(this, character);
+
+  void discard(Item item) {
+    if (_bag.remove(item)) notifyListeners();
+  }
+
+  void _changed() => notifyListeners();
+
+  Map<String, dynamic> toJson() => {
+    'bag': [for (final item in _bag) item.toJson()],
+    'equipped': {
+      for (final MapEntry(key: character, value: slots) in _equipped.entries)
+        if (slots.isNotEmpty)
+          character.name: {
+            for (final MapEntry(:key, :value) in slots.entries)
+              key.name: value.toJson(),
+          },
+    },
+  };
+}
+
+/// 한 캐릭터의 장착 칸. 빼거나 밀려난 장비는 공용 가방으로 간다.
+class Gear {
+  Gear._(this._inventory, this.character);
+
+  final Inventory _inventory;
+  final CharacterId character;
+
+  Map<EquipSlot, Item> get _slots =>
+      _inventory._equipped.putIfAbsent(character, () => {});
+
+  Map<EquipSlot, Item> get equipped => UnmodifiableMapView(_slots);
+
   /// [hand1] 에 양손장비를 끼고 있으면 [hand2] 는 막힌다.
-  bool get offHandBlocked =>
-      _equipped[EquipSlot.hand1]?.type == ItemType.twoHand;
+  bool get offHandBlocked => _slots[EquipSlot.hand1]?.type == ItemType.twoHand;
 
   /// 장착한 장비로 오른 [stat] 의 합.
   double bonus(StatType stat) {
     var total = 0.0;
-    for (final item in _equipped.values) {
+    for (final item in _slots.values) {
       for (final roll in item.stats) {
         if (roll.stat == stat) total += roll.value;
       }
@@ -46,56 +87,56 @@ class Inventory extends ChangeNotifier {
   static List<EquipSlot> slotsFor(ItemType type) =>
       EquipSlot.values.where((s) => s.accepts(type)).toList();
 
-  /// 주운 장비. 아무것도 밀어내지 않고 낄 칸이 있으면 바로 끼고, 없으면 가방에 넣는다.
-  void add(Item item) {
-    final slot = slotsFor(item.type).where((s) => _fits(item, s)).firstOrNull;
-    if (slot != null) {
-      _equipped[slot] = item;
-    } else {
-      _bag.add(item);
-    }
-    notifyListeners();
-  }
+  /// 아무것도 밀어내지 않고 [item] 을 낄 수 있는 칸.
+  EquipSlot? freeSlotFor(Item item) =>
+      slotsFor(item.type).where((s) => _fits(item, s)).firstOrNull;
 
   bool _fits(Item item, EquipSlot slot) {
-    if (_equipped.containsKey(slot)) return false;
+    if (_slots.containsKey(slot)) return false;
     if (item.type == ItemType.twoHand) {
-      return !_equipped.containsKey(EquipSlot.hand2);
+      return !_slots.containsKey(EquipSlot.hand2);
     }
     return slot != EquipSlot.hand2 || !offHandBlocked;
   }
 
+  /// 빈 칸이 있거나 가방에 자리가 있으면 주울 수 있다.
+  bool canAdd(Item item) => freeSlotFor(item) != null || !_inventory.bagFull;
+
+  /// 주운 장비. 빈 칸이 있으면 바로 끼고 그 칸을, 없으면 가방에 넣고 null 을 돌려준다.
+  EquipSlot? add(Item item) {
+    assert(canAdd(item), '가방이 가득 찼다');
+    final slot = freeSlotFor(item);
+    if (slot != null) {
+      _slots[slot] = item;
+    } else {
+      _inventory._bag.add(item);
+    }
+    _inventory._changed();
+    return slot;
+  }
+
+  /// [slot] 에 [item] 을 끼면 빠지게 되는 장비들.
+  List<Item> displacedBy(Item item, EquipSlot slot) => [
+    ?_slots[slot],
+    if (item.type == ItemType.twoHand) ?_slots[EquipSlot.hand2],
+    if (slot == EquipSlot.hand2 && offHandBlocked) ?_slots[EquipSlot.hand1],
+  ];
+
   /// 가방의 [item] 을 [slot] 에 낀다. 밀려난 장비는 가방으로 간다.
   void equip(Item item, EquipSlot slot) {
     assert(slot.accepts(item.type), '${item.type} 은 ${slot.label} 에 낄 수 없다');
-    _bag.remove(item);
-    final displaced = [
-      _equipped.remove(slot),
-      if (item.type == ItemType.twoHand) _equipped.remove(EquipSlot.hand2),
-      if (slot == EquipSlot.hand2 && offHandBlocked)
-        _equipped.remove(EquipSlot.hand1),
-    ].nonNulls;
-    _bag.addAll(displaced);
-    _equipped[slot] = item;
-    notifyListeners();
+    final displaced = displacedBy(item, slot);
+    _inventory._bag.remove(item);
+    _slots.removeWhere((_, equipped) => displaced.contains(equipped));
+    _inventory._bag.addAll(displaced);
+    _slots[slot] = item;
+    _inventory._changed();
   }
 
   void unequip(EquipSlot slot) {
-    final item = _equipped.remove(slot);
+    final item = _slots.remove(slot);
     if (item == null) return;
-    _bag.add(item);
-    notifyListeners();
+    _inventory._bag.add(item);
+    _inventory._changed();
   }
-
-  void discard(Item item) {
-    if (_bag.remove(item)) notifyListeners();
-  }
-
-  Map<String, dynamic> toJson() => {
-    'equipped': {
-      for (final MapEntry(:key, :value) in _equipped.entries)
-        key.name: value.toJson(),
-    },
-    'bag': [for (final item in _bag) item.toJson()],
-  };
 }

@@ -86,6 +86,9 @@ abstract final class Balance {
   /// 동상에 걸린 적의 이동 속도 감소율.
   static const double chillSlow = 0.3;
 
+  /// 공용 가방에 넣을 수 있는 장비 수.
+  static const int bagCapacity = 60;
+
   // 장비 드랍: 처치당 드랍 확률, 등급이 오를 때마다 드랍 가중치는 이 배율로 준다.
   static const double itemDropChance = 0.02;
   static const double rarityDropRatio = 0.25;

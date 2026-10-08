@@ -58,7 +58,7 @@ class Player extends PositionComponent
 
   /// 패시브와 장비로 오른 [stat] 의 합.
   double bonus(StatType stat) {
-    var total = game.inventory.bonus(stat);
+    var total = game.gear.bonus(stat);
     passives.forEach((id, level) {
       if (id.stat == stat) total += id.perLevel * level;
     });

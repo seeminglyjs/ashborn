@@ -31,6 +31,9 @@ class AshbornGame extends FlameGame<RunWorld>
 
   /// 런이 끝나도 유지되는 장비.
   final Inventory inventory;
+
+  /// 이 캐릭터가 낀 장비.
+  late final gear = inventory.gear(character.id);
   final stats = RunStats();
   final random = math.Random();
 

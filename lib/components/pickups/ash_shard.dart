@@ -14,10 +14,8 @@ class AshShard extends Pickup {
   static final _body = Paint()..color = const Color(0xFF9FD8E8);
 
   @override
-  bool collect() {
-    world.gainXp(Balance.ashShardXp * world.player.xpMultiplier);
-    return true;
-  }
+  void collect() =>
+      world.gainXp(Balance.ashShardXp * world.player.xpMultiplier);
 
   @override
   void render(Canvas canvas) {

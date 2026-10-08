@@ -15,7 +15,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'helpers.dart';
 
 /// 능력치 하나만 올려 주는 장비를 낀 인벤토리. 목걸이부터 차례로 칸을 채운다.
-Inventory wearing(Map<StatType, double> stats) {
+Inventory wearing(
+  Map<StatType, double> stats, {
+  CharacterId character = CharacterId.witch,
+}) {
   final inv = Inventory();
   final types = [
     ItemType.necklace,
@@ -29,7 +32,7 @@ Inventory wearing(Map<StatType, double> stats) {
     ItemType.earring,
   ];
   for (final (i, MapEntry(:key, :value)) in stats.entries.indexed) {
-    inv.add(item(types[i], stat: key, value: value));
+    inv.gear(character).add(item(types[i], stat: key, value: value));
   }
   return inv;
 }
@@ -92,7 +95,7 @@ void main() {
           StatType.physicalDamage: 5,
           StatType.fireDamage: 3,
           StatType.damage: 0.5,
-        }),
+        }, character: CharacterId.hunter),
       ),
       (game) async {
         await game.ready();
@@ -112,7 +115,12 @@ void main() {
 
     testWithGame<AshbornGame>(
       '공격 속도만큼 쿨다운이 줄어든다',
-      gameWith(Roster.hunter, inventory: wearing({StatType.attackSpeed: 0.25})),
+      gameWith(
+        Roster.hunter,
+        inventory: wearing({
+          StatType.attackSpeed: 0.25,
+        }, character: CharacterId.hunter),
+      ),
       (game) async {
         await game.ready();
         final weapon = game.world.player.weapons.single as FireCrossbow;
@@ -312,12 +320,12 @@ void main() {
         player.takeDamage(40);
         final ratio = player.hp / player.maxHp;
 
-        game.inventory.unequip(EquipSlot.necklace);
+        game.gear.unequip(EquipSlot.necklace);
         expect(player.maxHp, Roster.witch.maxHp);
         expect(player.hp / player.maxHp, closeTo(ratio, 1e-9));
 
         // 뺐다 다시 껴도 체력이 공짜로 차지 않는다.
-        game.inventory.equip(game.inventory.bag.single, EquipSlot.necklace);
+        game.gear.equip(game.inventory.bag.single, EquipSlot.necklace);
         expect(player.hp / player.maxHp, closeTo(ratio, 1e-9));
         expect(game.stats.hp.value, player.hp);
       },
@@ -340,6 +348,29 @@ void main() {
   });
 
   group('줍기', () {
+    testWithGame<AshbornGame>(
+      '가방이 가득 차면 낄 칸이 없는 장비는 바닥에 남는다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        game.gear.add(item(ItemType.belt));
+        for (var i = 0; i < Balance.bagCapacity; i++) {
+          game.gear.add(item(ItemType.belt));
+        }
+        final drop = ItemDrop(
+          position: game.world.player.position + Vector2(20, 0),
+          item: item(ItemType.belt),
+        );
+        await game.world.add(drop);
+
+        await advance(game, 0.5);
+
+        expect(drop.isMounted, isTrue);
+        expect(game.inventory.bag, hasLength(Balance.bagCapacity));
+      },
+    );
+
     testWithGame<AshbornGame>(
       '경험치 획득량이 재의 결정에 적용된다',
       gameWith(Roster.witch, inventory: wearing({StatType.xpGain: 1})),
@@ -370,7 +401,7 @@ void main() {
 
         await advance(game, 0.5);
 
-        expect(game.inventory.equipped[EquipSlot.head], helm);
+        expect(game.gear.equipped[EquipSlot.head], helm);
         expect(game.world.children.whereType<ItemDrop>(), isEmpty);
       },
     );

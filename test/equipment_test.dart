@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:ashborn/data/balance.dart';
+import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/inventory_store.dart';
@@ -138,84 +139,90 @@ void main() {
   group('인벤토리', () {
     test('빈 칸이 있으면 바로 끼고, 칸이 차면 가방에 넣는다', () {
       final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
       final rings = [for (var i = 0; i < 3; i++) item(ItemType.ring)];
 
-      rings.forEach(inv.add);
+      rings.forEach(gear.add);
 
-      expect(inv.equipped[EquipSlot.ring1], rings[0]);
-      expect(inv.equipped[EquipSlot.ring2], rings[1]);
+      expect(gear.equipped[EquipSlot.ring1], rings[0]);
+      expect(gear.equipped[EquipSlot.ring2], rings[1]);
       expect(inv.bag, [rings[2]]);
     });
 
     test('양손장비는 두 손이 다 비어야 바로 낀다', () {
       final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
       final sword = item(ItemType.oneHand);
       final greatsword = item(ItemType.twoHand);
 
-      inv
+      gear
         ..add(sword)
         ..add(greatsword);
 
-      expect(inv.equipped[EquipSlot.hand1], sword);
+      expect(gear.equipped[EquipSlot.hand1], sword);
       expect(inv.bag, [greatsword]);
     });
 
     test('양손장비를 끼면 두 손의 장비가 가방으로 간다', () {
       final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
       final a = item(ItemType.oneHand);
       final b = item(ItemType.oneHand);
       final greatsword = item(ItemType.twoHand);
-      inv
+      gear
         ..add(a)
         ..add(b)
         ..add(greatsword);
-      expect(inv.equipped[EquipSlot.hand2], b);
+      expect(gear.equipped[EquipSlot.hand2], b);
 
-      inv.equip(greatsword, EquipSlot.hand1);
+      gear.equip(greatsword, EquipSlot.hand1);
 
-      expect(inv.equipped[EquipSlot.hand1], greatsword);
-      expect(inv.equipped[EquipSlot.hand2], isNull);
-      expect(inv.offHandBlocked, isTrue);
+      expect(gear.equipped[EquipSlot.hand1], greatsword);
+      expect(gear.equipped[EquipSlot.hand2], isNull);
+      expect(gear.offHandBlocked, isTrue);
       expect(inv.bag, unorderedEquals([a, b]));
     });
 
     test('양손장비를 낀 채 보조 손에 끼면 양손장비가 빠진다', () {
       final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
       final greatsword = item(ItemType.twoHand);
       final dagger = item(ItemType.oneHand);
-      inv
+      gear
         ..add(greatsword)
         ..add(dagger);
       expect(inv.bag, [dagger]);
 
-      inv.equip(dagger, EquipSlot.hand2);
+      gear.equip(dagger, EquipSlot.hand2);
 
-      expect(inv.equipped[EquipSlot.hand1], isNull);
-      expect(inv.equipped[EquipSlot.hand2], dagger);
+      expect(gear.equipped[EquipSlot.hand1], isNull);
+      expect(gear.equipped[EquipSlot.hand2], dagger);
       expect(inv.bag, [greatsword]);
     });
 
     test('같은 칸에 끼면 원래 장비와 맞바꾼다', () {
       final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
       final old = item(ItemType.head);
       final better = item(ItemType.head, rarity: Rarity.legend);
-      inv
+      gear
         ..add(old)
         ..add(better);
 
-      inv.equip(better, EquipSlot.head);
+      gear.equip(better, EquipSlot.head);
 
-      expect(inv.equipped[EquipSlot.head], better);
+      expect(gear.equipped[EquipSlot.head], better);
       expect(inv.bag, [old]);
     });
 
     test('해제하면 가방으로, 버리면 사라진다', () {
       final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
       final helm = item(ItemType.head);
-      inv.add(helm);
+      gear.add(helm);
 
-      inv.unequip(EquipSlot.head);
-      expect(inv.equipped, isEmpty);
+      gear.unequip(EquipSlot.head);
+      expect(gear.equipped, isEmpty);
       expect(inv.bag, [helm]);
 
       inv.discard(helm);
@@ -224,7 +231,8 @@ void main() {
 
     test('장착한 장비의 주옵션과 랜덤옵션을 모두 합산한다', () {
       final inv = Inventory();
-      inv
+      final gear = inv.gear(CharacterId.witch);
+      gear
         ..add(
           item(
             ItemType.head,
@@ -237,8 +245,54 @@ void main() {
         ..add(item(ItemType.necklace, stat: StatType.damage, value: 0.1))
         ..add(item(ItemType.head, value: 99));
 
-      expect(inv.bonus(StatType.maxHp), 12);
-      expect(inv.bonus(StatType.damage), closeTo(0.15, 1e-9));
+      expect(gear.bonus(StatType.maxHp), 12);
+      expect(gear.bonus(StatType.damage), closeTo(0.15, 1e-9));
+    });
+  });
+
+  group('캐릭터별 장착과 공용 가방', () {
+    test('장착은 캐릭터마다 따로이고 가방은 함께 쓴다', () {
+      final inv = Inventory();
+      final knight = inv.gear(CharacterId.knight);
+      final witch = inv.gear(CharacterId.witch);
+      final helm = item(ItemType.head, value: 30);
+
+      knight.add(helm);
+      expect(knight.equipped[EquipSlot.head], helm);
+      expect(witch.equipped, isEmpty);
+      expect(witch.bonus(StatType.maxHp), 0);
+
+      knight.unequip(EquipSlot.head);
+      witch.equip(inv.bag.single, EquipSlot.head);
+      expect(witch.equipped[EquipSlot.head], helm);
+      expect(knight.equipped, isEmpty);
+      expect(inv.bag, isEmpty);
+    });
+
+    test('가방이 차면 빈 칸에 낄 장비만 주울 수 있다', () {
+      final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
+      gear.add(item(ItemType.head));
+      for (var i = 0; i < Balance.bagCapacity; i++) {
+        gear.add(item(ItemType.head));
+      }
+
+      expect(inv.bagFull, isTrue);
+      expect(gear.canAdd(item(ItemType.head)), isFalse);
+      expect(gear.canAdd(item(ItemType.boots)), isTrue);
+    });
+
+    test('끼면 빠지는 장비를 미리 알려 준다', () {
+      final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
+      final a = item(ItemType.oneHand);
+      final b = item(ItemType.oneHand);
+      gear
+        ..add(a)
+        ..add(b);
+
+      expect(gear.displacedBy(item(ItemType.twoHand), EquipSlot.hand1), [a, b]);
+      expect(gear.displacedBy(item(ItemType.oneHand), EquipSlot.hand2), [b]);
     });
   });
 
@@ -246,8 +300,10 @@ void main() {
     test('JSON 으로 저장했다가 그대로 불러온다', () {
       final random = math.Random(5);
       final inv = Inventory();
-      for (var i = 0; i < 30; i++) {
-        inv.add(LootSystem.generate(random));
+      for (final character in CharacterId.values) {
+        for (var i = 0; i < 15; i++) {
+          inv.gear(character).add(LootSystem.generate(random));
+        }
       }
 
       final json = jsonEncode(inv.toJson());
@@ -260,12 +316,14 @@ void main() {
     test('바뀔 때마다 기기에 저장되고 다음 실행에 불러온다', () async {
       SharedPreferences.setMockInitialValues({});
       final first = await InventoryStore.load();
-      first.add(item(ItemType.boots, rarity: Rarity.epic, value: 0.12));
+      first
+          .gear(CharacterId.hunter)
+          .add(item(ItemType.boots, rarity: Rarity.epic, value: 0.12));
       await pumpEventQueue();
 
       final second = await InventoryStore.load();
 
-      final boots = second.equipped[EquipSlot.boots]!;
+      final boots = second.gear(CharacterId.hunter).equipped[EquipSlot.boots]!;
       expect(boots.rarity, Rarity.epic);
       expect(boots.stats.single.value, 0.12);
     });
