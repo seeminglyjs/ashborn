@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/characters.dart';
+import '../equipment/equipment_screen.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
@@ -19,6 +20,10 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
   void _depart() =>
       Navigator.of(context).push(fadeRoute(GameScreen(character: _selected)));
+
+  void _openEquipment() =>
+      Navigator.of(context)
+          .push(fadeRoute(EquipmentScreen(character: _selected)));
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +60,24 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  AshButton(
-                    key: const Key('depart'),
-                    label: '출정하기',
-                    icon: Icons.local_fire_department,
-                    fontSize: 17,
-                    onPressed: _depart,
+                  Wrap(
+                    spacing: 16,
+                    children: [
+                      AshButton(
+                        key: const Key('open-equipment'),
+                        label: '장비',
+                        icon: Icons.backpack,
+                        fontSize: 17,
+                        onPressed: _openEquipment,
+                      ),
+                      AshButton(
+                        key: const Key('depart'),
+                        label: '출정하기',
+                        icon: Icons.local_fire_department,
+                        fontSize: 17,
+                        onPressed: _depart,
+                      ),
+                    ],
                   ),
                 ],
               ),

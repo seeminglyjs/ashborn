@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../game/ashborn_game.dart';
 import '../format.dart';
 
-/// 경험치, 체력, 생존 시간, 처치 수, 장비 버튼.
+/// 경험치, 체력과 보호막, 생존 시간, 처치 수, 장비 버튼, 알림.
 /// 장비 버튼 밖의 터치는 게임(조이스틱)으로 그대로 통과시킨다.
 class Hud extends StatelessWidget {
   const Hud({super.key, required this.game});
@@ -32,9 +32,35 @@ class Hud extends StatelessWidget {
             ),
           ),
         ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 100, right: 16),
+              child: IgnorePointer(child: _notices()),
+            ),
+          ),
+        ),
       ],
     );
   }
+
+  Widget _notices() => ValueListenableBuilder(
+    valueListenable: game.notices,
+    builder: (context, notices, _) => Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (final notice in notices)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              notice.text,
+              style: _textStyle(13).copyWith(color: notice.color),
+            ),
+          ),
+      ],
+    ),
+  );
 
   Widget _stats() {
     final stats = game.stats;
@@ -64,10 +90,17 @@ class Hud extends StatelessWidget {
                   children: [
                     Expanded(
                       child: ListenableBuilder(
-                        listenable: Listenable.merge([stats.hp, stats.maxHp]),
+                        listenable: Listenable.merge([
+                          stats.hp,
+                          stats.maxHp,
+                          stats.energyShield,
+                          stats.maxEnergyShield,
+                        ]),
                         builder: (context, _) => _HpBar(
                           hp: stats.hp.value,
                           maxHp: stats.maxHp.value,
+                          shield: stats.energyShield.value,
+                          maxShield: stats.maxEnergyShield.value,
                         ),
                       ),
                     ),
@@ -145,17 +178,37 @@ class _XpBar extends StatelessWidget {
   }
 }
 
+/// 체력 바. 에너지 보호막이 있으면 그 위에 얇은 보호막 바를 겹친다.
 class _HpBar extends StatelessWidget {
-  const _HpBar({required this.hp, required this.maxHp});
+  const _HpBar({
+    required this.hp,
+    required this.maxHp,
+    required this.shield,
+    required this.maxShield,
+  });
 
   final double hp;
   final double maxHp;
+  final double shield;
+  final double maxShield;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (maxShield > 0) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: shield / maxShield,
+              minHeight: 4,
+              backgroundColor: Colors.white12,
+              color: const Color(0xFF6FD6FF),
+            ),
+          ),
+          const SizedBox(height: 2),
+        ],
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
@@ -167,7 +220,8 @@ class _HpBar extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '${hp.ceil()} / ${maxHp.ceil()}',
+          '${hp.ceil()} / ${maxHp.ceil()}'
+          '${maxShield > 0 ? '  (+${shield.ceil()})' : ''}',
           style: const TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ],

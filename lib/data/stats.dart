@@ -1,7 +1,18 @@
 import 'balance.dart';
 
 /// 능력치 분류. 장비 화면에서 묶어서 보여 준다.
-enum StatGroup { survival, offense, ailment, defense, resistance, utility }
+enum StatGroup {
+  survival('생존'),
+  offense('공격'),
+  ailment('상태이상'),
+  defense('방어'),
+  resistance('피해 감소'),
+  utility('편의');
+
+  const StatGroup(this.label);
+
+  final String label;
+}
 
 /// 패시브와 장비가 올려 주는 능력치.
 enum StatType {

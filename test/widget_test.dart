@@ -3,10 +3,12 @@ import 'dart:math' as math;
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/main.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:ashborn/systems/loot_system.dart';
+import 'package:ashborn/ui/equipment/equipment_screen.dart';
 import 'package:ashborn/ui/inventory_scope.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
@@ -15,6 +17,8 @@ import 'package:ashborn/ui/screens/title_screen.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'helpers.dart';
 
 /// 가로 모드 휴대폰(약 19.5:9)과 데스크톱 창 크기.
 const phoneLandscape = Size(844, 390);
@@ -180,4 +184,128 @@ void main() {
       expect(game.paused, isFalse);
     });
   }
+
+  group('출발 전 장비 화면', () {
+    Future<Inventory> openFor(
+      WidgetTester tester,
+      CharacterDef character, {
+      required void Function(Inventory) fill,
+    }) async {
+      useScreen(tester, phoneLandscape);
+      final inventory = Inventory();
+      fill(inventory);
+      await tester.pumpWidget(
+        InventoryScope(
+          inventory: inventory,
+          child: const MaterialApp(home: CharacterSelectScreen()),
+        ),
+      );
+      await settle(tester, 300);
+      await tester.tap(find.text(character.name));
+      await settle(tester, 300);
+      await tester.tap(find.byKey(const Key('open-equipment')));
+      await settle(tester);
+      return inventory;
+    }
+
+    testWidgets('캐릭터 선택에서 그 캐릭터의 장비를 보고 바꾼다', (tester) async {
+      final helm = item(ItemType.head, rarity: Rarity.rare, value: 25);
+      final inventory = await openFor(
+        tester,
+        Roster.hunter,
+        fill: (inv) => inv
+          ..gear(CharacterId.knight).add(helm)
+          ..gear(CharacterId.knight).unequip(EquipSlot.head),
+      );
+      expect(find.byType(EquipmentScreen), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(EquipmentScreen),
+          matching: find.text(Roster.hunter.name),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('bag-0')));
+      await tester.pump();
+      // 빈 칸에 끼우므로 오르기만 한다.
+      expect(find.text('빈 칸'), findsOneWidget);
+      expect(find.text('▲ 최대 체력 +25'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('equip-head')));
+      await tester.pump();
+      expect(inventory.gear(CharacterId.hunter).equipped[EquipSlot.head], helm);
+      expect(inventory.gear(CharacterId.knight).equipped, isEmpty);
+
+      await tester.tap(find.byKey(const Key('close-equipment')));
+      await settle(tester);
+      expect(find.byType(CharacterSelectScreen), findsOneWidget);
+    });
+
+    testWidgets('교체하면 바뀌는 능력치를 비교해 보여 준다', (tester) async {
+      await openFor(
+        tester,
+        Roster.witch,
+        fill: (inv) => inv.gear(CharacterId.witch)
+          ..add(item(ItemType.head, value: 30))
+          ..add(
+            item(
+              ItemType.head,
+              value: 20,
+              extra: [
+                (stat: StatType.fireResist, value: 0.1, rarity: Rarity.normal),
+              ],
+            ),
+          ),
+      );
+
+      await tester.tap(find.byKey(const Key('bag-0')));
+      await tester.pump();
+
+      expect(find.text('▼ 최대 체력 -10'), findsOneWidget);
+      expect(find.text('▲ 화염 저항 +10%'), findsOneWidget);
+    });
+
+    testWidgets('영웅 이상 장비는 버리기 전에 한 번 더 묻는다', (tester) async {
+      final hero = item(ItemType.ring, rarity: Rarity.hero);
+      final normal = item(ItemType.ring);
+      final inventory = await openFor(
+        tester,
+        Roster.witch,
+        fill: (inv) {
+          final gear = inv.gear(CharacterId.witch);
+          for (final ring in [
+            item(ItemType.ring),
+            item(ItemType.ring),
+            hero,
+            normal,
+          ]) {
+            gear.add(ring);
+          }
+        },
+      );
+
+      await tester.tap(find.byKey(const Key('bag-0')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('discard')));
+      await tester.pump();
+      expect(find.byKey(const Key('confirm-discard')), findsOneWidget);
+      await tester.tap(find.text('취소'));
+      await tester.pump();
+      expect(inventory.bag, contains(hero));
+
+      await tester.tap(find.byKey(const Key('discard')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('confirm-discard')));
+      await tester.pump();
+      expect(inventory.bag, [normal]);
+
+      await tester.tap(find.byKey(const Key('bag-0')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('discard')));
+      await tester.pump();
+      expect(find.byKey(const Key('confirm-discard')), findsNothing);
+      expect(inventory.bag, isEmpty);
+    });
+  });
 }
