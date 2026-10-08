@@ -8,6 +8,7 @@ import '../inventory_scope.dart';
 import '../overlays/equipment_overlay.dart';
 import '../overlays/game_over_overlay.dart';
 import '../overlays/level_up_overlay.dart';
+import '../overlays/stage_clear_overlay.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key, required this.character});
@@ -39,6 +40,10 @@ class _GameScreenState extends State<GameScreen> {
               LevelUpOverlay(game: game),
           AshbornGame.equipmentOverlay: (context, game) =>
               EquipmentOverlay(game: game),
+          AshbornGame.stageClearOverlay: (context, game) => StageClearOverlay(
+            game: game,
+            onReturn: () => Navigator.of(context).pop(),
+          ),
         },
         initialActiveOverlays: const [AshbornGame.hudOverlay],
       ),

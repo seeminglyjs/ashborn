@@ -1,8 +1,11 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 
 import '../../components/effects/burst.dart';
+import '../../components/enemies/boss.dart';
+import '../../components/enemies/death_puff.dart';
 import '../../components/enemies/enemy.dart';
 import '../../components/pickups/ash_shard.dart';
 import '../../components/pickups/item_drop.dart';
@@ -20,6 +23,9 @@ import '../ashborn_game.dart';
 import 'ground_grid.dart';
 
 /// 런 하나의 월드. 재시작하면 통째로 새로 만든다.
+///
+/// 스테이지마다 [Balance.stageDuration] 동안 웨이브를 버티면 보스가 나오고,
+/// 보스를 잡으면 전리품을 주울 시간을 준 뒤 다음 지역을 고르게 한다.
 class RunWorld extends World
     with HasGameReference<AshbornGame>, HasCollisionDetection {
   RunWorld(this.character, {this.stage = Stage.first})
@@ -40,9 +46,18 @@ class RunWorld extends World
   /// 지금 스테이지에서 지난 시간. 웨이브 강도와 보스 등장을 정한다.
   double stageTime = 0;
 
+  Boss? boss;
+  bool _bossSpawned = false;
+
+  /// 보스를 잡았으면 다음 지역 선택이 뜨기까지 남은 시간.
+  double? _clearTimer;
+
+  bool get stageCleared => _clearTimer != null;
+
   @override
   Future<void> onLoad() async {
     game.stats.reset(xpToNext: LevelSystem.xpToNext(1));
+    _publishStage();
     addAll([GroundGrid(), player, WaveSystem(), CrowdSystem()]);
     game.camera.follow(player);
   }
@@ -51,8 +66,98 @@ class RunWorld extends World
   void update(double dt) {
     super.update(dt);
     elapsed += dt;
+    final stats = game.stats;
+    stats.elapsedSeconds.value = elapsed.floor();
+
+    if (_clearTimer case final timer?) {
+      _clearTimer = timer - dt;
+      if (timer > 0 && timer - dt <= 0) game.onStageCleared();
+      return;
+    }
     stageTime += dt;
-    game.stats.elapsedSeconds.value = elapsed.floor();
+    if (!_bossSpawned && stageTime >= Balance.stageDuration) spawnBoss();
+    stats.bossCountdown.value = math.max(
+      0,
+      (Balance.stageDuration - stageTime).ceil(),
+    );
+    if (boss case final b?) stats.bossHealth.value = b.hp / b.maxHp;
+  }
+
+  void _publishStage() {
+    game.stats
+      ..stage.value = stage
+      ..stageCleared.value = false
+      ..bossHealth.value = null
+      ..bossCountdown.value = Balance.stageDuration.ceil();
+  }
+
+  /// 화면 대각선 바깥 원 위의 임의 지점.
+  Vector2 offscreenPoint() {
+    final view = game.camera.visibleWorldRect;
+    final radius =
+        math.sqrt(view.width * view.width + view.height * view.height) / 2 +
+        Balance.spawnMargin;
+    final angle = game.random.nextDouble() * math.pi * 2;
+    return player.position + Vector2(math.cos(angle), math.sin(angle)) * radius;
+  }
+
+  void spawnBoss() {
+    _bossSpawned = true;
+    final region = stage.region;
+    final b = Boss(
+      position: offscreenPoint(),
+      maxHp:
+          WaveSystem.enemyHp(Balance.stageDuration) *
+          stage.enemyHpMultiplier *
+          Balance.bossHpMultiplier,
+      contactDamage:
+          Balance.enemyContactDamage *
+          stage.enemyDamageMultiplier *
+          Balance.bossDamageMultiplier,
+      damageType: region.damageType,
+      speed:
+          Balance.enemySpeed *
+          stage.enemySpeedMultiplier *
+          Balance.bossSpeedMultiplier,
+      color: region.enemy,
+      name: region.bossName,
+    );
+    boss = b;
+    add(b);
+    game.stats.bossHealth.value = 1;
+    game.notify('${region.bossName} 등장', color: const Color(0xFFE8463A));
+  }
+
+  /// 보스를 잡으면 남은 졸개는 재가 되어 흩어지고 웨이브가 멈춘다.
+  void onBossDefeated(Boss defeated) {
+    boss = null;
+    _clearTimer = Balance.stageClearDelay;
+    for (final enemy in enemies.toList()) {
+      if (enemy == defeated) continue;
+      add(DeathPuff(position: enemy.position.clone()));
+      enemy.removeFromParent();
+    }
+    game.stats
+      ..bossHealth.value = null
+      ..stageCleared.value = true;
+    game.notify('${stage.name} 클리어', color: const Color(0xFFE8C887));
+  }
+
+  /// 다음 스테이지로. 마지막 지역 다음이면 타락 단계가 오른다.
+  void advanceStage() {
+    final previous = stage;
+    stage = stage.next;
+    stageTime = 0;
+    _bossSpawned = false;
+    _clearTimer = null;
+    _publishStage();
+    if (stage.corruption > previous.corruption) {
+      game.notify(
+        '타락 ${stage.corruption}단계: 적과 보상이 강해진다',
+        color: const Color(0xFFE8463A),
+      );
+    }
+    game.notify(stage.name, color: const Color(0xFFE8C887));
   }
 
   void onEnemyKilled(Vector2 position) {

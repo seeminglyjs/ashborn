@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../game/ashborn_game.dart';
 import '../format.dart';
+import '../theme.dart';
 
 /// 경험치, 체력과 보호막, 생존 시간, 처치 수, 장비 버튼, 알림.
 /// 장비 버튼 밖의 터치는 게임(조이스틱)으로 그대로 통과시킨다.
@@ -107,10 +108,21 @@ class Hud extends StatelessWidget {
                     Expanded(
                       child: Align(
                         alignment: Alignment.topCenter,
-                        child: ValueListenableBuilder(
-                          valueListenable: stats.elapsedSeconds,
-                          builder: (context, seconds, _) =>
-                              Text(formatTime(seconds), style: _textStyle(22)),
+                        child: ListenableBuilder(
+                          listenable: Listenable.merge([
+                            stats.stage,
+                            stats.bossCountdown,
+                            stats.bossHealth,
+                            stats.stageCleared,
+                          ]),
+                          builder: (context, _) => _StageInfo(
+                            name: stats.stage.value.name,
+                            level: stats.stage.value.level,
+                            bossName: stats.stage.value.region.bossName,
+                            countdown: stats.bossCountdown.value,
+                            bossHealth: stats.bossHealth.value,
+                            cleared: stats.stageCleared.value,
+                          ),
                         ),
                       ),
                     ),
@@ -140,6 +152,58 @@ class Hud extends StatelessWidget {
     fontWeight: FontWeight.bold,
     shadows: const [Shadow(blurRadius: 4)],
   );
+}
+
+/// 지역 이름과, 보스까지 남은 시간 또는 보스 체력.
+class _StageInfo extends StatelessWidget {
+  const _StageInfo({
+    required this.name,
+    required this.level,
+    required this.bossName,
+    required this.countdown,
+    required this.bossHealth,
+    required this.cleared,
+  });
+
+  final String name;
+  final int level;
+  final String bossName;
+  final int countdown;
+  final double? bossHealth;
+  final bool cleared;
+
+  @override
+  Widget build(BuildContext context) {
+    final health = bossHealth;
+    return Column(
+      children: [
+        Text(
+          '$name  Lv $level',
+          style: Hud._textStyle(13).copyWith(color: AshColors.gold),
+        ),
+        const SizedBox(height: 2),
+        if (cleared)
+          Text('클리어', style: Hud._textStyle(20))
+        else if (health != null) ...[
+          Text(bossName, style: Hud._textStyle(13)),
+          const SizedBox(height: 2),
+          SizedBox(
+            width: 180,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: health,
+                minHeight: 8,
+                backgroundColor: Colors.white12,
+                color: AshColors.ember,
+              ),
+            ),
+          ),
+        ] else
+          Text('보스까지 ${formatTime(countdown)}', style: Hud._textStyle(18)),
+      ],
+    );
+  }
 }
 
 class _XpBar extends StatelessWidget {

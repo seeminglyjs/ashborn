@@ -39,6 +39,20 @@ abstract final class Balance {
   /// 스테이지 시작 후 이 시간(초)이 지나면 보스가 나온다.
   static const double stageDuration = 120;
 
+  /// 보스를 잡은 뒤 다음 지역 선택이 뜨기까지 전리품을 줍는 시간.
+  static const double stageClearDelay = 3;
+
+  // 보스: 그 스테이지 보스 등장 시점의 졸개 대비 배율.
+  static const double bossHpMultiplier = 80;
+  static const double bossDamageMultiplier = 2.5;
+  static const double bossSpeedMultiplier = 0.8;
+  static const double bossRadius = 40;
+
+  /// 보스는 이 간격마다 잠깐 빠르게 돌진한다.
+  static const double bossChargeInterval = 4;
+  static const double bossChargeDuration = 0.6;
+  static const double bossChargeSpeed = 3.5;
+
   /// 타락 단계마다 적 이동 속도 증가율과 그 상한 배율.
   static const double corruptionSpeedBonus = 0.04;
   static const double maxCorruptionSpeed = 1.4;

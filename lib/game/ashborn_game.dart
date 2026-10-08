@@ -28,6 +28,7 @@ class AshbornGame extends FlameGame<RunWorld>
   static const gameOverOverlay = 'gameOver';
   static const levelUpOverlay = 'levelUp';
   static const equipmentOverlay = 'equipment';
+  static const stageClearOverlay = 'stageClear';
 
   /// 화면 짧은 변에 보이는 월드 크기. 기기 해상도와 상관없이 시야를 고정한다.
   static const double viewShortSide = 540;
@@ -85,6 +86,16 @@ class AshbornGame extends FlameGame<RunWorld>
     overlays.add(gameOverOverlay);
   }
 
+  /// 보스를 잡고 전리품을 주울 시간이 끝나면 다음 지역 선택을 띄운다.
+  void onStageCleared() {
+    if (overlays.add(stageClearOverlay)) pauseEngine();
+  }
+
+  void continueToNextStage() {
+    world.advanceStage();
+    if (overlays.remove(stageClearOverlay)) resumeEngine();
+  }
+
   void openEquipment() {
     if (overlays.add(equipmentOverlay)) pauseEngine();
   }
@@ -122,7 +133,12 @@ class AshbornGame extends FlameGame<RunWorld>
   void restart() {
     _pendingLevelUps = 0;
     notices.clear();
-    overlays.removeAll([gameOverOverlay, levelUpOverlay, equipmentOverlay]);
+    overlays.removeAll([
+      gameOverOverlay,
+      levelUpOverlay,
+      equipmentOverlay,
+      stageClearOverlay,
+    ]);
     world = RunWorld(character, stage: startStage);
     resumeEngine();
   }

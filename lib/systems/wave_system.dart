@@ -11,9 +11,6 @@ import '../game/world/run_world.dart';
 /// 적의 기본 강도와 성향은 스테이지(레벨, 지역, 타락 단계)가 정한다.
 class WaveSystem extends Component
     with HasGameReference<AshbornGame>, HasWorldReference<RunWorld> {
-  WaveSystem({math.Random? random}) : _random = random ?? math.Random();
-
-  final math.Random _random;
   double _timer = 0;
 
   static double spawnInterval(double elapsed) => math.max(
@@ -31,6 +28,8 @@ class WaveSystem extends Component
   @override
   void update(double dt) {
     super.update(dt);
+    // 보스를 잡으면 다음 지역으로 넘어갈 때까지 쉰다.
+    if (world.stageCleared) return;
     _timer -= dt;
     if (_timer > 0) return;
     final time = world.stageTime;
@@ -44,7 +43,7 @@ class WaveSystem extends Component
     for (var i = 0; i < count; i++) {
       world.add(
         Enemy(
-          position: spawnPoint(),
+          position: world.offscreenPoint(),
           maxHp: hp,
           contactDamage:
               Balance.enemyContactDamage * stage.enemyDamageMultiplier,
@@ -54,16 +53,5 @@ class WaveSystem extends Component
         ),
       );
     }
-  }
-
-  /// 화면 대각선 바깥 원 위의 임의 지점.
-  Vector2 spawnPoint() {
-    final view = game.camera.visibleWorldRect;
-    final radius =
-        math.sqrt(view.width * view.width + view.height * view.height) / 2 +
-        Balance.spawnMargin;
-    final angle = _random.nextDouble() * math.pi * 2;
-    return world.player.position +
-        Vector2(math.cos(angle), math.sin(angle)) * radius;
   }
 }

@@ -1,3 +1,4 @@
+import 'package:ashborn/components/enemies/boss.dart';
 import 'package:ashborn/components/enemies/enemy.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
@@ -6,7 +7,9 @@ import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/systems/wave_system.dart';
+import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
@@ -106,4 +109,100 @@ void main() {
       expect(game.world.player.hp, Roster.witch.maxHp - 10);
     },
   );
+
+  group('보스', () {
+    /// 위젯 없이 돌리므로 스테이지 클리어 오버레이 자리만 등록해 둔다.
+    void stubOverlay(AshbornGame game) => game.overlays.addEntry(
+      AshbornGame.stageClearOverlay,
+      (_, _) => const SizedBox(),
+    );
+
+    Future<Boss> reachBoss(AshbornGame game) async {
+      game.world.stageTime = Balance.stageDuration - 0.05;
+      await advance(game, 0.1);
+      return game.world.boss!;
+    }
+
+    testWithGame<AshbornGame>(
+      '스테이지 시간이 다 되면 지역 보스가 나온다',
+      gameWith(Roster.witch, stage: const Stage(1)),
+      (game) async {
+        await game.ready();
+        expect(game.world.boss, isNull);
+        expect(game.stats.bossCountdown.value, Balance.stageDuration.ceil());
+
+        final boss = await reachBoss(game);
+
+        expect(boss.name, Region.sunkenCathedral.bossName);
+        expect(boss.damageType, DamageType.cold);
+        expect(boss.isMounted, isTrue);
+        expect(game.stats.bossHealth.value, 1);
+        expect(game.notices.value.last.text, contains('등장'));
+      },
+    );
+
+    testWithGame<AshbornGame>('보스는 주기적으로 돌진한다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      await game.ready();
+      final boss = await reachBoss(game);
+      final walk = boss.speed;
+
+      await advance(game, Balance.bossChargeInterval);
+
+      expect(boss.isCharging, isTrue);
+      expect(boss.speed, closeTo(walk * Balance.bossChargeSpeed, 1e-9));
+    });
+
+    testWithGame<AshbornGame>(
+      '보스를 잡으면 졸개가 사라지고, 잠시 뒤 다음 지역으로 넘어갈 수 있다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        stubOverlay(game);
+        final boss = await reachBoss(game);
+        await addEnemy(game, Vector2(300, 0));
+
+        boss.takeDamage(boss.maxHp);
+        await game.ready();
+
+        expect(game.world.stageCleared, isTrue);
+        expect(game.world.enemies, isEmpty);
+        expect(game.stats.stageCleared.value, isTrue);
+
+        // 전리품을 줍는 동안은 웨이브가 쉬고 선택창도 아직 없다.
+        await advance(game, Balance.stageClearDelay - 0.5);
+        expect(game.world.enemies, isEmpty);
+        expect(game.overlays.isActive(AshbornGame.stageClearOverlay), isFalse);
+
+        await advance(game, 0.6);
+        expect(game.overlays.isActive(AshbornGame.stageClearOverlay), isTrue);
+        expect(game.paused, isTrue);
+
+        game.continueToNextStage();
+        expect(game.world.stage, const Stage(1));
+        expect(game.world.stageTime, 0);
+        expect(game.world.stageCleared, isFalse);
+        expect(game.stats.stage.value, const Stage(1));
+        expect(game.overlays.isActive(AshbornGame.stageClearOverlay), isFalse);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '마지막 지역을 깨면 첫 지역으로 돌아가며 타락 단계가 오른다',
+      gameWith(Roster.witch, stage: Stage(Region.values.length - 1)),
+      (game) async {
+        await game.ready();
+
+        game.world.advanceStage();
+
+        expect(game.world.stage.region, Region.ashPlains);
+        expect(game.world.stage.corruption, 1);
+        expect(
+          game.notices.value.map((n) => n.text),
+          contains(startsWith('타락 1단계')),
+        );
+      },
+    );
+  });
 }
