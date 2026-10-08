@@ -18,6 +18,7 @@ import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
 import 'package:ashborn/ui/screens/splash_screen.dart';
 import 'package:ashborn/ui/screens/title_screen.dart';
+import 'package:ashborn/ui/widgets/ash_button.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,7 +53,10 @@ void main() {
     testWidgets('스플래시 → 메인 → 캐릭터 선택 → 게임 (${size.width.toInt()}x'
         '${size.height.toInt()})', (tester) async {
       useScreen(tester, size);
-      await tester.pumpWidget(AshbornApp(profile: Profile()));
+      final inventory = Inventory()..addLoot(gold: Roster.hunter.price);
+      await tester.pumpWidget(
+        AshbornApp(profile: Profile(inventory: inventory)),
+      );
       expect(find.byType(SplashScreen), findsOneWidget);
 
       await settle(tester, SplashScreen.duration.inMilliseconds + 100);
@@ -66,8 +70,16 @@ void main() {
         expect(find.text(c.name), findsOneWidget);
       }
 
+      // 사냥꾼은 골드로 해금해야 출정할 수 있다.
       await tester.tap(find.text(Roster.hunter.name));
       await settle(tester, 300);
+      expect(find.byKey(const Key('depart')), findsNothing);
+      await tester.tap(find.byKey(const Key('unlock')));
+      await settle(tester, 300);
+      await tester.tap(find.byKey(const Key('confirm-unlock')));
+      await settle(tester, 300);
+      expect(inventory.gold, 0);
+
       await tester.tap(find.byKey(const Key('depart')));
       await settle(tester);
 
@@ -75,6 +87,27 @@ void main() {
       expect(screen.character, Roster.hunter);
     });
   }
+
+  testWidgets('골드가 모자라면 해금할 수 없고, 공개 예정 캐릭터는 실루엣으로 보인다', (tester) async {
+    useScreen(tester, desktop);
+    final inventory = Inventory()..addLoot(gold: Roster.witch.price - 1);
+    await tester.pumpWidget(
+      ProfileScope(
+        profile: Profile(inventory: inventory),
+        child: const MaterialApp(home: CharacterSelectScreen()),
+      ),
+    );
+    await settle(tester, 300);
+
+    expect(find.byKey(const Key('depart')), findsOneWidget);
+    expect(find.text('???'), findsWidgets);
+
+    await tester.tap(find.text(Roster.witch.name));
+    await settle(tester, 300);
+    final unlock = tester.widget<AshButton>(find.byKey(const Key('unlock')));
+    expect(unlock.onPressed, isNull);
+    expect(find.text('1,499 / 1,500'), findsOneWidget);
+  });
 
   testWidgets('스플래시는 탭하면 건너뛴다', (tester) async {
     await tester.pumpWidget(AshbornApp(profile: Profile()));
@@ -109,6 +142,30 @@ void main() {
     expect(find.text('재가 되었다'), findsNothing);
     expect(game.world.player.isDead, isFalse);
     expect(game.stats.hp.value, Roster.knight.maxHp);
+  });
+
+  testWidgets('HUD 가 떠 있어도 화면을 끌면 누른 곳의 조이스틱으로 움직인다', (tester) async {
+    useScreen(tester, phoneLandscape);
+    await tester.pumpWidget(gameScreen(Roster.witch));
+    await settle(tester, 100);
+
+    final game = tester
+        .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
+        .game!;
+    final start = game.world.player.position.clone();
+
+    final gesture = await tester.startGesture(const Offset(600, 250));
+    await gesture.moveBy(const Offset(20, 0));
+    await gesture.moveBy(const Offset(80, 0));
+    expect(game.joystick.isHeld, isTrue);
+    expect(game.joystick.origin.x, closeTo(600, 1));
+
+    await settle(tester, 200);
+    expect(game.world.player.position.x, greaterThan(start.x));
+
+    await gesture.up();
+    await tester.pump();
+    expect(game.joystick.isHeld, isFalse);
   });
 
   testWidgets('레벨이 오르면 게임이 멈추고 고른 만큼 강해진다', (tester) async {

@@ -1,4 +1,5 @@
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/profile.dart';
 import 'package:ashborn/data/progress.dart';
 import 'package:ashborn/data/stages.dart';
@@ -39,6 +40,39 @@ void main() {
       final loaded = (await Profile.load()).progress;
 
       expect(loaded.unlocked, const Stage(7));
+    });
+  });
+
+  group('캐릭터 해금', () {
+    test('잿불 기사만 무료이고, 나머지는 골드를 내고 해금한다', () {
+      final progress = Progress();
+      final inventory = Inventory()..addLoot(gold: Roster.witch.price);
+
+      expect(progress.owns(Roster.knight), isTrue);
+      expect(progress.owns(Roster.witch), isFalse);
+      expect(progress.canUnlock(Roster.hunter, inventory), isFalse);
+
+      progress.unlock(Roster.witch, inventory);
+
+      expect(progress.owns(Roster.witch), isTrue);
+      expect(inventory.gold, 0);
+      expect(progress.canUnlock(Roster.witch, inventory), isFalse);
+    });
+
+    test('해금한 캐릭터는 저장되고, 예전 저장에는 무료 캐릭터만 있다', () async {
+      SharedPreferences.setMockInitialValues({
+        Profile.progressKey: '{"bestCleared": 2}',
+      });
+      final profile = await Profile.load();
+      expect(profile.progress.owns(Roster.hunter), isFalse);
+
+      profile.inventory.addLoot(gold: Roster.hunter.price);
+      profile.progress.unlock(Roster.hunter, profile.inventory);
+      await pumpEventQueue();
+
+      final loaded = (await Profile.load()).progress;
+      expect(loaded.owns(Roster.hunter), isTrue);
+      expect(loaded.unlocked, const Stage(3));
     });
   });
 

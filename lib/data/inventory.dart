@@ -71,6 +71,12 @@ class Inventory extends ChangeNotifier {
     notifyListeners();
   }
 
+  void spendGold(int amount) {
+    assert(amount <= _gold, '골드가 모자란다');
+    _gold -= amount;
+    notifyListeners();
+  }
+
   bool canEnhance(Item item) =>
       !item.isMaxEnhance &&
       _stones >= item.enhanceStones &&
