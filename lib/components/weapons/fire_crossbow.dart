@@ -15,7 +15,12 @@ class FireCrossbow extends Weapon {
   @override
   WeaponId get id => WeaponId.fireCrossbow;
 
-  int get pierce => Balance.crossbowPierce + bonusCount;
+  int get pierce =>
+      Balance.crossbowPierce +
+      bonusCount +
+      (awakened ? Balance.stormPierceBonus : 0);
+
+  int get arrowCount => awakened ? Balance.stormArrows : 1;
 
   @override
   bool fire() {
@@ -25,15 +30,19 @@ class FireCrossbow extends Weapon {
       maxDistance: Balance.crossbowRange,
     );
     if (target == null) return false;
-    world.add(
-      FireArrow(
-        position: origin.clone(),
-        direction: target.position - origin,
-        damage: Balance.crossbowDamage * damageMultiplier,
-        type: id.damageType,
-        pierce: pierce,
-      ),
-    );
+    final aim = target.position - origin;
+    for (var i = 0; i < arrowCount; i++) {
+      final offset = (i - (arrowCount - 1) / 2) * Balance.stormSpread;
+      world.add(
+        FireArrow(
+          position: origin.clone(),
+          direction: aim.clone()..rotate(offset),
+          damage: Balance.crossbowDamage * damageMultiplier,
+          type: id.damageType,
+          pierce: pierce,
+        ),
+      );
+    }
     return true;
   }
 }

@@ -58,9 +58,12 @@ class _OptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final (kind, icon) = switch (option) {
       WeaponOption() => ('무기', Icons.whatshot),
+      AwakenOption() => ('무기', Icons.bolt),
       PassiveOption() => ('패시브', Icons.auto_awesome),
     };
+    final awaken = option is AwakenOption;
     final isNew = option.level == 1;
+    final accent = awaken || isNew ? AshColors.ember : AshColors.gold;
     return Semantics(
       button: true,
       label: option.title,
@@ -72,7 +75,7 @@ class _OptionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AshColors.panel,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isNew ? AshColors.ember : AshColors.gold),
+            border: Border.all(color: accent, width: awaken ? 2 : 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,9 +90,13 @@ class _OptionCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    isNew ? 'NEW' : 'Lv ${option.level}',
+                    awaken
+                        ? '각성'
+                        : isNew
+                        ? 'NEW'
+                        : 'Lv ${option.level}',
                     style: TextStyle(
-                      color: isNew ? AshColors.ember : AshColors.gold,
+                      color: accent,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),

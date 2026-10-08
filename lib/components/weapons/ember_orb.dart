@@ -5,6 +5,8 @@ import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
 import '../../data/weapons.dart';
+import '../effects/burst.dart';
+import '../enemies/enemy.dart';
 import 'projectile.dart';
 import 'weapon.dart';
 
@@ -36,6 +38,7 @@ class EmberOrb extends Weapon {
           direction: aim.clone()..rotate(offset),
           damage: damage,
           type: id.damageType,
+          explodes: awakened,
         ),
       );
     }
@@ -43,12 +46,14 @@ class EmberOrb extends Weapon {
   }
 }
 
+/// 잔불 구체의 불씨. 각성하면 ([explodes]) 맞힌 자리에서 터진다.
 class EmberBolt extends Projectile {
   EmberBolt({
     required super.position,
     required super.direction,
     required super.damage,
     required super.type,
+    this.explodes = false,
   }) : super(
          speed: Balance.emberOrbSpeed,
          lifetime: Balance.emberOrbLifetime,
@@ -58,8 +63,32 @@ class EmberBolt extends Projectile {
   static final _glow = Paint()..color = const Color(0x55FF8C42);
   static final _core = Paint()..color = const Color(0xFFFFD27A);
 
+  final bool explodes;
+
   @override
   ShapeHitbox createHitbox() => CircleHitbox();
+
+  @override
+  void onHit(Enemy enemy) {
+    if (!explodes) return;
+    final at = enemy.position.clone();
+    world.add(
+      Burst(
+        position: at,
+        radius: Balance.meteorRadius,
+        color: const Color(0xFFFF8C42),
+      ),
+    );
+    for (final other in world.enemiesNear(at, Balance.meteorRadius)) {
+      if (other == enemy) continue;
+      world.player.strike(
+        other,
+        damage * Balance.meteorRatio,
+        type,
+        secondary: true,
+      );
+    }
+  }
 
   @override
   void render(Canvas canvas) {

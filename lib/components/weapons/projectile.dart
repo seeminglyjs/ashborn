@@ -58,6 +58,10 @@ abstract class Projectile extends PositionComponent
     if (isRemoving || other is! Enemy || other.isDead) return;
     if (!_hit.add(other)) return;
     world.player.strike(other, damage, type);
+    onHit(other);
     if (pierce-- <= 0) removeFromParent();
   }
+
+  /// 적을 맞힌 뒤 추가 효과.
+  void onHit(Enemy enemy) {}
 }
