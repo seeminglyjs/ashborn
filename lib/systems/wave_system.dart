@@ -7,12 +7,10 @@ import '../data/balance.dart';
 import '../game/ashborn_game.dart';
 import '../game/world/run_world.dart';
 
-/// 시간에 따라 점점 더 많고 강한 적을 화면 밖에서 스폰한다.
+/// 스테이지 시간에 따라 점점 더 많고 강한 적을 화면 밖에서 스폰한다.
+/// 적의 기본 강도와 성향은 스테이지(레벨, 지역, 타락 단계)가 정한다.
 class WaveSystem extends Component
     with HasGameReference<AshbornGame>, HasWorldReference<RunWorld> {
-  WaveSystem({math.Random? random}) : _random = random ?? math.Random();
-
-  final math.Random _random;
   double _timer = 0;
 
   static double spawnInterval(double elapsed) => math.max(
@@ -30,26 +28,30 @@ class WaveSystem extends Component
   @override
   void update(double dt) {
     super.update(dt);
+    // 보스를 잡으면 다음 지역으로 넘어갈 때까지 쉰다.
+    if (world.stageCleared) return;
     _timer -= dt;
     if (_timer > 0) return;
-    _timer = spawnInterval(world.elapsed);
+    final time = world.stageTime;
+    _timer = spawnInterval(time);
 
+    final stage = world.stage;
+    final region = stage.region;
     final room = Balance.maxEnemies - world.enemies.length;
-    final count = math.min(batchSize(world.elapsed), room);
-    final hp = enemyHp(world.elapsed);
+    final count = math.min(batchSize(time), room);
+    final hp = enemyHp(time) * stage.enemyHpMultiplier;
     for (var i = 0; i < count; i++) {
-      world.add(Enemy(position: _spawnPoint(), maxHp: hp));
+      world.add(
+        Enemy(
+          position: world.offscreenPoint(),
+          maxHp: hp,
+          contactDamage:
+              Balance.enemyContactDamage * stage.enemyDamageMultiplier,
+          damageType: region.damageType,
+          speed: Balance.enemySpeed * stage.enemySpeedMultiplier,
+          color: region.enemy,
+        ),
+      );
     }
-  }
-
-  /// 화면 대각선 바깥 원 위의 임의 지점.
-  Vector2 _spawnPoint() {
-    final view = game.camera.visibleWorldRect;
-    final radius =
-        math.sqrt(view.width * view.width + view.height * view.height) / 2 +
-        Balance.spawnMargin;
-    final angle = _random.nextDouble() * math.pi * 2;
-    return world.player.position +
-        Vector2(math.cos(angle), math.sin(angle)) * radius;
   }
 }

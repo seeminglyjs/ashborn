@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../routes.dart';
+import '../settings/settings_screen.dart';
 import '../theme.dart';
 import '../widgets/ember_field.dart';
 import '../widgets/fire_light.dart';
@@ -14,25 +15,8 @@ class TitleScreen extends StatelessWidget {
   void _start(BuildContext context) =>
       Navigator.of(context).push(fadeRoute(const CharacterSelectScreen()));
 
-  void _openSettings(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AshColors.panel,
-        title: Text('설정', style: ashTitleStyle(20)),
-        content: const Text(
-          '사운드, 진동 등 설정은 준비 중이에요.',
-          style: TextStyle(color: AshColors.parchment),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('닫기', style: TextStyle(color: AshColors.gold)),
-          ),
-        ],
-      ),
-    );
-  }
+  void _openSettings(BuildContext context) =>
+      Navigator.of(context).push(fadeRoute(const SettingsScreen()));
 
   @override
   Widget build(BuildContext context) {

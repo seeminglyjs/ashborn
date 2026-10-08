@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 
+import '../components/enemies/boss.dart';
 import '../components/enemies/enemy.dart';
 import '../data/balance.dart';
 import '../game/world/run_world.dart';
@@ -33,6 +34,8 @@ class CrowdSystem extends Component with HasWorldReference<RunWorld> {
 
     for (final enemy in enemies) {
       enemy.separation.setZero();
+      // 보스는 졸개에게 밀리지 않는다.
+      if (enemy is Boss) continue;
       final cx = (enemy.position.x / _cellSize).floor();
       final cy = (enemy.position.y / _cellSize).floor();
       for (var dx = -1; dx <= 1; dx++) {

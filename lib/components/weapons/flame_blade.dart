@@ -5,20 +5,38 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
+import '../../data/weapons.dart';
 import '../../game/world/run_world.dart';
 import '../enemies/enemy.dart';
+import 'weapon.dart';
 
 /// 불꽃 대검 (잿불 기사): 플레이어 주위를 도는 칼날.
 ///
 /// 쿨다운 무기가 아니라 상시 판정이며, 같은 적은 일정 간격으로만 벤다.
-class FlameBlade extends PositionComponent with HasWorldReference<RunWorld> {
+class FlameBlade extends PositionComponent
+    with HasWorldReference<RunWorld>, LeveledWeapon {
   final _lastHit = <Enemy, double>{};
 
+  /// 아직 마운트 전인 칼날도 지울 수 있도록 직접 들고 있는다.
+  final _blades = <_Blade>[];
+
   @override
-  Future<void> onLoad() async {
-    for (var i = 0; i < Balance.flameBladeCount; i++) {
-      final theta = math.pi * 2 * i / Balance.flameBladeCount;
-      add(
+  WeaponId get id => WeaponId.flameBlade;
+
+  int get bladeCount => Balance.flameBladeCount + bonusCount;
+
+  @override
+  Future<void> onLoad() async => _buildBlades();
+
+  @override
+  void onLevelChanged() => _buildBlades();
+
+  void _buildBlades() {
+    removeAll(_blades);
+    _blades.clear();
+    for (var i = 0; i < bladeCount; i++) {
+      final theta = math.pi * 2 * i / bladeCount;
+      _blades.add(
         _Blade(
           position:
               Vector2(math.cos(theta), math.sin(theta)) *
@@ -27,6 +45,7 @@ class FlameBlade extends PositionComponent with HasWorldReference<RunWorld> {
         ),
       );
     }
+    addAll(_blades);
   }
 
   @override
@@ -38,7 +57,10 @@ class FlameBlade extends PositionComponent with HasWorldReference<RunWorld> {
   @override
   void update(double dt) {
     super.update(dt);
-    angle += Balance.flameBladeAngularSpeed * dt;
+    angle +=
+        Balance.flameBladeAngularSpeed *
+        world.player.attackSpeedMultiplier *
+        dt;
     if (_lastHit.length > 64) _lastHit.removeWhere((e, _) => e.isDead);
   }
 
@@ -46,9 +68,15 @@ class FlameBlade extends PositionComponent with HasWorldReference<RunWorld> {
     if (enemy.isDead) return;
     final now = world.elapsed;
     final last = _lastHit[enemy];
-    if (last != null && now - last < Balance.flameBladeHitInterval) return;
+    final interval =
+        Balance.flameBladeHitInterval / world.player.attackSpeedMultiplier;
+    if (last != null && now - last < interval) return;
     _lastHit[enemy] = now;
-    enemy.takeDamage(Balance.flameBladeDamage);
+    world.player.strike(
+      enemy,
+      Balance.flameBladeDamage * damageMultiplier,
+      id.damageType,
+    );
   }
 }
 

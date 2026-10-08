@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../data/characters.dart';
+import '../../data/stages.dart';
+import '../equipment/equipment_screen.dart';
+import '../profile_scope.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
@@ -17,8 +20,23 @@ class CharacterSelectScreen extends StatefulWidget {
 class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   CharacterDef _selected = Roster.all.first;
 
-  void _depart() =>
-      Navigator.of(context).push(fadeRoute(GameScreen(character: _selected)));
+  /// 고른 스테이지. 처음엔 도전할 수 있는 가장 먼 스테이지.
+  Stage? _stage;
+
+  Stage get _currentStage =>
+      _stage ?? ProfileScope.of(context).progress.unlocked;
+
+  Future<void> _depart() async {
+    await Navigator.of(
+      context,
+    ).push(fadeRoute(GameScreen(character: _selected, stage: _currentStage)));
+    // 돌아오면 새로 열린 가장 먼 스테이지를 기본으로 보여 준다.
+    if (mounted) setState(() => _stage = null);
+  }
+
+  void _openEquipment() =>
+      Navigator.of(context)
+          .push(fadeRoute(EquipmentScreen(character: _selected)));
 
   @override
   Widget build(BuildContext context) {
@@ -54,13 +72,31 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  AshButton(
-                    key: const Key('depart'),
-                    label: '출정하기',
-                    icon: Icons.local_fire_department,
-                    fontSize: 17,
-                    onPressed: _depart,
+                  const SizedBox(height: 8),
+                  _StagePicker(
+                    stage: _currentStage,
+                    unlocked: ProfileScope.of(context).progress.unlocked,
+                    onChanged: (stage) => setState(() => _stage = stage),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 16,
+                    children: [
+                      AshButton(
+                        key: const Key('open-equipment'),
+                        label: '장비',
+                        icon: Icons.backpack,
+                        fontSize: 17,
+                        onPressed: _openEquipment,
+                      ),
+                      AshButton(
+                        key: const Key('depart'),
+                        label: '출정하기',
+                        icon: Icons.local_fire_department,
+                        fontSize: 17,
+                        onPressed: _depart,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -68,6 +104,67 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 출정할 스테이지 고르기. 클리어한 다음 스테이지까지 고를 수 있다.
+class _StagePicker extends StatelessWidget {
+  const _StagePicker({
+    required this.stage,
+    required this.unlocked,
+    required this.onChanged,
+  });
+
+  final Stage stage;
+  final Stage unlocked;
+  final ValueChanged<Stage> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final canPrev = stage.index > 0;
+    final canNext = stage.index < unlocked.index;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          key: const Key('stage-prev'),
+          tooltip: '이전 스테이지',
+          onPressed: canPrev ? () => onChanged(Stage(stage.index - 1)) : null,
+          icon: const Icon(Icons.chevron_left),
+          color: AshColors.gold,
+        ),
+        SizedBox(
+          width: 230,
+          child: Column(
+            children: [
+              Text(
+                stage.name,
+                key: const Key('stage-name'),
+                style: TextStyle(
+                  color: stage.corruption > 0
+                      ? AshColors.ember
+                      : AshColors.parchment,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Lv ${stage.level}'
+                '${stage == unlocked ? ' · 최전선' : ''}',
+                style: const TextStyle(color: AshColors.ash, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          key: const Key('stage-next'),
+          tooltip: '다음 스테이지',
+          onPressed: canNext ? () => onChanged(stage.next) : null,
+          icon: const Icon(Icons.chevron_right),
+          color: AshColors.gold,
+        ),
+      ],
     );
   }
 }

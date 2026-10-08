@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'data/profile.dart';
+import 'ui/profile_scope.dart';
 import 'ui/screens/splash_screen.dart';
 import 'ui/theme.dart';
 
@@ -12,19 +14,25 @@ Future<void> main() async {
     DeviceOrientation.landscapeRight,
   ]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  runApp(const AshbornApp());
+  final profile = await Profile.load();
+  runApp(AshbornApp(profile: profile));
 }
 
 class AshbornApp extends StatelessWidget {
-  const AshbornApp({super.key});
+  const AshbornApp({super.key, required this.profile});
+
+  final Profile profile;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Ashborn',
-      debugShowCheckedModeBanner: false,
-      theme: buildAshTheme(),
-      home: const SplashScreen(),
+    return ProfileScope(
+      profile: profile,
+      child: MaterialApp(
+        title: 'Ashborn',
+        debugShowCheckedModeBanner: false,
+        theme: buildAshTheme(),
+        home: const SplashScreen(),
+      ),
     );
   }
 }

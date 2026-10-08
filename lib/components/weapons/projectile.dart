@@ -3,15 +3,19 @@ import 'dart:math' as math;
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
+import '../../data/damage.dart';
+import '../../game/world/run_world.dart';
 import '../enemies/enemy.dart';
 
 /// 직선으로 날아가 적을 맞히는 투사체. [pierce] 만큼 더 꿰뚫는다.
-abstract class Projectile extends PositionComponent with CollisionCallbacks {
+abstract class Projectile extends PositionComponent
+    with CollisionCallbacks, HasWorldReference<RunWorld> {
   Projectile({
     required super.position,
     required Vector2 direction,
     required double speed,
     required this.damage,
+    required this.type,
     required double lifetime,
     required super.size,
     this.pierce = 0,
@@ -25,6 +29,7 @@ abstract class Projectile extends PositionComponent with CollisionCallbacks {
 
   final Vector2 velocity;
   final double damage;
+  final DamageType type;
   int pierce;
   double _life;
   final _hit = <Enemy>{};
@@ -52,7 +57,7 @@ abstract class Projectile extends PositionComponent with CollisionCallbacks {
     super.onCollisionStart(intersectionPoints, other);
     if (isRemoving || other is! Enemy || other.isDead) return;
     if (!_hit.add(other)) return;
-    other.takeDamage(damage);
+    world.player.strike(other, damage, type);
     if (pierce-- <= 0) removeFromParent();
   }
 }
