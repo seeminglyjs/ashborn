@@ -8,8 +8,8 @@ import '../../data/stats.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
 
-/// 이 등급 이상은 버리기 전에 한 번 더 묻는다.
-const confirmDiscardFrom = Rarity.hero;
+/// 이 등급 이상은 분해하기 전에 한 번 더 묻는다.
+const confirmSalvageFrom = Rarity.hero;
 
 /// 한 캐릭터의 장착 칸, 공용 가방, 선택한 장비의 정보.
 /// 출발 전 장비 화면과 런 중 장비 오버레이가 함께 쓴다.
@@ -46,23 +46,23 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
     _selectedSlot = slot;
   });
 
-  Future<void> _discard(Item item) async {
-    if (item.rarity.index >= confirmDiscardFrom.index &&
-        await _confirmDiscard(item) != true) {
+  Future<void> _salvage(Item item) async {
+    if (item.rarity.index >= confirmSalvageFrom.index &&
+        await _confirmSalvage(item) != true) {
       return;
     }
-    _inventory.discard(item);
+    _inventory.salvage(item);
     _select(null);
   }
 
-  Future<bool?> _confirmDiscard(Item item) => showDialog<bool>(
+  Future<bool?> _confirmSalvage(Item item) => showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       backgroundColor: AshColors.panel,
       title: Text(item.name, style: TextStyle(color: item.rarity.color)),
-      content: const Text(
-        '버린 장비는 되찾을 수 없습니다. 버릴까요?',
-        style: TextStyle(color: AshColors.parchment),
+      content: Text(
+        '분해한 장비는 되찾을 수 없습니다. 잔불 ${item.salvageValue}을(를) 얻습니다.',
+        style: const TextStyle(color: AshColors.parchment),
       ),
       actions: [
         TextButton(
@@ -70,9 +70,9 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
           child: const Text('취소'),
         ),
         TextButton(
-          key: const Key('confirm-discard'),
+          key: const Key('confirm-salvage'),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('버리기', style: TextStyle(color: AshColors.ember)),
+          child: const Text('분해', style: TextStyle(color: AshColors.ember)),
         ),
       ],
     ),
@@ -96,6 +96,11 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                     const SizedBox(width: 10),
                     Text(widget.character.name, style: _Text.heading),
                     const Spacer(),
+                    Text(
+                      '잔불 ${_inventory.ember}',
+                      key: const Key('ember'),
+                      style: _Text.heading.copyWith(color: _Text.ember),
+                    ),
                     IconButton(
                       key: const Key('close-equipment'),
                       icon: const Icon(Icons.close, color: AshColors.parchment),
@@ -231,6 +236,13 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
         children: [
           ItemDetails(item: item),
           const SizedBox(height: 12),
+          _action(
+            'enhance',
+            item.isMaxEnhance ? '최대 강화' : '강화 (잔불 ${item.enhanceCost})',
+            _inventory.canEnhance(item)
+                ? () => setState(() => _inventory.enhance(item))
+                : null,
+          ),
           if (slot != null)
             _action('unequip', '해제', () {
               _gear.unequip(slot);
@@ -252,14 +264,18 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
               ),
               const SizedBox(height: 8),
             ],
-            _action('discard', '버리기', () => _discard(item)),
+            _action(
+              'salvage',
+              '분해 (잔불 +${item.salvageValue})',
+              () => _salvage(item),
+            ),
           ],
         ],
       ),
     );
   }
 
-  Widget _action(String key, String label, VoidCallback onPressed) => Padding(
+  Widget _action(String key, String label, VoidCallback? onPressed) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: AshButton(
       key: Key(key),
@@ -289,8 +305,13 @@ class ItemDetails extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
+        Text(
+          'Lv ${item.level}'
+          '${item.enhance > 0 ? ' · 강화 +${item.enhance}/${Balance.maxEnhance}' : ''}',
+          style: _Text.tag,
+        ),
         const SizedBox(height: 6),
-        for (final (i, roll) in item.stats.indexed)
+        for (final (i, roll) in item.effectiveStats.indexed)
           Text.rich(
             TextSpan(
               children: [
@@ -328,7 +349,7 @@ class _Comparison extends StatelessWidget {
   static Map<StatType, double> _sum(Iterable<Item> items) {
     final total = <StatType, double>{};
     for (final item in items) {
-      for (final roll in item.stats) {
+      for (final roll in item.effectiveStats) {
         total.update(
           roll.stat,
           (v) => v + roll.value,
@@ -379,6 +400,7 @@ class _Comparison extends StatelessWidget {
 
 abstract final class _Text {
   static const up = Color(0xFF7BD15A);
+  static const ember = Color(0xFFFFB347);
   static const down = Color(0xFFE5383B);
   static const heading = TextStyle(
     color: AshColors.gold,

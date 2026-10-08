@@ -54,6 +54,12 @@ class RunWorld extends World
 
   bool get stageCleared => _clearTimer != null;
 
+  /// 처치로 모았지만 아직 인벤토리에 넣지 않은 잔불. 클리어나 사망 때 넣는다.
+  double _pendingEmber = 0;
+
+  /// 이번 런에서 얻은 잔불.
+  int runEmber = 0;
+
   @override
   Future<void> onLoad() async {
     game.stats.reset(xpToNext: LevelSystem.xpToNext(1));
@@ -133,6 +139,14 @@ class RunWorld extends World
     boss = null;
     _clearTimer = Balance.stageClearDelay;
     game.progress.recordClear(stage);
+    _dropBossChest(defeated.position);
+    final reward =
+        (Balance.stageClearEmber * stage.level * stage.dropChanceMultiplier)
+            .round();
+    game.notify(
+      '잔불 +${bankEmber(bonus: reward)}',
+      color: const Color(0xFFFFB347),
+    );
     for (final enemy in enemies.toList()) {
       if (enemy == defeated) continue;
       add(DeathPuff(position: enemy.position.clone()));
@@ -142,6 +156,32 @@ class RunWorld extends World
       ..bossHealth.value = null
       ..stageCleared.value = true;
     game.notify('${stage.name} 클리어', color: const Color(0xFFE8C887));
+  }
+
+  void _dropBossChest(Vector2 at) {
+    final items = LootSystem.bossChest(game.random, stage);
+    for (final (i, item) in items.indexed) {
+      final angle = math.pi * 2 * i / items.length;
+      add(
+        ItemDrop(
+          position:
+              at +
+              Vector2(math.cos(angle), math.sin(angle)) *
+                  Balance.bossChestRadius,
+          item: item,
+        ),
+      );
+    }
+  }
+
+  /// 모아 둔 잔불과 [bonus] 를 인벤토리에 넣고 넣은 양을 돌려준다.
+  int bankEmber({int bonus = 0}) {
+    final whole = _pendingEmber.floor();
+    _pendingEmber -= whole;
+    final amount = whole + bonus;
+    game.inventory.addEmber(amount);
+    runEmber += amount;
+    return amount;
   }
 
   /// 다음 스테이지로. 마지막 지역 다음이면 타락 단계가 오른다.
@@ -164,7 +204,8 @@ class RunWorld extends World
   void onEnemyKilled(Vector2 position) {
     game.stats.kills.value++;
     add(AshShard(position: position));
-    final item = LootSystem.rollDrop(game.random);
+    _pendingEmber += Balance.killEmber * stage.level;
+    final item = LootSystem.rollDrop(game.random, stage);
     if (item != null) add(ItemDrop(position: position.clone(), item: item));
     if (game.gear.effects.contains(UniqueEffect.emberBurst) &&
         game.random.nextDouble() < Balance.emberBurstChance) {

@@ -87,6 +87,7 @@ class AshbornGame extends FlameGame<RunWorld>
   }
 
   void onPlayerDied() {
+    world.bankEmber();
     pauseEngine();
     overlays.add(gameOverOverlay);
   }

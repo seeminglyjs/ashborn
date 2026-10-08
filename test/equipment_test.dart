@@ -6,6 +6,7 @@ import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/profile.dart';
+import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -215,7 +216,7 @@ void main() {
       expect(inv.bag, [old]);
     });
 
-    test('해제하면 가방으로, 버리면 사라진다', () {
+    test('해제하면 가방으로, 분해하면 사라지고 잔불이 된다', () {
       final inv = Inventory();
       final gear = inv.gear(CharacterId.witch);
       final helm = item(ItemType.head);
@@ -225,8 +226,9 @@ void main() {
       expect(gear.equipped, isEmpty);
       expect(inv.bag, [helm]);
 
-      inv.discard(helm);
+      inv.salvage(helm);
       expect(inv.bag, isEmpty);
+      expect(inv.ember, helm.salvageValue);
     });
 
     test('장착한 장비의 주옵션과 랜덤옵션을 모두 합산한다', () {
@@ -326,6 +328,125 @@ void main() {
       final boots = second.gear(CharacterId.hunter).equipped[EquipSlot.boots]!;
       expect(boots.rarity, Rarity.epic);
       expect(boots.stats.single.value, 0.12);
+    });
+  });
+
+  group('장비 레벨', () {
+    test('고정치 옵션은 장비 레벨만큼 크고, 비율 옵션은 그대로다', () {
+      final random = math.Random(31);
+      double average(StatType stat, int level) {
+        var total = 0.0;
+        var count = 0;
+        while (count < 200) {
+          final it = LootSystem.generate(
+            random,
+            type: ItemType.head,
+            rarity: Rarity.normal,
+            level: level,
+          );
+          if (it.stats.first.stat != stat) continue;
+          total += it.stats.first.value;
+          count++;
+        }
+        return total / count;
+      }
+
+      final low = average(StatType.maxHp, 1);
+      final high = average(StatType.maxHp, 11);
+      expect(high / low, closeTo(math.pow(Balance.itemLevelGrowth, 10), 2));
+
+      final gloves = LootSystem.generate(
+        random,
+        type: ItemType.gloves,
+        rarity: Rarity.normal,
+        level: 50,
+      ).stats.first;
+      expect(gloves.value, lessThanOrEqualTo(gloves.stat.roll * 1.21));
+    });
+
+    test('스테이지에서 떨어진 장비는 그 스테이지 레벨이다', () {
+      final random = math.Random(32);
+      const stage = Stage(12);
+      Item? drop;
+      while (drop == null) {
+        drop = LootSystem.rollDrop(random, stage);
+      }
+
+      expect(drop.level, stage.level);
+    });
+
+    test('타락 보상: 높은 등급이 더 자주 나온다', () {
+      final random = math.Random(33);
+      double highShare(double luck) {
+        var high = 0;
+        for (var i = 0; i < 50000; i++) {
+          if (LootSystem.rollRarity(random, luck: luck).index >= 2) high++;
+        }
+        return high / 50000;
+      }
+
+      expect(highShare(1), greaterThan(highShare(0) * 2));
+    });
+
+    test('보스 상자는 레어 이상 장비를 정해진 수만큼 준다', () {
+      final items = LootSystem.bossChest(math.Random(34), const Stage(3));
+
+      expect(items, hasLength(Balance.bossChestItems));
+      for (final it in items) {
+        expect(it.rarity.index, greaterThanOrEqualTo(Rarity.rare.index));
+        expect(it.level, 4);
+      }
+    });
+  });
+
+  group('잔불 강화', () {
+    test('강화하면 잔불을 쓰고 모든 옵션이 오른다', () {
+      final inv = Inventory()..addEmber(1000);
+      final gear = inv.gear(CharacterId.witch);
+      final helm = item(
+        ItemType.head,
+        value: 20,
+        extra: [(stat: StatType.armor, value: 10, rarity: Rarity.normal)],
+      );
+      gear.add(helm);
+      final cost = helm.enhanceCost;
+
+      inv.enhance(helm);
+
+      expect(inv.ember, 1000 - cost);
+      expect(helm.enhance, 1);
+      expect(helm.name, endsWith('+1'));
+      expect(gear.bonus(StatType.maxHp), closeTo(22, 1e-9));
+      expect(gear.bonus(StatType.armor), closeTo(11, 1e-9));
+      expect(helm.enhanceCost, greaterThan(cost));
+    });
+
+    test('잔불이 모자라거나 최대 강화면 할 수 없다', () {
+      final inv = Inventory();
+      final helm = item(ItemType.head);
+      expect(inv.canEnhance(helm), isFalse);
+
+      helm.enhance = Balance.maxEnhance;
+      inv.addEmber(1 << 30);
+      expect(inv.canEnhance(helm), isFalse);
+    });
+
+    test('높은 등급, 높은 레벨일수록 분해 잔불도 강화 비용도 크다', () {
+      Item at(Rarity r, int level) =>
+          Item(type: ItemType.ring, rarity: r, stats: const [], level: level);
+
+      expect(
+        at(Rarity.legend, 1).salvageValue,
+        greaterThan(at(Rarity.normal, 1).salvageValue),
+      );
+      expect(
+        at(Rarity.normal, 20).salvageValue,
+        greaterThan(at(Rarity.normal, 1).salvageValue),
+      );
+      expect(
+        at(Rarity.legend, 1).enhanceCost,
+        greaterThan(at(Rarity.normal, 1).enhanceCost),
+      );
     });
   });
 }

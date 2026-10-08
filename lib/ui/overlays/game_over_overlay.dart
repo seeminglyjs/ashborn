@@ -40,6 +40,8 @@ class GameOverOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text('처치  ${stats.kills.value}', style: statStyle),
+              const SizedBox(height: 6),
+              Text('잔불  +${game.world.runEmber}', style: statStyle),
               const SizedBox(height: 28),
               Wrap(
                 spacing: 16,

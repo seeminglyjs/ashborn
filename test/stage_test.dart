@@ -1,5 +1,6 @@
 import 'package:ashborn/components/enemies/boss.dart';
 import 'package:ashborn/components/enemies/enemy.dart';
+import 'package:ashborn/components/pickups/item_drop.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/damage.dart';
@@ -202,6 +203,52 @@ void main() {
           game.notices.value.map((n) => n.text),
           contains(startsWith('타락 1단계')),
         );
+      },
+    );
+  });
+
+  group('보상', () {
+    testWithGame<AshbornGame>(
+      '보스를 잡으면 상자 장비가 떨어지고 클리어 잔불을 받는다',
+      gameWith(Roster.witch, stage: const Stage(2)),
+      (game) async {
+        await game.ready();
+        game.overlays.addEntry(
+          AshbornGame.stageClearOverlay,
+          (_, _) => const SizedBox(),
+        );
+        game.world.spawnBoss();
+        await game.ready();
+
+        game.world.boss!.takeDamage(double.infinity);
+        await game.ready();
+
+        final drops = game.world.children.whereType<ItemDrop>().toList();
+        expect(drops.length, greaterThanOrEqualTo(Balance.bossChestItems));
+        expect(game.inventory.ember, (Balance.stageClearEmber * 3).round());
+        expect(game.world.runEmber, game.inventory.ember);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '처치로 모은 잔불은 쓰러질 때 정산된다',
+      gameWith(Roster.witch, stage: const Stage(4)),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        game.overlays.addEntry(
+          AshbornGame.gameOverOverlay,
+          (_, _) => const SizedBox(),
+        );
+        for (var i = 0; i < 10; i++) {
+          final enemy = await addEnemy(game, Vector2(5000.0 + i * 50, 0));
+          enemy.takeDamage(double.infinity);
+        }
+        expect(game.inventory.ember, 0);
+
+        game.world.player.takeDamage(double.infinity);
+
+        expect(game.inventory.ember, (10 * Balance.killEmber * 5).floor());
       },
     );
   });

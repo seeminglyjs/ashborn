@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../data/balance.dart';
 import '../data/equipment.dart';
+import '../data/stages.dart';
 import '../data/stats.dart';
 
 /// 장비 드랍과 생성.
@@ -14,12 +15,37 @@ abstract final class LootSystem {
   static double affixRarityChance(Rarity rarity, Rarity item) =>
       _chance(rarity, item, Balance.affixRarityRatio);
 
-  /// 적 하나를 처치했을 때. 대부분은 null.
-  static Item? rollDrop(math.Random random) =>
-      random.nextDouble() < Balance.itemDropChance ? generate(random) : null;
+  /// [stage] 에서 적 하나를 처치했을 때. 대부분은 null.
+  /// 장비 레벨은 스테이지 레벨이고, 타락 단계가 높을수록 자주, 좋게 떨어진다.
+  static Item? rollDrop(math.Random random, [Stage stage = Stage.first]) =>
+      random.nextDouble() < Balance.itemDropChance * stage.dropChanceMultiplier
+      ? generate(
+          random,
+          level: stage.level,
+          rarity: rollRarity(random, luck: stage.rarityLuck),
+        )
+      : null;
 
-  static Rarity rollRarity(math.Random random) =>
-      _roll(random, Rarity.unique, Balance.rarityDropRatio);
+  /// 보스 상자: 최소 [Rarity.rare] 장비 [Balance.bossChestItems] 개.
+  static List<Item> bossChest(math.Random random, Stage stage) => [
+    for (var i = 0; i < Balance.bossChestItems; i++)
+      generate(
+        random,
+        level: stage.level,
+        rarity:
+            Rarity.values[math.max(
+              Rarity.rare.index,
+              rollRarity(random, luck: stage.rarityLuck).index,
+            )],
+      ),
+  ];
+
+  /// [luck] 만큼 높은 등급 가중치가 커진다 (타락 보상).
+  static Rarity rollRarity(math.Random random, {double luck = 0}) => _roll(
+    random,
+    Rarity.unique,
+    math.min(Balance.rarityDropRatio * (1 + luck), Balance.maxRarityRatio),
+  );
 
   /// 옵션 등급. 장비 등급 [cap] 을 넘지 않는다.
   static Rarity rollAffixRarity(math.Random random, Rarity cap) =>
@@ -31,13 +57,22 @@ abstract final class LootSystem {
           .where((r) => r < rarity.affixChance)
           .length;
 
-  static Item generate(math.Random random, {ItemType? type, Rarity? rarity}) {
+  static Item generate(
+    math.Random random, {
+    ItemType? type,
+    Rarity? rarity,
+    int level = 1,
+  }) {
     final itemType =
         type ?? ItemType.values[random.nextInt(ItemType.values.length)];
     final itemRarity = rarity ?? rollRarity(random);
     double roll(StatType stat, double scale, Rarity grade) {
       final variance = 1 + (random.nextDouble() * 2 - 1) * Balance.statVariance;
-      final raw = stat.roll * scale * grade.statMultiplier * variance;
+      final levelScale = stat.percent
+          ? 1
+          : math.pow(Balance.itemLevelGrowth, level - 1);
+      final raw =
+          stat.roll * scale * grade.statMultiplier * levelScale * variance;
       return math.max(1, (raw / stat.step).round()) * stat.step;
     }
 
@@ -68,6 +103,7 @@ abstract final class LootSystem {
       effect: itemRarity == Rarity.unique
           ? UniqueEffect.values[random.nextInt(UniqueEffect.values.length)]
           : null,
+      level: level,
     );
   }
 

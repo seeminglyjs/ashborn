@@ -114,12 +114,16 @@ enum UniqueEffect {
 typedef StatRoll = ({StatType stat, double value, Rarity rarity});
 
 /// 장비 한 개. [stats] 의 첫 줄이 주옵션(장비와 같은 등급)이다.
+///
+/// [level] 은 떨어진 스테이지 레벨이고, [enhance] 는 잔불로 올리는 강화 단계다.
 class Item {
   Item({
     required this.type,
     required this.rarity,
     required this.stats,
     this.effect,
+    this.level = 1,
+    this.enhance = 0,
   });
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
@@ -137,6 +141,8 @@ class Item {
       final String name => UniqueEffect.values.byName(name),
       _ => null,
     },
+    level: json['level'] as int,
+    enhance: json['enhance'] as int,
   );
 
   final ItemType type;
@@ -146,7 +152,41 @@ class Item {
   /// 고유 등급만 갖는다.
   final UniqueEffect? effect;
 
-  String get name => '${rarity.label} ${type.label}';
+  final int level;
+  int enhance;
+
+  String get name =>
+      '${rarity.label} ${type.label}${enhance > 0 ? ' +$enhance' : ''}';
+
+  bool get isMaxEnhance => enhance >= Balance.maxEnhance;
+
+  /// 강화를 반영한 옵션 수치.
+  List<StatRoll> get effectiveStats {
+    final scale = 1 + Balance.enhanceStatBonus * enhance;
+    return [
+      for (final s in stats)
+        (stat: s.stat, value: s.value * scale, rarity: s.rarity),
+    ];
+  }
+
+  double get _levelFactor => 1 + Balance.emberPerItemLevel * (level - 1);
+
+  /// 다음 강화에 드는 잔불.
+  int get enhanceCost =>
+      (Balance.enhanceCost *
+              (enhance + 1) *
+              (enhance + 1) *
+              math.pow(Balance.enhanceRarityGrowth, rarity.index) *
+              _levelFactor)
+          .round();
+
+  /// 분해하면 얻는 잔불.
+  int get salvageValue =>
+      (Balance.salvageEmber *
+              math.pow(Balance.salvageRarityGrowth, rarity.index) *
+              _levelFactor *
+              (1 + enhance * 0.5))
+          .round();
 
   Map<String, dynamic> toJson() => {
     'type': type.name,
@@ -156,5 +196,7 @@ class Item {
         {'stat': s.stat.name, 'value': s.value, 'rarity': s.rarity.name},
     ],
     if (effect != null) 'effect': effect!.name,
+    'level': level,
+    'enhance': enhance,
   };
 }

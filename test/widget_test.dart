@@ -269,7 +269,7 @@ void main() {
       expect(find.text('▲ 화염 저항 +10%'), findsOneWidget);
     });
 
-    testWidgets('영웅 이상 장비는 버리기 전에 한 번 더 묻는다', (tester) async {
+    testWidgets('영웅 이상 장비는 분해하기 전에 한 번 더 묻는다', (tester) async {
       final hero = item(ItemType.ring, rarity: Rarity.hero);
       final normal = item(ItemType.ring);
       final inventory = await openFor(
@@ -290,24 +290,24 @@ void main() {
 
       await tester.tap(find.byKey(const Key('bag-0')));
       await tester.pump();
-      await tester.tap(find.byKey(const Key('discard')));
+      await tester.tap(find.byKey(const Key('salvage')));
       await tester.pump();
-      expect(find.byKey(const Key('confirm-discard')), findsOneWidget);
+      expect(find.byKey(const Key('confirm-salvage')), findsOneWidget);
       await tester.tap(find.text('취소'));
       await tester.pump();
       expect(inventory.bag, contains(hero));
 
-      await tester.tap(find.byKey(const Key('discard')));
+      await tester.tap(find.byKey(const Key('salvage')));
       await tester.pump();
-      await tester.tap(find.byKey(const Key('confirm-discard')));
+      await tester.tap(find.byKey(const Key('confirm-salvage')));
       await tester.pump();
       expect(inventory.bag, [normal]);
 
       await tester.tap(find.byKey(const Key('bag-0')));
       await tester.pump();
-      await tester.tap(find.byKey(const Key('discard')));
+      await tester.tap(find.byKey(const Key('salvage')));
       await tester.pump();
-      expect(find.byKey(const Key('confirm-discard')), findsNothing);
+      expect(find.byKey(const Key('confirm-salvage')), findsNothing);
       expect(inventory.bag, isEmpty);
     });
   });

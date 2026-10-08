@@ -16,7 +16,7 @@ class Profile {
   final Progress progress;
 
   /// 형식이 바뀌면 키를 올린다. 예전 형식은 읽지 않는다.
-  static const inventoryKey = 'inventory.v3';
+  static const inventoryKey = 'inventory.v4';
   static const progressKey = 'progress.v1';
 
   /// 저장된 기록을 불러오고, 바뀔 때마다 바로 저장하게 한다.

@@ -13,7 +13,7 @@ class Inventory extends ChangeNotifier {
   Inventory();
 
   factory Inventory.fromJson(Map<String, dynamic> json) {
-    final inventory = Inventory();
+    final inventory = Inventory().._ember = json['ember'] as int;
     for (final item in json['bag'] as List) {
       inventory._bag.add(Item.fromJson(item as Map<String, dynamic>));
     }
@@ -31,6 +31,34 @@ class Inventory extends ChangeNotifier {
 
   final _bag = <Item>[];
   final _equipped = <CharacterId, Map<EquipSlot, Item>>{};
+  int _ember = 0;
+
+  /// 잔불. 장비 강화에 쓴다.
+  int get ember => _ember;
+
+  void addEmber(int amount) {
+    if (amount <= 0) return;
+    _ember += amount;
+    notifyListeners();
+  }
+
+  bool canEnhance(Item item) =>
+      !item.isMaxEnhance && _ember >= item.enhanceCost;
+
+  /// 잔불을 써서 [item] 을 한 단계 강화한다. 장착 중인 장비도 된다.
+  void enhance(Item item) {
+    assert(canEnhance(item), '잔불이 모자라거나 최대 강화다');
+    _ember -= item.enhanceCost;
+    item.enhance++;
+    notifyListeners();
+  }
+
+  /// 가방의 [item] 을 분해해 잔불로 바꾼다.
+  void salvage(Item item) {
+    if (!_bag.remove(item)) return;
+    _ember += item.salvageValue;
+    notifyListeners();
+  }
 
   List<Item> get bag => UnmodifiableListView(_bag);
 
@@ -39,13 +67,10 @@ class Inventory extends ChangeNotifier {
 
   Gear gear(CharacterId character) => Gear._(this, character);
 
-  void discard(Item item) {
-    if (_bag.remove(item)) notifyListeners();
-  }
-
   void _changed() => notifyListeners();
 
   Map<String, dynamic> toJson() => {
+    'ember': _ember,
     'bag': [for (final item in _bag) item.toJson()],
     'equipped': {
       for (final MapEntry(key: character, value: slots) in _equipped.entries)
@@ -77,7 +102,7 @@ class Gear {
   double bonus(StatType stat) {
     var total = 0.0;
     for (final item in _slots.values) {
-      for (final roll in item.stats) {
+      for (final roll in item.effectiveStats) {
         if (roll.stat == stat) total += roll.value;
       }
     }

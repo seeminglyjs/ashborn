@@ -138,6 +138,34 @@ abstract final class Balance {
   static const double noticeDuration = 3;
   static const int maxNotices = 4;
 
+  // 장비 레벨: 장비는 떨어진 스테이지 레벨을 갖는다. 고정치 옵션은 레벨마다 이 배율로 크고,
+  // 비율(%) 옵션은 상한이 있어 레벨과 상관없다.
+  static const double itemLevelGrowth = 1.3;
+
+  /// 타락으로 높은 등급 가중치가 커져도 한 등급 위 비율이 이 값을 넘지 않는다.
+  static const double maxRarityRatio = 0.8;
+
+  // 보스 상자
+  static const int bossChestItems = 3;
+  static const double bossChestRadius = 40;
+
+  // 잔불: 스테이지 클리어와 처치로 얻고, 장비 분해로도 얻는다. 장비 강화에 쓴다.
+  static const double stageClearEmber = 20;
+  static const double killEmber = 0.2;
+  static const double salvageEmber = 3;
+
+  /// 분해와 강화 비용은 등급이 오를 때마다 이 배율로 는다.
+  static const double salvageRarityGrowth = 3;
+  static const double enhanceRarityGrowth = 2;
+  static const double enhanceCost = 10;
+
+  /// 장비 레벨 1 오를 때마다 분해 잔불과 강화 비용이 이 비율씩 는다.
+  static const double emberPerItemLevel = 0.1;
+  static const int maxEnhance = 10;
+
+  /// 강화 1단계마다 모든 옵션 수치 증가율.
+  static const double enhanceStatBonus = 0.1;
+
   /// 공용 가방에 넣을 수 있는 장비 수.
   static const int bagCapacity = 60;
 
