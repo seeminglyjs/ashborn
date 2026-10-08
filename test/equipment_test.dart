@@ -399,9 +399,11 @@ void main() {
     });
   });
 
-  group('잔불 강화', () {
-    test('강화하면 잔불을 쓰고 모든 옵션이 오른다', () {
-      final inv = Inventory()..addEmber(1000);
+  group('장비 강화', () {
+    Inventory rich() => Inventory()..addLoot(gold: 1 << 30, stones: 1 << 20);
+
+    test('성공하면 강화석과 골드를 쓰고 모든 옵션이 오른다', () {
+      final inv = rich();
       final gear = inv.gear(CharacterId.witch);
       final helm = item(
         ItemType.head,
@@ -409,29 +411,60 @@ void main() {
         extra: [(stat: StatType.armor, value: 10, rarity: Rarity.normal)],
       );
       gear.add(helm);
-      final cost = helm.enhanceCost;
+      final (stones, gold) = (helm.enhanceStones, helm.enhanceGold);
+      final (haveStones, haveGold) = (inv.stones, inv.gold);
 
-      inv.enhance(helm);
+      expect(helm.enhanceChance, 1);
+      expect(inv.enhance(helm, _Roll(0.99)), isTrue);
 
-      expect(inv.ember, 1000 - cost);
+      expect(inv.stones, haveStones - stones);
+      expect(inv.gold, haveGold - gold);
       expect(helm.enhance, 1);
       expect(helm.name, endsWith('+1'));
       expect(gear.bonus(StatType.maxHp), closeTo(22, 1e-9));
       expect(gear.bonus(StatType.armor), closeTo(11, 1e-9));
-      expect(helm.enhanceCost, greaterThan(cost));
+      expect(helm.enhanceStones, greaterThan(stones));
+      expect(helm.enhanceGold, greaterThan(gold));
     });
 
-    test('잔불이 모자라거나 최대 강화면 할 수 없다', () {
-      final inv = Inventory();
+    test('실패하면 재료만 사라지고 단계는 그대로다', () {
+      final inv = rich();
+      final helm = item(ItemType.head)..enhance = 10;
+      final (stones, gold) = (inv.stones, inv.gold);
+
+      expect(inv.enhance(helm, _Roll(helm.enhanceChance)), isFalse);
+
+      expect(helm.enhance, 10);
+      expect(inv.stones, stones - helm.enhanceStones);
+      expect(inv.gold, gold - helm.enhanceGold);
+
+      expect(inv.enhance(helm, _Roll(helm.enhanceChance - 0.01)), isTrue);
+      expect(helm.enhance, 11);
+    });
+
+    test('재료가 모자라거나 최대 강화면 할 수 없다', () {
       final helm = item(ItemType.head);
-      expect(inv.canEnhance(helm), isFalse);
+      expect(Inventory().canEnhance(helm), isFalse);
+      expect(
+        (Inventory()..addLoot(gold: 1 << 30)).canEnhance(helm),
+        isFalse,
+        reason: '강화석이 없다',
+      );
 
       helm.enhance = Balance.maxEnhance;
-      inv.addEmber(1 << 30);
-      expect(inv.canEnhance(helm), isFalse);
+      expect(rich().canEnhance(helm), isFalse);
     });
 
-    test('높은 등급, 높은 레벨일수록 분해 잔불도 강화 비용도 크다', () {
+    test('단계마다 성공 확률이 있고, 높을수록 낮아진다', () {
+      const chances = Balance.enhanceChances;
+      expect(chances.length, Balance.maxEnhance);
+      for (var i = 1; i < chances.length; i++) {
+        expect(chances[i], lessThanOrEqualTo(chances[i - 1]));
+      }
+      expect(chances.last, greaterThan(0));
+    });
+
+    test('높은 등급, 높은 레벨일수록 분해 잔불도 강화 골드도 크다', () {
       Item at(Rarity r, int level) =>
           Item(type: ItemType.ring, rarity: r, stats: const [], level: level);
 
@@ -444,9 +477,41 @@ void main() {
         greaterThan(at(Rarity.normal, 1).salvageValue),
       );
       expect(
-        at(Rarity.legend, 1).enhanceCost,
-        greaterThan(at(Rarity.normal, 1).enhanceCost),
+        at(Rarity.legend, 1).enhanceGold,
+        greaterThan(at(Rarity.normal, 1).enhanceGold),
+      );
+      expect(
+        at(Rarity.normal, 20).enhanceGold,
+        greaterThan(at(Rarity.normal, 1).enhanceGold),
       );
     });
+
+    test('골드와 강화석도 저장되고, 예전 저장에는 0으로 들어간다', () {
+      final inv = Inventory()..addLoot(gold: 120, stones: 7);
+      final loaded = Inventory.fromJson(inv.toJson());
+      expect((loaded.gold, loaded.stones), (120, 7));
+
+      final old = inv.toJson()
+        ..remove('gold')
+        ..remove('stones');
+      final fromOld = Inventory.fromJson(old);
+      expect((fromOld.gold, fromOld.stones), (0, 0));
+    });
   });
+}
+
+/// 늘 [value] 를 내는 난수. 강화 성공 여부를 정해 둔다.
+class _Roll implements math.Random {
+  _Roll(this.value);
+
+  final double value;
+
+  @override
+  double nextDouble() => value;
+
+  @override
+  bool nextBool() => value < 0.5;
+
+  @override
+  int nextInt(int max) => (value * max).floor();
 }

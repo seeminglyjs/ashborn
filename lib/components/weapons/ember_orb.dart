@@ -18,7 +18,7 @@ class EmberOrb extends Weapon {
   @override
   WeaponId get id => WeaponId.emberOrb;
 
-  int get boltCount => 1 + bonusCount;
+  int get boltCount => 1 + bonusCount + world.player.extraProjectiles;
 
   @override
   bool fire() {

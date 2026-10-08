@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'balance.dart';
 import 'stats.dart';
+import 'transcend.dart';
 
 /// 장비 등급. 노말이 가장 낮고 고유가 가장 높다.
 enum Rarity {
@@ -24,6 +25,9 @@ enum Rarity {
 
   /// 랜덤옵션 한 칸이 붙을 확률. 최대 [Balance.maxAffixes] 칸.
   double get affixChance => Balance.affixChance[index];
+
+  /// 이 등급 장비가 갈 수 있는 최대 초월 단계. 0이면 초월할 수 없다.
+  int get maxTranscend => Balance.maxTranscend[index];
 }
 
 /// 장비 파츠. 주옵션은 [mainStats] 중 하나가 무작위로 정해진다.
@@ -115,7 +119,8 @@ typedef StatRoll = ({StatType stat, double value, Rarity rarity});
 
 /// 장비 한 개. [stats] 의 첫 줄이 주옵션(장비와 같은 등급)이다.
 ///
-/// [level] 은 떨어진 스테이지 레벨이고, [enhance] 는 잔불로 올리는 강화 단계다.
+/// [level] 은 떨어진 스테이지 레벨이고, [enhance] 는 강화석과 골드로 올리는 강화 단계다.
+/// [transcends] 는 초월할 때마다 하나씩 붙는 초월 옵션이다.
 class Item {
   Item({
     required this.type,
@@ -124,7 +129,8 @@ class Item {
     this.effect,
     this.level = 1,
     this.enhance = 0,
-  });
+    List<TranscendRoll>? transcends,
+  }) : transcends = transcends ?? [];
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
     type: ItemType.values.byName(json['type'] as String),
@@ -143,6 +149,13 @@ class Item {
     },
     level: json['level'] as int,
     enhance: json['enhance'] as int,
+    transcends: [
+      for (final t in json['transcends'] as List? ?? const [])
+        (
+          option: TranscendOption.values.byName(t['option'] as String),
+          value: (t['value'] as num).toDouble(),
+        ),
+    ],
   );
 
   final ItemType type;
@@ -154,11 +167,32 @@ class Item {
 
   final int level;
   int enhance;
+  final List<TranscendRoll> transcends;
 
   String get name =>
-      '${rarity.label} ${type.label}${enhance > 0 ? ' +$enhance' : ''}';
+      '${rarity.label} ${type.label}${enhance > 0 ? ' +$enhance' : ''}'
+      '${transcends.isNotEmpty ? ' ★${transcends.length}' : ''}';
 
   bool get isMaxEnhance => enhance >= Balance.maxEnhance;
+
+  /// 영웅 이상이고 아직 초월 단계가 남았는가. 실제로 하려면 최대 강화여야 한다.
+  bool get canEverTranscend => transcends.length < rarity.maxTranscend;
+
+  bool get canTranscend => canEverTranscend && isMaxEnhance;
+
+  /// 다음 초월에 드는 초월석, 골드, 성공 확률.
+  int get transcendStones => Balance.transcendStones[transcends.length];
+  int get transcendGold =>
+      (Balance.transcendGold *
+              math.pow(Balance.transcendGoldGrowth, transcends.length) *
+              _levelFactor)
+          .round();
+  double get transcendChance => Balance.transcendChances[transcends.length];
+
+  /// 이 장비의 [option] 초월 수치. 없으면 0.
+  double transcend(TranscendOption option) => transcends
+      .where((t) => t.option == option)
+      .fold(0, (sum, t) => sum + t.value);
 
   /// 강화를 반영한 옵션 수치.
   List<StatRoll> get effectiveStats {
@@ -171,14 +205,20 @@ class Item {
 
   double get _levelFactor => 1 + Balance.emberPerItemLevel * (level - 1);
 
-  /// 다음 강화에 드는 잔불.
-  int get enhanceCost =>
-      (Balance.enhanceCost *
-              (enhance + 1) *
-              (enhance + 1) *
+  /// 다음 강화에 드는 강화석.
+  int get enhanceStones =>
+      Balance.enhanceStones + Balance.enhanceStonesPerStep * enhance;
+
+  /// 다음 강화에 드는 골드.
+  int get enhanceGold =>
+      (Balance.enhanceGold *
+              math.pow(Balance.enhanceGoldGrowth, enhance) *
               math.pow(Balance.enhanceRarityGrowth, rarity.index) *
               _levelFactor)
           .round();
+
+  /// 다음 강화가 성공할 확률.
+  double get enhanceChance => Balance.enhanceChances[enhance];
 
   /// 분해하면 얻는 잔불.
   int get salvageValue =>
@@ -198,5 +238,9 @@ class Item {
     if (effect != null) 'effect': effect!.name,
     'level': level,
     'enhance': enhance,
+    if (transcends.isNotEmpty)
+      'transcends': [
+        for (final t in transcends) {'option': t.option.name, 'value': t.value},
+      ],
   };
 }

@@ -15,6 +15,7 @@ import '../../data/characters.dart';
 import '../../data/damage.dart';
 import '../../data/equipment.dart';
 import '../../data/stages.dart';
+import '../../data/transcend.dart';
 import '../../data/upgrades.dart';
 import '../../systems/crowd_system.dart';
 import '../../systems/fate_system.dart';
@@ -61,6 +62,18 @@ class RunWorld extends World
 
   /// 이번 런에서 얻은 잔불.
   int runEmber = 0;
+
+  /// 처치로 모았지만 아직 인벤토리에 넣지 않은 골드와 강화석. 클리어나 사망 때 넣는다.
+  double _pendingGold = 0;
+  int _pendingStones = 0;
+
+  /// 이번 런에서 얻은 골드, 강화석, 초월석.
+  int runGold = 0;
+  int runStones = 0;
+  int runTranscendStones = 0;
+
+  /// 초월 옵션으로 늘어난 골드 획득량.
+  double get goldMultiplier => 1 + player.transcend(TranscendOption.goldFind);
 
   /// 이번 런에서 고른 운명.
   final fate = RunFate();
@@ -159,6 +172,23 @@ class RunWorld extends World
       '잔불 +${bankEmber(bonus: reward)}',
       color: const Color(0xFFFFB347),
     );
+    final (:gold, :stones) = bankLoot(
+      gold:
+          (Balance.stageClearGold *
+                  stage.level *
+                  stage.dropChanceMultiplier *
+                  goldMultiplier)
+              .round(),
+      stones: Balance.bossStones + stage.corruption,
+    );
+    game.notify('골드 +$gold · 강화석 +$stones', color: const Color(0xFFE8C887));
+    if (game.random.nextDouble() <
+        Balance.transcendStoneChance +
+            Balance.transcendStoneChancePerCorruption * stage.corruption) {
+      game.inventory.addLoot(transcendStones: 1);
+      runTranscendStones++;
+      game.notify('초월석 +1', color: TranscendOption.color);
+    }
     for (final enemy in enemies.toList()) {
       if (enemy == defeated) continue;
       add(DeathPuff(position: enemy.position.clone()));
@@ -197,6 +227,18 @@ class RunWorld extends World
     return amount;
   }
 
+  /// 모아 둔 골드 · 강화석과 [gold] · [stones] 를 인벤토리에 넣고 넣은 양을 돌려준다.
+  ({int gold, int stones}) bankLoot({int gold = 0, int stones = 0}) {
+    final whole = _pendingGold.floor();
+    _pendingGold -= whole;
+    final loot = (gold: whole + gold, stones: _pendingStones + stones);
+    _pendingStones = 0;
+    game.inventory.addLoot(gold: loot.gold, stones: loot.stones);
+    runGold += loot.gold;
+    runStones += loot.stones;
+    return loot;
+  }
+
   /// 다음 스테이지로. 마지막 지역 다음이면 타락 단계가 오른다.
   void advanceStage() {
     final previous = stage;
@@ -218,6 +260,13 @@ class RunWorld extends World
     game.stats.kills.value++;
     add(AshShard(position: position));
     _pendingEmber += Balance.killEmber * stage.level * emberMultiplier;
+    _pendingGold += Balance.killGold * stage.level * goldMultiplier;
+    final heal = player.transcend(TranscendOption.healOnKill);
+    if (heal > 0) player.heal(heal);
+    if (game.random.nextDouble() <
+        Balance.stoneDropChance * stage.dropChanceMultiplier) {
+      _pendingStones++;
+    }
     final item = LootSystem.rollDrop(game.random, stage, fate.dropMultiplier);
     if (item != null) add(ItemDrop(position: position.clone(), item: item));
     if (player.effects.contains(UniqueEffect.emberBurst) &&

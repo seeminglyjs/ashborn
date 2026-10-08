@@ -11,10 +11,12 @@ import '../../data/damage.dart';
 import '../../data/equipment.dart';
 import '../../data/passives.dart';
 import '../../data/stats.dart';
+import '../../data/transcend.dart';
 import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
+import '../enemies/boss.dart';
 import '../enemies/enemy.dart';
 import '../weapons/ember_orb.dart';
 import '../weapons/fire_crossbow.dart';
@@ -108,6 +110,13 @@ class Player extends PositionComponent
   }
 
   double get attackSpeedMultiplier => 1 + bonus(StatType.attackSpeed);
+
+  /// 장착한 장비의 [option] 초월 수치 합.
+  double transcend(TranscendOption option) => game.gear.transcend(option);
+
+  /// 초월 옵션으로 늘어난 투사체 · 칼날 수.
+  int get extraProjectiles =>
+      transcend(TranscendOption.extraProjectiles).round();
   double get xpMultiplier => 1 + bonus(StatType.xpGain);
   double get critChance => bonus(StatType.critChance);
   double get critMultiplier =>
@@ -252,20 +261,29 @@ class Player extends PositionComponent
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
-    if (other is Enemy) {
-      takeDamage(other.contactDamage, type: other.damageType);
+    if (other is Enemy &&
+        takeDamage(other.contactDamage, type: other.damageType)) {
+      // 가시: 부딪힌 적에게 원래 피해의 일부를 돌려준다.
+      final thorns = transcend(TranscendOption.thorns);
+      if (thorns > 0) other.takeDamage(other.contactDamage * thorns);
     }
   }
 
-  /// 회피 → 피해 감소(저항, 방어력) → 에너지 보호막 → 체력 순으로 처리한다.
-  void takeDamage(double amount, {DamageType type = DamageType.physical}) {
-    if (_invulnerable > 0 || isDead) return;
+  /// 회피 → 피해 감소(저항, 방어력, 불굴) → 에너지 보호막 → 체력 순으로 처리한다.
+  /// 무적이나 회피로 피하지 않고 맞았으면 true.
+  bool takeDamage(double amount, {DamageType type = DamageType.physical}) {
+    if (_invulnerable > 0 || isDead) return false;
     _invulnerable = Balance.playerInvulnerableTime;
-    if (game.random.nextDouble() < evasion) return;
+    if (game.random.nextDouble() < evasion) return false;
 
     var damage =
         amount * character.damageTakenMultiplier * (1 - reduction(type));
     if (type == DamageType.physical) damage *= armorMultiplier;
+    if (hp <= maxHp * Balance.lastStandThreshold) {
+      damage *=
+          1 -
+          math.min(transcend(TranscendOption.lastStand), Balance.maxReduction);
+    }
     final absorbed = math.min(energyShield, damage);
     energyShield -= absorbed;
     damage -= absorbed;
@@ -282,6 +300,7 @@ class Player extends PositionComponent
     }
     _publish();
     if (isDead) game.onPlayerDied();
+    return true;
   }
 
   void _frostArmor() {
@@ -319,6 +338,9 @@ class Player extends PositionComponent
       }
     }
     var multiplier = damageMultiplier;
+    if (enemy is Boss) {
+      multiplier *= 1 + transcend(TranscendOption.bossDamage);
+    }
     if (random.nextDouble() < critChance) {
       hit.crit = true;
       multiplier *= critMultiplier;
