@@ -1,10 +1,16 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 
+import '../../components/effects/burst.dart';
 import '../../components/enemies/enemy.dart';
 import '../../components/pickups/ash_shard.dart';
 import '../../components/pickups/item_drop.dart';
 import '../../components/player/player.dart';
+import '../../data/balance.dart';
 import '../../data/characters.dart';
+import '../../data/damage.dart';
+import '../../data/equipment.dart';
 import '../../systems/crowd_system.dart';
 import '../../systems/level_system.dart';
 import '../../systems/loot_system.dart';
@@ -44,7 +50,45 @@ class RunWorld extends World
     add(AshShard(position: position));
     final item = LootSystem.rollDrop(game.random);
     if (item != null) add(ItemDrop(position: position.clone(), item: item));
+    if (game.gear.effects.contains(UniqueEffect.emberBurst) &&
+        game.random.nextDouble() < Balance.emberBurstChance) {
+      emberBurst(position);
+    }
   }
+
+  /// 잿불 폭발: [at] 주변 적에게 화염 피해.
+  void emberBurst(Vector2 at) {
+    add(
+      Burst(
+        position: at.clone(),
+        radius: Balance.emberBurstRadius,
+        color: const Color(0xFFFF7A2E),
+      ),
+    );
+    for (final enemy in enemiesNear(at, Balance.emberBurstRadius)) {
+      player.strike(
+        enemy,
+        Balance.emberBurstDamage,
+        DamageType.fire,
+        secondary: true,
+      );
+    }
+  }
+
+  /// [at] 에서 [radius] 안의 살아 있는 적. 가까운 순.
+  List<Enemy> enemiesNear(Vector2 at, double radius) =>
+      enemies
+          .where(
+            (e) =>
+                !e.isDead &&
+                e.position.distanceToSquared(at) <= radius * radius,
+          )
+          .toList()
+        ..sort(
+          (a, b) => a.position
+              .distanceToSquared(at)
+              .compareTo(b.position.distanceToSquared(at)),
+        );
 
   void gainXp(double amount) {
     final stats = game.stats;

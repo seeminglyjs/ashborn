@@ -8,11 +8,13 @@ import 'package:flutter/services.dart';
 import '../../data/balance.dart';
 import '../../data/characters.dart';
 import '../../data/damage.dart';
+import '../../data/equipment.dart';
 import '../../data/passives.dart';
 import '../../data/stats.dart';
 import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
+import '../effects/burst.dart';
 import '../enemies/enemy.dart';
 import '../weapons/ember_orb.dart';
 import '../weapons/fire_crossbow.dart';
@@ -48,6 +50,9 @@ class Player extends PositionComponent
   /// 마지막 피격 후 지난 시간. 에너지 보호막 재충전에 쓴다.
   double _sinceHit = 0;
 
+  /// 불사조의 재는 런마다 한 번.
+  bool _phoenixUsed = false;
+
   final _keyDirection = Vector2.zero();
   final _move = Vector2.zero();
 
@@ -69,7 +74,16 @@ class Player extends PositionComponent
   double get speed => character.speed * (1 + bonus(StatType.moveSpeed));
   double get magnetRange =>
       Balance.magnetRange * (1 + bonus(StatType.magnetRange));
-  double get damageMultiplier => 1 + bonus(StatType.damage);
+  Set<UniqueEffect> get effects => game.gear.effects;
+
+  double get damageMultiplier {
+    var multiplier = 1 + bonus(StatType.damage);
+    if (effects.contains(UniqueEffect.berserk)) {
+      multiplier *= 1 + (1 - hp / maxHp) * Balance.berserkScale;
+    }
+    return multiplier;
+  }
+
   double get attackSpeedMultiplier => 1 + bonus(StatType.attackSpeed);
   double get xpMultiplier => 1 + bonus(StatType.xpGain);
   double get critChance => bonus(StatType.critChance);
@@ -226,10 +240,33 @@ class Player extends PositionComponent
     energyShield -= absorbed;
     damage -= absorbed;
     _sinceHit = 0;
+    if (effects.contains(UniqueEffect.frostArmor)) _frostArmor();
 
     hp = (hp - damage).clamp(0, maxHp);
+    if (isDead && effects.contains(UniqueEffect.phoenix) && !_phoenixUsed) {
+      _phoenixUsed = true;
+      hp = maxHp * Balance.phoenixHp;
+      _invulnerable = Balance.phoenixInvulnerableTime;
+      game.notify(
+        '${UniqueEffect.phoenix.label}: 재에서 다시 일어섰다',
+        color: Rarity.unique.color,
+      );
+    }
     _publish();
     if (isDead) game.onPlayerDied();
+  }
+
+  void _frostArmor() {
+    world.add(
+      Burst(
+        position: position.clone(),
+        radius: Balance.frostArmorRadius,
+        color: const Color(0xFF8FD3FF),
+      ),
+    );
+    for (final enemy in world.enemiesNear(position, Balance.frostArmorRadius)) {
+      enemy.ailments.chill(Balance.frostArmorSlow, Balance.frostArmorDuration);
+    }
   }
 
   /// 무기의 [base] 피해에 장비의 속성 피해를 더해 [enemy] 를 때린다.
@@ -259,6 +296,11 @@ class Player extends PositionComponent
 
     final dealt = enemy.takeDamage(hit.total);
     _applyAilments(enemy, hit, random);
+    if (!secondary &&
+        effects.contains(UniqueEffect.chainLightning) &&
+        random.nextDouble() < Balance.chainLightningChance) {
+      _chainLightning(enemy, hit.total * Balance.chainLightningRatio);
+    }
 
     final steal = bonus(StatType.lifeSteal);
     if (steal > 0 && hp < maxHp) {
@@ -266,6 +308,18 @@ class Player extends PositionComponent
       game.stats.hp.value = hp;
     }
     return dealt;
+  }
+
+  void _chainLightning(Enemy from, double damage) {
+    final targets = world
+        .enemiesNear(from.position, Balance.chainLightningRange)
+        .where((e) => e != from)
+        .take(Balance.chainLightningTargets)
+        .toList();
+    for (final target in targets) {
+      world.add(LightningArc(from.position.clone(), target.position.clone()));
+      strike(target, damage, DamageType.lightning, secondary: true);
+    }
   }
 
   void _applyAilments(Enemy enemy, Hit hit, math.Random random) {

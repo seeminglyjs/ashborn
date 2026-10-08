@@ -65,6 +65,9 @@ abstract final class LootSystem {
         for (final stat in affixes.take(rollAffixCount(random, itemRarity)))
           affix(stat),
       ],
+      effect: itemRarity == Rarity.unique
+          ? UniqueEffect.values[random.nextInt(UniqueEffect.values.length)]
+          : null,
     );
   }
 

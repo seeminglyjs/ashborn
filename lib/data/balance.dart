@@ -86,6 +86,29 @@ abstract final class Balance {
   /// 동상에 걸린 적의 이동 속도 감소율.
   static const double chillSlow = 0.3;
 
+  // 고유 장비 효과
+  static const double phoenixHp = 0.5;
+  static const double phoenixInvulnerableTime = 2;
+  static const double emberBurstChance = 0.25;
+  static const double emberBurstDamage = 25;
+  static const double emberBurstRadius = 80;
+  static const double chainLightningChance = 0.15;
+  static const int chainLightningTargets = 3;
+
+  /// 연쇄 번개는 원래 타격 피해의 이 비율.
+  static const double chainLightningRatio = 0.5;
+  static const double chainLightningRange = 160;
+  static const double frostArmorRadius = 120;
+  static const double frostArmorSlow = 0.6;
+  static const double frostArmorDuration = 2;
+
+  /// 광전사: 잃은 체력 비율만큼 피해가 이 배율로 는다.
+  static const double berserkScale = 1;
+
+  /// 화면 알림이 떠 있는 시간과 한 번에 보이는 수.
+  static const double noticeDuration = 3;
+  static const int maxNotices = 4;
+
   /// 공용 가방에 넣을 수 있는 장비 수.
   static const int bagCapacity = 60;
 

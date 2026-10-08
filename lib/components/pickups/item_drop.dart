@@ -20,7 +20,17 @@ class ItemDrop extends Pickup with HasGameReference<AshbornGame> {
   bool get collectable => game.gear.canAdd(item);
 
   @override
-  void collect() => game.gear.add(item);
+  void collect() {
+    final slot = game.gear.add(item);
+    game.notify(
+      '${item.name} 획득${slot == null ? '' : ' · 장착'}',
+      color: item.rarity.color,
+    );
+  }
+
+  @override
+  void onBlocked() =>
+      game.notify('가방이 가득 찼습니다', color: const Color(0xFFFF6B35));
 
   @override
   void render(Canvas canvas) {

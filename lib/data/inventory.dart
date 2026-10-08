@@ -84,6 +84,11 @@ class Gear {
     return total;
   }
 
+  /// 장착한 고유 장비의 특수 효과.
+  Set<UniqueEffect> get effects => {
+    for (final item in _slots.values) ?item.effect,
+  };
+
   static List<EquipSlot> slotsFor(ItemType type) =>
       EquipSlot.values.where((s) => s.accepts(type)).toList();
 

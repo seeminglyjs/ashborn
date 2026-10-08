@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../data/characters.dart';
 import '../data/inventory.dart';
 import '../systems/level_system.dart';
+import 'notices.dart';
 import 'run_stats.dart';
 import 'world/run_world.dart';
 
@@ -35,6 +36,7 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 이 캐릭터가 낀 장비.
   late final gear = inventory.gear(character.id);
   final stats = RunStats();
+  final notices = Notices();
   final random = math.Random();
 
   /// 레벨업 오버레이에 보여 줄 선택지.
@@ -60,6 +62,15 @@ class AshbornGame extends FlameGame<RunWorld>
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     camera.viewfinder.zoom = math.min(size.x, size.y) / viewShortSide;
+  }
+
+  void notify(String text, {Color color = Colors.white}) =>
+      notices.add(text, color);
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    notices.tick(dt);
   }
 
   void onPlayerDied() {
@@ -103,6 +114,7 @@ class AshbornGame extends FlameGame<RunWorld>
 
   void restart() {
     _pendingLevelUps = 0;
+    notices.clear();
     overlays.removeAll([gameOverOverlay, levelUpOverlay, equipmentOverlay]);
     world = RunWorld(character);
     resumeEngine();

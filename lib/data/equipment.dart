@@ -83,12 +83,44 @@ enum EquipSlot {
       item == type || (this == hand1 && item == ItemType.twoHand);
 }
 
+/// 고유 등급 장비에만 붙는 특수 효과. 같은 효과는 겹치지 않는다.
+enum UniqueEffect {
+  phoenix('불사조의 재'),
+  emberBurst('잿불 폭발'),
+  chainLightning('연쇄 번개'),
+  frostArmor('서리 갑옷'),
+  berserk('광전사의 분노');
+
+  const UniqueEffect(this.label);
+
+  final String label;
+
+  String get description => switch (this) {
+    phoenix => '쓰러지면 런마다 한 번, 체력 ${_p(Balance.phoenixHp)}로 되살아난다',
+    emberBurst => '적을 처치하면 ${_p(Balance.emberBurstChance)} 확률로 주변에 화염 폭발',
+    chainLightning =>
+      '타격 시 ${_p(Balance.chainLightningChance)} 확률로 '
+          '가까운 적 ${Balance.chainLightningTargets}명에게 번개',
+    frostArmor =>
+      '피격 시 주변 적의 이동 속도 ${_p(Balance.frostArmorSlow)} 감소 '
+          '(${Balance.frostArmorDuration.round()}초)',
+    berserk => '잃은 체력 1%당 피해 ${Balance.berserkScale.round()}% 증가',
+  };
+
+  static String _p(double v) => '${(v * 100).round()}%';
+}
+
 /// 옵션 한 줄. 옵션마다 자기 등급이 있고, 장비 등급보다 높을 수 없다.
 typedef StatRoll = ({StatType stat, double value, Rarity rarity});
 
 /// 장비 한 개. [stats] 의 첫 줄이 주옵션(장비와 같은 등급)이다.
 class Item {
-  Item({required this.type, required this.rarity, required this.stats});
+  Item({
+    required this.type,
+    required this.rarity,
+    required this.stats,
+    this.effect,
+  });
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
     type: ItemType.values.byName(json['type'] as String),
@@ -101,11 +133,18 @@ class Item {
           rarity: Rarity.values.byName(s['rarity'] as String),
         ),
     ],
+    effect: switch (json['effect']) {
+      final String name => UniqueEffect.values.byName(name),
+      _ => null,
+    },
   );
 
   final ItemType type;
   final Rarity rarity;
   final List<StatRoll> stats;
+
+  /// 고유 등급만 갖는다.
+  final UniqueEffect? effect;
 
   String get name => '${rarity.label} ${type.label}';
 
@@ -116,5 +155,6 @@ class Item {
       for (final s in stats)
         {'stat': s.stat.name, 'value': s.value, 'rarity': s.rarity.name},
     ],
+    if (effect != null) 'effect': effect!.name,
   };
 }
