@@ -13,7 +13,7 @@
 ![Flame](https://img.shields.io/badge/Flame_Engine-FF6B35?style=for-the-badge&logo=fireship&logoColor=white)
 
 ![Genre](https://img.shields.io/badge/Genre-Roguelike_Survivor-8B0000?style=flat-square)
-![Platform](https://img.shields.io/badge/Platform-Android_|_iOS_|_Web_|_Desktop-444?style=flat-square)
+![Platform](https://img.shields.io/badge/Platform-Android_|_iOS-444?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Pre--Production-orange?style=flat-square)
 
 <br/>
