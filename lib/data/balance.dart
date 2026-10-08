@@ -43,6 +43,12 @@ abstract final class Balance {
   /// 화면 밖 스폰 거리 여유분.
   static const double spawnMargin = 60;
 
+  // 패시브
+  static const int passiveMaxLevel = 5;
+  static const double passiveMaxHpPerLevel = 20;
+  static const double passiveMoveSpeedPerLevel = 0.08;
+  static const double passiveMagnetPerLevel = 0.25;
+
   // 무기 공통
   static const int weaponMaxLevel = 5;
 

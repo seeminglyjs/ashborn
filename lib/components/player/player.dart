@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 
 import '../../data/balance.dart';
 import '../../data/characters.dart';
+import '../../data/passives.dart';
+import '../../data/stats.dart';
 import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
@@ -29,7 +31,10 @@ class Player extends PositionComponent
       );
 
   final CharacterDef character;
-  late final double maxHp = character.maxHp;
+
+  /// 얻은 패시브와 그 레벨.
+  final passives = <PassiveId, int>{};
+
   late double hp = maxHp;
   double _invulnerable = 0;
 
@@ -41,7 +46,35 @@ class Player extends PositionComponent
 
   bool get isDead => hp <= 0;
 
-  double get magnetRange => Balance.magnetRange;
+  /// 패시브로 오른 [stat] 의 합.
+  double bonus(StatType stat) {
+    var total = 0.0;
+    passives.forEach((id, level) {
+      if (id.stat == stat) total += id.perLevel * level;
+    });
+    return total;
+  }
+
+  double get maxHp => character.maxHp + bonus(StatType.maxHp);
+  double get speed => character.speed * (1 + bonus(StatType.moveSpeed));
+  double get magnetRange =>
+      Balance.magnetRange * (1 + bonus(StatType.magnetRange));
+
+  void gainPassive(PassiveId id) {
+    final before = maxHp;
+    passives.update(id, (level) => level + 1, ifAbsent: () => 1);
+    _onMaxHpChanged(before);
+  }
+
+  /// 최대 체력이 늘면 늘어난 만큼 현재 체력도 채운다.
+  void _onMaxHpChanged(double before) {
+    final after = maxHp;
+    if (after > before) hp += after - before;
+    hp = hp.clamp(0, after);
+    game.stats
+      ..maxHp.value = after
+      ..hp.value = hp;
+  }
 
   @override
   Future<void> onLoad() async {
@@ -79,7 +112,7 @@ class Player extends PositionComponent
       ..setFrom(_keyDirection)
       ..add(game.joystick.relativeDelta);
     if (_move.length2 > 1) _move.normalize();
-    position.addScaled(_move, character.speed * dt);
+    position.addScaled(_move, speed * dt);
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:ashborn/components/pickups/ash_shard.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/passives.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:flame/components.dart';
@@ -81,4 +82,48 @@ void main() {
       expect(stats.xpToNext.value, LevelSystem.xpToNext(3));
     },
   );
+
+  group('패시브', () {
+    testWithGame<AshbornGame>(
+      '최대 체력이 늘면 현재 체력도 같이 는다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        final player = game.world.player;
+        player.takeDamage(30);
+
+        player.gainPassive(PassiveId.vitality);
+
+        final max = Roster.witch.maxHp + Balance.passiveMaxHpPerLevel;
+        expect(player.maxHp, max);
+        expect(player.hp, max - 30);
+        expect(game.stats.maxHp.value, max);
+        expect(game.stats.hp.value, player.hp);
+      },
+    );
+
+    testWithGame<AshbornGame>('이동 속도와 획득 범위가 레벨만큼 는다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      await game.ready();
+      final player = game.world.player;
+
+      player
+        ..gainPassive(PassiveId.swiftness)
+        ..gainPassive(PassiveId.swiftness)
+        ..gainPassive(PassiveId.magnetism);
+
+      expect(
+        player.speed,
+        closeTo(
+          Roster.witch.speed * (1 + Balance.passiveMoveSpeedPerLevel * 2),
+          1e-9,
+        ),
+      );
+      expect(
+        player.magnetRange,
+        Balance.magnetRange * (1 + Balance.passiveMagnetPerLevel),
+      );
+    });
+  });
 }
