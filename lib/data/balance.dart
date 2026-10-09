@@ -193,9 +193,9 @@ abstract final class Balance {
     1, 1, 1, 1, 1, //
     0.9, 0.85, 0.8, 0.75, 0.7,
     0.6, 0.55, 0.5, 0.45, 0.4,
-    0.3, 0.25, 0.2, 0.15, 0.1,
-    0.1, 0.09, 0.08, 0.07, 0.06,
-    0.05, 0.05, 0.04, 0.04, 0.03,
+    0.3, 0.3, 0.25, 0.25, 0.25,
+    0.2, 0.2, 0.2, 0.2, 0.2,
+    0.2, 0.2, 0.2, 0.2, 0.2,
   ];
 
   /// 다음 단계 강화석 = enhanceStones + enhanceStonesPerStep × 지금 단계.
@@ -208,9 +208,9 @@ abstract final class Balance {
   static const double enhanceGoldGrowth = 1.1;
   static const double enhanceRarityGrowth = 1.5;
 
-  /// 강화 1단계마다 모든 옵션 수치가 이 배율로 커진다 (복리: +20 은 약 4.7배, +30 은 약 10배).
+  /// 강화 1단계마다 모든 옵션 수치가 이 배율로 커진다 (복리: +20 은 약 6.7배, +30 은 약 17배).
   /// 적이 스테이지마다 지수로 강해지니, 재화로 사는 힘도 천장 없이 커지게 한다.
-  static const double enhanceStatGrowth = 1.08;
+  static const double enhanceStatGrowth = 1.1;
 
   /// 이 강화 단계부터 초월할 수 있다.
   static const int transcendEnhance = 20;
