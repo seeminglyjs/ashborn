@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'balance.dart';
 import 'damage.dart';
+import 'monster_sprites.dart';
 
 /// 한 루프를 이루는 지역. 지역마다 적의 색, 피해 속성, 성향과 보스가 다르다.
 enum Region {
@@ -13,6 +14,8 @@ enum Region {
     background: Color(0xFF1A1414),
     grid: Color(0x1FFFFFFF),
     enemy: Color(0xFF8A7F7A),
+    enemySprite: MonsterSprite.tinyZombie,
+    bossSprite: MonsterSprite.bigZombie,
   ),
   sunkenCathedral(
     '가라앉은 성당',
@@ -21,6 +24,8 @@ enum Region {
     background: Color(0xFF0F161D),
     grid: Color(0x1F9FD8E8),
     enemy: Color(0xFF6F8FA8),
+    enemySprite: MonsterSprite.skelet,
+    bossSprite: MonsterSprite.necromancer,
   ),
   burningForest(
     '불타는 숲',
@@ -29,6 +34,8 @@ enum Region {
     background: Color(0xFF1E120C),
     grid: Color(0x1FFF8A3D),
     enemy: Color(0xFFB5552B),
+    enemySprite: MonsterSprite.imp,
+    bossSprite: MonsterSprite.ogre,
     speed: 1.25,
   ),
   rustedFortress(
@@ -38,6 +45,8 @@ enum Region {
     background: Color(0xFF16140E),
     grid: Color(0x1FFFE45C),
     enemy: Color(0xFF8C7A4B),
+    enemySprite: MonsterSprite.orcWarrior,
+    bossSprite: MonsterSprite.maskedOrc,
     speed: 0.9,
     hp: 1.4,
   ),
@@ -48,6 +57,8 @@ enum Region {
     background: Color(0xFF1C0A0E),
     grid: Color(0x1FE8463A),
     enemy: Color(0xFFA33A4F),
+    enemySprite: MonsterSprite.chort,
+    bossSprite: MonsterSprite.bigDemon,
     speed: 1.1,
     hp: 1.2,
   );
@@ -59,6 +70,8 @@ enum Region {
     required this.background,
     required this.grid,
     required this.enemy,
+    required this.enemySprite,
+    required this.bossSprite,
     this.speed = 1,
     this.hp = 1,
   });
@@ -71,6 +84,10 @@ enum Region {
   final Color background;
   final Color grid;
   final Color enemy;
+
+  /// 이 지역 졸개와 보스의 스프라이트.
+  final MonsterSprite enemySprite;
+  final MonsterSprite bossSprite;
 
   /// 기본 대비 적 이동 속도와 체력 배율.
   final double speed;

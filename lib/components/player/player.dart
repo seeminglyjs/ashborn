@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -22,6 +23,9 @@ import '../weapons/ember_orb.dart';
 import '../weapons/fire_crossbow.dart';
 import '../weapons/flame_blade.dart';
 import '../weapons/weapon.dart';
+
+/// 캐릭터 스프라이트의 자세.
+enum PlayerPose { idle, run, hit }
 
 class Player extends PositionComponent
     with
@@ -58,8 +62,13 @@ class Player extends PositionComponent
   final _keyDirection = Vector2.zero();
   final _move = Vector2.zero();
 
-  late final _bodyPaint = Paint()..color = character.color;
-  final _corePaint = Paint()..color = const Color(0xFFFFE6B0);
+  /// 발밑 그림자.
+  final _shadowPaint = Paint()..color = const Color(0x66000000);
+
+  /// 캐릭터 스프라이트. 이미지를 다 읽기 전에는 null 이다.
+  SpriteAnimationGroupComponent<PlayerPose>? _sprite;
+  bool _facingLeft = false;
+  double _hitPose = 0;
 
   bool get isDead => hp <= 0;
 
@@ -181,8 +190,65 @@ class Player extends PositionComponent
     _publish();
     // isSolid: 적이 플레이어 안에 완전히 들어와도 충돌로 친다.
     add(CircleHitbox(isSolid: true));
+    // 스프라이트는 기다리지 않고 읽는다. 다 읽기 전에는 그림자만 보인다.
+    unawaited(_loadSprite());
     gainWeapon(character.startWeapon);
   }
+
+  /// 캐릭터 스프라이트 시트를 읽어 자세별 애니메이션으로 붙인다.
+  /// 무기 이펙트 아래에 그려지도록 우선순위를 낮춘다.
+  Future<void> _loadSprite() async {
+    final sheet = await game.images.load(character.sprite);
+    final frame = Vector2(16, 28);
+    // 시트의 [start] 번째 프레임부터 [count] 장.
+    SpriteAnimation clip(int start, int count, double step) =>
+        SpriteAnimation.fromFrameData(
+          sheet,
+          SpriteAnimationData.sequenced(
+            amount: count,
+            stepTime: step,
+            textureSize: frame,
+            texturePosition: Vector2(frame.x * start, 0),
+          ),
+        );
+    final sprite = SpriteAnimationGroupComponent<PlayerPose>(
+      animations: {
+        PlayerPose.idle: clip(0, 4, 0.15),
+        PlayerPose.run: clip(4, 4, 0.1),
+        PlayerPose.hit: clip(8, 1, 1),
+      },
+      current: PlayerPose.idle,
+      size: frame * Balance.playerSpriteScale,
+      // 발이 충돌 원의 아래쪽 끝에 오도록 바닥 가운데를 기준으로 둔다.
+      anchor: Anchor.bottomCenter,
+      position: Vector2(size.x / 2, size.y / 2 + Balance.playerRadius),
+      priority: -1,
+    );
+    if (_facingLeft) sprite.flipHorizontally();
+    _sprite = sprite;
+    add(sprite);
+  }
+
+  /// 움직임에 맞춰 자세와 방향을 바꾸고, 무적 시간 동안 깜빡인다.
+  void _updateSprite(double dt) {
+    final sprite = _sprite;
+    if (_hitPose > 0) _hitPose -= dt;
+    if (sprite == null) return;
+    if (_move.x.abs() > 0.05 && (_move.x < 0) != _facingLeft) {
+      _facingLeft = !_facingLeft;
+      sprite.flipHorizontally();
+    }
+    sprite
+      ..current = _hitPose > 0
+          ? PlayerPose.hit
+          : _move.length2 > 0.0025
+          ? PlayerPose.run
+          : PlayerPose.idle
+      ..opacity = _blinking ? 0 : 1;
+  }
+
+  bool get _blinking =>
+      _invulnerable > 0 && (_invulnerable * 20).floor().isEven;
 
   List<LeveledWeapon> get weapons => List.unmodifiable(_weapons);
 
@@ -232,16 +298,20 @@ class Player extends PositionComponent
       ..add(game.joystick.relativeDelta);
     if (_move.length2 > 1) _move.normalize();
     position.addScaled(_move, speed * dt);
+    _updateSprite(dt);
   }
 
   @override
   void render(Canvas canvas) {
-    // 무적 시간 동안 깜빡인다.
-    if (_invulnerable > 0 && (_invulnerable * 20).floor().isEven) return;
-    final center = Offset(size.x / 2, size.y / 2);
-    canvas
-      ..drawCircle(center, Balance.playerRadius, _bodyPaint)
-      ..drawCircle(center, Balance.playerRadius * 0.45, _corePaint);
+    if (_blinking) return;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.x / 2, size.y / 2 + Balance.playerRadius),
+        width: Balance.playerRadius * 1.6,
+        height: Balance.playerRadius * 0.6,
+      ),
+      _shadowPaint,
+    );
   }
 
   @override
@@ -292,6 +362,7 @@ class Player extends PositionComponent
 
     hp = (hp - damage).clamp(0, maxHp);
     if (damage > 0) {
+      _hitPose = Balance.playerHitPoseTime;
       game.hitVignette.flash();
       if (game.settings.vibration) HapticFeedback.lightImpact();
     }

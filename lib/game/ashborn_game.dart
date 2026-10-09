@@ -5,6 +5,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 import '../components/effects/hit_vignette.dart';
+import '../components/enemies/monster_sprite_cache.dart';
 import '../data/characters.dart';
 import '../data/equipment.dart';
 import '../data/fates.dart';
@@ -72,6 +73,9 @@ class AshbornGame extends FlameGame<RunWorld>
 
   /// 플레이어가 맞았을 때 붉어지는 화면 가장자리.
   final hitVignette = HitVignette();
+
+  /// 적 · 보스 스프라이트 프레임. [RunWorld] 가 읽기 시작한다.
+  final monsterSprites = MonsterSpriteCache();
 
   @override
   Color backgroundColor() => world.stage.region.background;
