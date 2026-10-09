@@ -205,7 +205,7 @@ abstract final class Balance {
   /// 다음 단계 골드 = enhanceGold × enhanceGoldGrowth^단계
   /// × enhanceRarityGrowth^등급 × 장비 레벨 배율.
   static const double enhanceGold = 50;
-  static const double enhanceGoldGrowth = 1.25;
+  static const double enhanceGoldGrowth = 1.1;
   static const double enhanceRarityGrowth = 1.5;
 
   /// 강화 1단계마다 모든 옵션 수치가 이 배율로 커진다 (복리: +20 은 약 4.7배, +30 은 약 10배).
