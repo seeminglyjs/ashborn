@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -76,10 +77,22 @@ class Profile {
     Map<String, dynamic> Function(T) toJson,
   ) {
     final saved = prefs.getString(key);
-    final value = saved == null
-        ? empty()
-        : fromJson(jsonDecode(saved) as Map<String, dynamic>);
+    T value;
+    try {
+      value = saved == null
+          ? empty()
+          : fromJson(jsonDecode(saved) as Map<String, dynamic>);
+    } on Object catch (e) {
+      // 깨진 기록 때문에 앱이 켜지지도 않는 일은 없게 한다. 원본은 [brokenSuffix]
+      // 키에 남겨 두고 빈 기록으로 시작한다 (덮어쓰기 전에 살릴 수 있도록).
+      debugPrint('$key 기록을 읽지 못해 새로 시작합니다: $e');
+      unawaited(prefs.setString('$key$brokenSuffix', saved!));
+      value = empty();
+    }
     value.addListener(() => prefs.setString(key, jsonEncode(toJson(value))));
     return value;
   }
+
+  /// 읽지 못한 기록을 남겨 두는 키 꼬리표.
+  static const brokenSuffix = '.broken';
 }

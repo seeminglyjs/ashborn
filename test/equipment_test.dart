@@ -17,16 +17,34 @@ import 'helpers.dart';
 
 void main() {
   group('드랍', () {
-    test('등급이 오를 때마다 확률이 일정 배율로 줄어든다', () {
+    test('등급이 오를 때마다 확률이 일정 배율로 줄고, 영웅부터는 한 번 더 준다', () {
       final chances = Rarity.values.map(LootSystem.rarityChance).toList();
 
       expect(chances.reduce((a, b) => a + b), closeTo(1, 1e-9));
       for (var i = 1; i < chances.length; i++) {
         expect(
           chances[i] / chances[i - 1],
-          closeTo(Balance.rarityDropRatio, 1e-9),
+          closeTo(
+            Balance.rarityDropRatio *
+                (i == Rarity.hero.index ? Balance.highRarityDropScale : 1),
+            1e-9,
+          ),
         );
       }
+    });
+
+    test('영웅 이상 드랍 배율은 운명 카드 등급에는 붙지 않는다', () {
+      final hero = LootSystem.rarityChance(
+        Rarity.hero,
+        ratio: Balance.fateRarityRatio,
+        highScale: 1,
+      );
+      final rare = LootSystem.rarityChance(
+        Rarity.rare,
+        ratio: Balance.fateRarityRatio,
+        highScale: 1,
+      );
+      expect(hero / rare, closeTo(Balance.fateRarityRatio, 1e-9));
     });
 
     test('뽑힌 등급 분포가 확률을 따른다', () {
@@ -329,6 +347,28 @@ void main() {
       final boots = second.gear(CharacterId.hunter).equipped[EquipSlot.boots]!;
       expect(boots.rarity, Rarity.epic);
       expect(boots.stats.single.value, 0.12);
+    });
+
+    test('깨진 기록이 있어도 앱은 빈 기록으로 켜지고 원본은 따로 남는다', () async {
+      const broken = '{"bag": [{"type": "없는부위"}]';
+      SharedPreferences.setMockInitialValues({
+        Profile.inventoryKey: broken,
+        Profile.progressKey: 'not json',
+      });
+
+      final profile = await Profile.load();
+      await pumpEventQueue();
+
+      expect(profile.inventory.bag, isEmpty);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getString('${Profile.inventoryKey}${Profile.brokenSuffix}'),
+        broken,
+      );
+      expect(
+        prefs.getString('${Profile.progressKey}${Profile.brokenSuffix}'),
+        'not json',
+      );
     });
   });
 
