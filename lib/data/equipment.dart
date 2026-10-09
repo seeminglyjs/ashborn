@@ -175,10 +175,12 @@ class Item {
 
   bool get isMaxEnhance => enhance >= Balance.maxEnhance;
 
-  /// 영웅 이상이고 아직 초월 단계가 남았는가. 실제로 하려면 최대 강화여야 한다.
+  /// 영웅 이상이고 아직 초월 단계가 남았는가. 실제로 하려면
+  /// [Balance.transcendEnhance] 이상 강화해야 한다.
   bool get canEverTranscend => transcends.length < rarity.maxTranscend;
 
-  bool get canTranscend => canEverTranscend && isMaxEnhance;
+  bool get canTranscend =>
+      canEverTranscend && enhance >= Balance.transcendEnhance;
 
   /// 다음 초월에 드는 초월석, 골드, 성공 확률.
   int get transcendStones => Balance.transcendStones[transcends.length];
@@ -196,7 +198,7 @@ class Item {
 
   /// 강화를 반영한 옵션 수치.
   List<StatRoll> get effectiveStats {
-    final scale = 1 + Balance.enhanceStatBonus * enhance;
+    final scale = math.pow(Balance.enhanceStatGrowth, enhance);
     return [
       for (final s in stats)
         (stat: s.stat, value: s.value * scale, rarity: s.rarity),

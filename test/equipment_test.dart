@@ -421,8 +421,14 @@ void main() {
       expect(inv.gold, haveGold - gold);
       expect(helm.enhance, 1);
       expect(helm.name, endsWith('+1'));
-      expect(gear.bonus(StatType.maxHp), closeTo(22, 1e-9));
-      expect(gear.bonus(StatType.armor), closeTo(11, 1e-9));
+      expect(
+        gear.bonus(StatType.maxHp),
+        closeTo(20 * Balance.enhanceStatGrowth, 1e-9),
+      );
+      expect(
+        gear.bonus(StatType.armor),
+        closeTo(10 * Balance.enhanceStatGrowth, 1e-9),
+      );
       expect(helm.enhanceStones, greaterThan(stones));
       expect(helm.enhanceGold, greaterThan(gold));
     });
@@ -453,6 +459,20 @@ void main() {
 
       helm.enhance = Balance.maxEnhance;
       expect(rich().canEnhance(helm), isFalse);
+    });
+
+    test('강화는 복리로 커져서 높은 단계일수록 한 단계의 가치가 크다', () {
+      Item at(int enhance) =>
+          item(ItemType.head, stat: StatType.maxHp, value: 10)
+            ..enhance = enhance;
+      double hp(Item i) => i.effectiveStats.first.value;
+
+      expect(
+        hp(at(20)),
+        closeTo(10 * math.pow(Balance.enhanceStatGrowth, 20), 1e-9),
+      );
+      expect(hp(at(30)) - hp(at(29)), greaterThan(hp(at(11)) - hp(at(10))));
+      expect(Balance.transcendEnhance, lessThan(Balance.maxEnhance));
     });
 
     test('단계마다 성공 확률이 있고, 높을수록 낮아진다', () {

@@ -185,7 +185,7 @@ abstract final class Balance {
   static const int bossStones = 3;
 
   // 장비 강화: 강화석과 골드를 쓰고 확률로 성공한다. 실패하면 재료만 사라진다.
-  static const int maxEnhance = 20;
+  static const int maxEnhance = 30;
 
   /// 지금 단계에서 다음 단계로 성공할 확률. 길이가 [maxEnhance] 와 같다.
   /// 최대 단계를 늘리면 여기에 확률을 덧붙인다.
@@ -194,6 +194,8 @@ abstract final class Balance {
     0.9, 0.85, 0.8, 0.75, 0.7,
     0.6, 0.55, 0.5, 0.45, 0.4,
     0.3, 0.25, 0.2, 0.15, 0.1,
+    0.1, 0.09, 0.08, 0.07, 0.06,
+    0.05, 0.05, 0.04, 0.04, 0.03,
   ];
 
   /// 다음 단계 강화석 = enhanceStones + enhanceStonesPerStep × 지금 단계.
@@ -206,10 +208,14 @@ abstract final class Balance {
   static const double enhanceGoldGrowth = 1.25;
   static const double enhanceRarityGrowth = 1.5;
 
-  /// 강화 1단계마다 모든 옵션 수치 증가율.
-  static const double enhanceStatBonus = 0.1;
+  /// 강화 1단계마다 모든 옵션 수치가 이 배율로 커진다 (복리: +20 은 약 4.7배, +30 은 약 10배).
+  /// 적이 스테이지마다 지수로 강해지니, 재화로 사는 힘도 천장 없이 커지게 한다.
+  static const double enhanceStatGrowth = 1.08;
 
-  // 초월: 최대 강화(+20) 영웅 이상 장비에 초월 옵션을 하나씩 더한다.
+  /// 이 강화 단계부터 초월할 수 있다.
+  static const int transcendEnhance = 20;
+
+  // 초월: +20 강화 이상 영웅 이상 장비에 초월 옵션을 하나씩 더한다.
   // 초월석과 골드를 쓰고 확률로 성공한다. 실패하면 재료만 사라진다.
   /// 등급별 최대 초월 단계 (노말부터 고유).
   static const List<int> maxTranscend = [0, 0, 1, 2, 3, 3];
