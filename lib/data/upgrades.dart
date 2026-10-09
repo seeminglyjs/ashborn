@@ -9,7 +9,7 @@ import 'stats.dart';
 enum UpgradeGroup {
   basic('기본 능력'),
   utility('편의'),
-  fate('운명 조작');
+  fate('신탁');
 
   const UpgradeGroup(this.label);
 
@@ -84,11 +84,11 @@ enum Upgrade {
     maxLevel: 10,
     baseCost: 60,
   ),
-  fateRerolls(UpgradeGroup.fate, '운명 거스르기', 1, maxLevel: 3, baseCost: 200),
-  fateChoices(UpgradeGroup.fate, '넓어진 시야', 1, maxLevel: 1, baseCost: 1500),
+  fateRerolls(UpgradeGroup.fate, '다시 기도하기', 1, maxLevel: 3, baseCost: 200),
+  fateChoices(UpgradeGroup.fate, '만신전의 문', 1, maxLevel: 1, baseCost: 1500),
   fateLuck(
     UpgradeGroup.fate,
-    '별의 가호',
+    '깊은 신앙',
     Balance.upgradeFateLuck,
     maxLevel: 5,
     baseCost: 150,
@@ -122,9 +122,9 @@ enum Upgrade {
     if (stat case final stat?) return stat.format(value);
     return switch (this) {
       emberGain => '잔불 획득량 +${(value * 100).round()}%',
-      fateRerolls => '운명 다시 뽑기 +${value.round()}회',
-      fateChoices => '운명 카드 +${value.round()}장',
-      fateLuck => '운명 카드 등급 운 +${(value * 100).round()}%',
+      fateRerolls => '은총 다시 뽑기 +${value.round()}회',
+      fateChoices => '은총 카드 +${value.round()}장',
+      fateLuck => '은총 카드 등급 운 +${(value * 100).round()}%',
       _ => throw StateError('$this 의 효과 문구가 없다'),
     };
   }

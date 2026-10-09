@@ -261,7 +261,7 @@ abstract final class Balance {
   static const double itemDropChance = 0.02;
   static const double rarityDropRatio = 0.25;
 
-  /// 영웅 이상 장비는 드랍 가중치에 이 배율이 한 번 더 붙는다 (운명 카드 · 옵션 등급에는 없음).
+  /// 영웅 이상 장비는 드랍 가중치에 이 배율이 한 번 더 붙는다 (은총 카드 · 옵션 등급에는 없음).
   static const double highRarityDropScale = 0.5;
 
   /// 등급이 오를 때마다 장비 수치가 이 배율로 는다.
@@ -301,14 +301,14 @@ abstract final class Balance {
   static const double rollMagnetRange = 0.1;
   static const double rollXpGain = 0.05;
 
-  // 운명: 스테이지를 클리어하면 카드 몇 장 중 하나를 고른다.
+  // 신의 은총 (코드 이름 fate): 스테이지를 클리어하면 카드 몇 장 중 하나를 고른다.
   static const int fateChoices = 3;
 
   /// 한 번에 나오는 같은 종류 카드 수 상한. 보상 카드는 더 적다.
   static const int fateTypeLimit = 2;
   static const int fateRewardLimit = 1;
 
-  /// 런마다 운명 카드를 다시 뽑을 수 있는 횟수.
+  /// 런마다 은총 카드를 다시 뽑을 수 있는 횟수.
   static const int fateRerolls = 1;
 
   /// 카드 등급은 장비와 같은 6등급. 한 등급 오를 때마다 나올 가중치가 이 배율로 준다
@@ -321,7 +321,7 @@ abstract final class Balance {
   /// 카드 한 장이 저주로 나올 확률 (저주가 있는 종류에서만).
   static const double fateCurseChance = 0.1;
 
-  // 운명 카드 수치
+  // 은총 카드 수치
   static const double fateMaxHp = 20;
   static const double fateMoveSpeed = 0.08;
   static const double fateDamage = 0.1;
@@ -346,6 +346,22 @@ abstract final class Balance {
   static const double fateLordDamage = 0.3;
   static const double fateLordMaxHp = 50;
 
+  // 신의 은총 2차: 영역마다 3장 이상이 되도록 더한 카드. 노말 기준 수치.
+  static const double fateHpRegen = 1;
+  static const double fateEnergyShield = 20;
+  static const double fateCritDamage = 0.25;
+  static const double fateEvasion = 0.05;
+  static const double fatePhysicalReduction = 0.06;
+
+  /// 원소 은총 (레어 기준): 모든 공격에 무기 기본 피해의 이 비율만큼 그 속성 피해를 더한다.
+  static const double fateElementDamage = 0.15;
+
+  /// 원소 은총의 상태이상 확률 (화상 · 동상 · 감전 · 출혈).
+  static const double fateElementAilment = 0.1;
+
+  /// 바람 은총은 상태이상 대신 이동 속도를 준다.
+  static const double fateWindMoveSpeed = 0.05;
+
   // 저주: 고정 페널티와 등급만큼 커지는 보상을 함께 준다. 같은 저주를 또 고르면 곱해진다.
   static const double curseEnemyHp = 1.3;
   static const double curseEmberGain = 1;
@@ -365,7 +381,7 @@ abstract final class Balance {
   static const double upgradeXpGain = 0.05;
   static const double upgradeEmberGain = 0.05;
 
-  /// 운명 카드 등급 운. 타락 단계의 등급 운에 더해진다.
+  /// 은총 카드 등급 운. 타락 단계의 등급 운에 더해진다.
   static const double upgradeFateLuck = 0.1;
 
   // 무기 공통

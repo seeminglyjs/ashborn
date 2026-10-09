@@ -5,7 +5,7 @@ import '../../game/ashborn_game.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
 
-/// 보스를 잡은 뒤: 운명을 하나 골라 다음 지역으로 가거나, 화톳불로 돌아간다.
+/// 보스를 잡은 뒤: 신의 은총을 하나 골라 다음 지역으로 가거나, 화톳불로 돌아간다.
 class StageClearOverlay extends StatelessWidget {
   const StageClearOverlay({
     super.key,
@@ -48,7 +48,7 @@ class StageClearOverlay extends StatelessWidget {
                   style: const TextStyle(color: AshColors.ember, fontSize: 13),
                 ),
               const SizedBox(height: 20),
-              Text('운명을 하나 고르세요', style: ashTitleStyle(18)),
+              Text('신의 은총을 하나 고르세요', style: ashTitleStyle(18)),
               const SizedBox(height: 12),
               ValueListenableBuilder(
                 valueListenable: game.fateOptions,
@@ -96,6 +96,8 @@ class StageClearOverlay extends StatelessWidget {
   }
 }
 
+/// 은총 카드 한 장. 위에서부터 등급 · 저주 딱지 · 종류, 영역 아이콘과 신 이름 · 신화,
+/// 은총 이름, 효과, 신 소개 순. 테두리는 등급 색, 신 쪽은 영역 색이다.
 class _FateCardView extends StatelessWidget {
   const _FateCardView({super.key, required this.fate, required this.onTap});
 
@@ -106,18 +108,30 @@ class _FateCardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = fate.rarity.color;
     final card = fate.card;
+    final domain = card.domain;
+    final god = card.god;
     return Semantics(
       button: true,
       label: '${card.title} ${fate.rarity.label}',
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 200,
+          width: 210,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Color.alphaBlend(
-              color.withValues(alpha: 0.08),
-              AshColors.panel,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color.alphaBlend(
+                  domain.color.withValues(alpha: 0.16),
+                  AshColors.panel,
+                ),
+                Color.alphaBlend(
+                  color.withValues(alpha: 0.06),
+                  AshColors.panel,
+                ),
+              ],
             ),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: color, width: 1.5),
@@ -161,7 +175,48 @@ class _FateCardView extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Container(
+                    key: Key('grace-domain-${domain.name}'),
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: domain.color.withValues(alpha: 0.18),
+                      border: Border.all(
+                        color: domain.color.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    child: Icon(domain.icon, color: domain.color, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          god.name,
+                          style: TextStyle(
+                            color: domain.color,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${god.myth.label} 신화 · ${domain.label}',
+                          style: const TextStyle(
+                            color: AshColors.ash,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               Text(
                 card.title,
                 style: const TextStyle(
@@ -173,7 +228,22 @@ class _FateCardView extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 fate.description,
-                style: const TextStyle(color: AshColors.ash, fontSize: 13),
+                style: const TextStyle(
+                  color: AshColors.parchment,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Divider(height: 1, color: domain.color.withValues(alpha: 0.25)),
+              const SizedBox(height: 6),
+              Text(
+                god.lore,
+                style: const TextStyle(
+                  color: AshColors.ash,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                  height: 1.35,
+                ),
               ),
             ],
           ),

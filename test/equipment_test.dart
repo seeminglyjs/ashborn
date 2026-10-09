@@ -33,7 +33,7 @@ void main() {
       }
     });
 
-    test('영웅 이상 드랍 배율은 운명 카드 등급에는 붙지 않는다', () {
+    test('영웅 이상 드랍 배율은 은총 카드 등급에는 붙지 않는다', () {
       final hero = LootSystem.rarityChance(
         Rarity.hero,
         ratio: Balance.fateRarityRatio,

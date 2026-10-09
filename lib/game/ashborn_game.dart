@@ -136,7 +136,7 @@ class AshbornGame extends FlameGame<RunWorld>
     continueToNextStage();
     FateSystem.apply(fate, world);
     notify(
-      '운명: ${fate.card.title} (${fate.rarity.label})',
+      '신의 은총: ${fate.card.title} (${fate.rarity.label})',
       color: fate.rarity.color,
     );
   }

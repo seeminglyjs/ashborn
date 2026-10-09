@@ -411,6 +411,7 @@ class Player extends PositionComponent
     if (!secondary) {
       for (final t in DamageType.values) {
         hit.add(t, bonus(t.added));
+        hit.add(t, base * world.fate.extraDamage(t));
       }
     }
     var multiplier = damageMultiplier;
