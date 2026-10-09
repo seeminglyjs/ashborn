@@ -249,8 +249,12 @@ class OddsList extends StatelessWidget {
   List<Widget> _fates() {
     final luck = _luck + fateLuck;
     final now = luck > 0;
-    double chance(Rarity r, double luck) =>
-        LootSystem.rarityChance(r, luck: luck, ratio: Balance.fateRarityRatio);
+    double chance(Rarity r, double luck) => LootSystem.rarityChance(
+      r,
+      luck: luck,
+      ratio: Balance.fateRarityRatio,
+      highScale: 1,
+    );
     return [
       const _Section('운명 카드'),
       _Table(

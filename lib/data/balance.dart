@@ -202,11 +202,11 @@ abstract final class Balance {
   /// 최대 단계를 늘리면 여기에 확률을 덧붙인다.
   static const List<double> enhanceChances = [
     1, 1, 1, 1, 1, //
-    0.9, 0.85, 0.8, 0.75, 0.7,
-    0.6, 0.55, 0.5, 0.45, 0.4,
-    0.3, 0.3, 0.25, 0.25, 0.25,
-    0.2, 0.2, 0.2, 0.2, 0.2,
-    0.2, 0.2, 0.2, 0.2, 0.2,
+    0.8, 0.75, 0.7, 0.65, 0.6,
+    0.5, 0.45, 0.4, 0.38, 0.35,
+    0.25, 0.25, 0.22, 0.22, 0.2,
+    0.17, 0.17, 0.17, 0.17, 0.17,
+    0.15, 0.15, 0.15, 0.15, 0.15,
   ];
 
   /// 다음 단계 강화석 = enhanceStones + enhanceStonesPerStep × 지금 단계.
@@ -233,7 +233,7 @@ abstract final class Balance {
 
   /// 지금 초월 단계에서 다음 단계로 갈 때 드는 초월석과 성공 확률.
   static const List<int> transcendStones = [1, 2, 3];
-  static const List<double> transcendChances = [0.5, 0.35, 0.2];
+  static const List<double> transcendChances = [0.4, 0.25, 0.12];
 
   /// 초월 골드 = transcendGold × transcendGoldGrowth^단계 × 장비 레벨 배율.
   static const double transcendGold = 3000;
@@ -260,6 +260,9 @@ abstract final class Balance {
   // 장비 드랍: 처치당 드랍 확률, 등급이 오를 때마다 드랍 가중치는 이 배율로 준다.
   static const double itemDropChance = 0.02;
   static const double rarityDropRatio = 0.25;
+
+  /// 영웅 이상 장비는 드랍 가중치에 이 배율이 한 번 더 붙는다 (운명 카드 · 옵션 등급에는 없음).
+  static const double highRarityDropScale = 0.5;
 
   /// 등급이 오를 때마다 장비 수치가 이 배율로 는다.
   static const double rarityStatGrowth = 1.4;

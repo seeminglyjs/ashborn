@@ -12,7 +12,8 @@ python -I tool/assets/sprites.py <압축 푼 0x72_DungeonTilesetII_v1.7/frames> 
 - 화톳불: 원본에 없어 이 스크립트가 직접 그린다 (scene/campfire.png, 16x24 프레임 6장).
 - 전투 맵: 바닥 장식 16x16 scene/decor.png, 부서진 기둥 scene/column_broken.png,
   부술 수 있는 나무 상자 scene/crate.png (16x24) 와 보물 상자 scene/chest.png.
-- 아이템: 장비 부위 아이콘 items/gear.png 와 소모품 items/pickups.png (16x16).
+- 아이템: 장비 부위 아이콘 items/gear.png (고유 등급은 items/gear_unique.png) 와
+  소모품 items/pickups.png (16x16).
   원본에 없는 갑옷 · 장신구는 이 스크립트에 글자 그림으로 직접 그린다.
 """
 import colorsys
@@ -177,8 +178,10 @@ PALETTE = {
 OUTLINE = PALETTE['#']
 
 
-def pixel_art(rows, outline=True, alpha=255):
-    """[rows] (16줄 x 16글자) 를 그림으로. [outline] 이면 칠한 픽셀 둘레 빈칸을 외곽선으로 채운다."""
+def pixel_art(rows, outline=True, alpha=255, palette=None):
+    """[rows] (16줄 x 16글자) 를 그림으로. [outline] 이면 칠한 픽셀 둘레 빈칸을 외곽선으로 채운다.
+    [palette] 로 일부 글자의 색을 바꿀 수 있다 (고유 장비)."""
+    palette = {**PALETTE, **(palette or {})}
     h, w = len(rows), len(rows[0])
     assert all(len(r) == w for r in rows), rows
     img = Image.new('RGBA', (w, h))
@@ -186,7 +189,7 @@ def pixel_art(rows, outline=True, alpha=255):
     for y, row in enumerate(rows):
         for x, ch in enumerate(row):
             if ch != '.':
-                px[x, y] = PALETTE[ch] + (alpha,)
+                px[x, y] = palette[ch] + (alpha,)
     if outline:
         filled = {(x, y) for y in range(h) for x in range(w) if px[x, y][3]}
         for y in range(h):
@@ -199,7 +202,7 @@ def pixel_art(rows, outline=True, alpha=255):
     return img
 
 
-def sword():
+def sword(palette=None):
     """한손장비: 오른쪽 위로 뻗은 검. 대각선이라 좌표로 그린다."""
     grid = [['.'] * 16 for _ in range(16)]
     for y in range(1, 10):
@@ -214,7 +217,7 @@ def sword():
     for x, y in ((3, 11), (2, 12)):
         grid[y][x] = 'B'
     grid[13][1] = 'Y'
-    return pixel_art([''.join(r) for r in grid])
+    return pixel_art([''.join(r) for r in grid], palette=palette)
 
 
 # 장비 아이콘. 순서는 ItemType (lib/data/equipment.dart) 과 같다.
@@ -365,6 +368,40 @@ GEAR = {
         '................',
     ],
 }
+
+# 고유 장비 아이콘: 같은 모양을 청록 · 보라 · 밝은 금으로 다시 칠하고 반짝임을 찍는다.
+UNIQUE_PALETTE = {
+    'W': (0xF0, 0xFF, 0xFB),
+    'L': (0x9F, 0xF5, 0xE6),
+    'M': (0x2E, 0xC6, 0xAE),
+    'D': (0x17, 0x6E, 0x66),
+    'B': (0x6A, 0x44, 0xA8),
+    'b': (0x3E, 0x24, 0x6E),
+    'Y': (0xFF, 0xE8, 0x8A),
+    'y': (0xD8, 0x9A, 0x2C),
+    'R': (0xFF, 0x4F, 0xC8),
+    'r': (0x9A, 0x1E, 0x7A),
+    'G': (0xFF, 0x4F, 0xC8),
+    'g': (0x9A, 0x1E, 0x7A),
+    'P': (0x4F, 0xF0, 0xD0),
+    'p': (0x1A, 0x8A, 0x78),
+}
+
+
+def unique_icon(img, seed):
+    """빈 칸에 네 갈래 반짝임 둘을 찍는다."""
+    px = img.load()
+    rnd = random.Random(seed)
+    spots = [(x, y) for y in range(1, 15) for x in range(1, 15)
+             if all(px[x + dx, y + dy][3] == 0
+                    for dx in (-1, 0, 1) for dy in (-1, 0, 1))]
+    star, core = (0x9F, 0xF5, 0xE6, 255), (0xFF, 0xFF, 0xFF, 255)
+    for x, y in rnd.sample(spots, min(2, len(spots))):
+        px[x, y] = core
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            px[x + dx, y + dy] = star
+    return img
+
 
 # 바닥에 떨어지는 소모품. 순서는 PickupKind (lib/components/pickups/supply.dart) 과 같다.
 # potion 은 0x72 flask_big_red 를 쓴다.
@@ -1055,6 +1092,12 @@ def main(src, out):
     os.makedirs(f'{out}/items', exist_ok=True)
     sheet([sword() if art is None else pixel_art(art) for art in GEAR.values()]
           ).save(f'{out}/items/gear.png', optimize=True)
+    sheet([
+        unique_icon(
+            sword(UNIQUE_PALETTE) if art is None
+            else pixel_art(art, palette=UNIQUE_PALETTE), i)
+        for i, art in enumerate(GEAR.values())
+    ]).save(f'{out}/items/gear_unique.png', optimize=True)
     sheet([
         fit16(Image.open(f'{src}/flask_big_red.png').convert('RGBA'))
         if art is None else pixel_art(art)

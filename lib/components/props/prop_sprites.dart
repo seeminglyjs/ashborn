@@ -10,22 +10,33 @@ import '../../data/supplies.dart';
 /// 아직 읽지 않았으면 null 이고, 그동안은 단순한 도형으로 그린다.
 class PropSprites {
   static const gearPath = 'sprites/items/gear.png';
+  static const uniqueGearPath = 'sprites/items/gear_unique.png';
   static const suppliesPath = 'sprites/items/pickups.png';
 
   Sprite? crate;
   Sprite? chest;
   List<Sprite>? _gear;
+  List<Sprite>? _uniqueGear;
   List<Sprite>? _supplies;
 
-  Sprite? gear(ItemType type) => _gear?[type.index];
+  /// 부위 아이콘. 고유 등급은 따로 그린 아이콘을 쓴다.
+  Sprite? gear(ItemType type, {bool unique = false}) =>
+      (unique ? _uniqueGear : _gear)?[type.index];
   Sprite? supply(Supply supply) => _supplies?[supply.index];
 
   Future<void> load(Images images) async {
     if (crate != null) return;
-    final [crateImage, chestImage, gearImage, supplyImage] = await Future.wait([
+    final [
+      crateImage,
+      chestImage,
+      gearImage,
+      uniqueImage,
+      supplyImage,
+    ] = await Future.wait([
       images.load('sprites/scene/crate.png'),
       images.load('sprites/scene/chest.png'),
       images.load(gearPath),
+      images.load(uniqueGearPath),
       images.load(suppliesPath),
     ]);
     List<Sprite> frames(int count, Image image) => [
@@ -37,6 +48,7 @@ class PropSprites {
         ),
     ];
     _gear = frames(ItemType.values.length, gearImage);
+    _uniqueGear = frames(ItemType.values.length, uniqueImage);
     _supplies = frames(Supply.values.length, supplyImage);
     chest = Sprite(chestImage);
     crate = Sprite(crateImage);

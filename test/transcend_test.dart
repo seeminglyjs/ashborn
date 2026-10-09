@@ -341,7 +341,8 @@ void main() {
 
     expect(
       tester.widget<Text>(find.byKey(const Key('transcend-cost'))).data,
-      '초월석 ${belt.transcendStones} · 골드 ${belt.transcendGold} · 성공 50%',
+      '초월석 ${belt.transcendStones} · 골드 ${belt.transcendGold} · '
+      '성공 ${(Balance.transcendChances[0] * 100).round()}%',
     );
 
     await tester.tap(find.byKey(const Key('transcend')));
