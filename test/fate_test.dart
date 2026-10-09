@@ -181,7 +181,7 @@ void main() {
     }
 
     testWithGame<AshbornGame>(
-      '보스를 잡으면 운명 카드가 나오고, 고르면 다음 지역으로 간다',
+      '보스를 잡으면 은총 카드가 나오고, 고르면 다음 지역으로 간다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
@@ -203,6 +203,8 @@ void main() {
           closeTo(Balance.fateDamage * grow(2), 1e-9),
         );
         expect(game.notices.value.last.text, contains(Rarity.hero.label));
+        expect(game.notices.value.last.text, contains('신의 은총'));
+        expect(game.notices.value.last.text, contains(pick.card.title));
       },
     );
 
@@ -266,7 +268,7 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '숨 고르기는 등급이 높을수록 많이, 최대 체력까지 회복한다',
+      '신농의 약초는 등급이 높을수록 많이, 최대 체력까지 회복한다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
@@ -284,7 +286,7 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '대장장이의 손길은 무기 레벨을, 낯선 무기는 새 무기를 등급만큼 높은 레벨로 준다',
+      '헤파이스토스의 망치는 무기 레벨을, 루의 무기고는 새 무기를 등급만큼 높은 레벨로 준다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
@@ -302,7 +304,7 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '재의 홍수는 바로 레벨을 올려 레벨업 선택을 띄운다',
+      '다그다의 가마솥은 바로 레벨을 올려 레벨업 선택을 띄운다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
@@ -336,24 +338,26 @@ void main() {
       },
     );
 
-    testWithGame<AshbornGame>('잿불 폭발 피해는 카드 등급만큼 크다', gameWith(Roster.witch), (
-      game,
-    ) async {
-      await game.ready();
-      await clearEnemies(game);
-      FateSystem.apply(fate(FateCard.emberBurst, Rarity.epic), game.world);
-      final enemy = await addEnemy(game, Vector2(20, 0));
+    testWithGame<AshbornGame>(
+      '수르트의 불꽃 검 폭발 피해는 카드 등급만큼 크다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        FateSystem.apply(fate(FateCard.emberBurst, Rarity.epic), game.world);
+        final enemy = await addEnemy(game, Vector2(20, 0));
 
-      game.world.emberBurst(enemy.position);
+        game.world.emberBurst(enemy.position);
 
-      expect(
-        enemy.maxHp - enemy.hp,
-        closeTo(Balance.emberBurstDamage * grow(2), 1e-6),
-      );
-    });
+        expect(
+          enemy.maxHp - enemy.hp,
+          closeTo(Balance.emberBurstDamage * grow(2), 1e-6),
+        );
+      },
+    );
 
     testWithGame<AshbornGame>(
-      '불사조의 깃털은 고유 장비의 부활과 따로 세고, 등급이 높으면 더 많이 채운다',
+      '오시리스의 부활은 고유 장비의 부활과 따로 세고, 등급이 높으면 더 많이 채운다',
       gameWith(Roster.witch, inventory: withEffect(UniqueEffect.phoenix)),
       (game) async {
         await game.ready();
@@ -406,7 +410,7 @@ void main() {
 
   group('저주', () {
     testWithGame<AshbornGame>(
-      '짙어지는 재: 적 체력은 고정으로 늘고, 잔불 보상은 등급만큼',
+      '하데스의 계약: 적 체력은 고정으로 늘고, 잔불 보상은 등급만큼',
       gameWith(Roster.witch, stage: const Stage(2)),
       (game) async {
         await game.ready();
@@ -435,7 +439,7 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '피의 맹세: 적 피해가 늘고 장비 드랍 확률이 커진다. 여러 장이면 곱해진다',
+      '믹틀란테쿠틀리의 피의 맹세: 적 피해가 늘고 장비 드랍 확률이 커진다. 여러 장이면 곱해진다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
@@ -462,7 +466,7 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '타오르는 대가: 최대 체력은 고정으로 줄고 피해는 등급만큼 는다',
+      '세트의 대가: 최대 체력은 고정으로 줄고 피해는 등급만큼 는다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
@@ -480,13 +484,15 @@ void main() {
     );
   });
 
-  testWidgets('클리어 화면에 카드 등급, 저주, 종류, 남은 다시 뽑기 횟수가 보인다', (tester) async {
+  testWidgets('클리어 화면에 은총 · 신 · 영역 · 등급, 저주, 종류, 남은 다시 뽑기 횟수가 보인다', (
+    tester,
+  ) async {
     final game = gameWith(Roster.witch)();
     final curse = fate(FateCard.thickAsh, Rarity.epic);
     game.fateOptions.value = [
       fate(FateCard.hardenedAsh, Rarity.unique),
       curse,
-      fate(FateCard.phoenixFeather),
+      fate(FateCard.ashLord),
     ];
     game.world.fate.rerolls = 0;
 
@@ -496,7 +502,22 @@ void main() {
       ),
     );
 
-    expect(find.text(FateCard.hardenedAsh.title), findsOneWidget);
+    expect(find.text('신의 은총을 하나 고르세요'), findsOneWidget);
+    for (final f in game.fateOptions.value) {
+      final card = f.card;
+      expect(find.text(card.title), findsOneWidget);
+      expect(find.text(card.god.name), findsOneWidget);
+      expect(find.text(card.god.lore), findsOneWidget);
+      expect(
+        find.text('${card.god.myth.label} 신화 · ${card.domain.label}'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(Key('grace-domain-${card.domain.name}')),
+        findsOneWidget,
+      );
+      expect(find.byIcon(card.domain.icon), findsOneWidget);
+    }
     expect(find.text(Rarity.unique.label), findsOneWidget);
     expect(find.text(Rarity.epic.label), findsOneWidget);
     expect(find.text(Rarity.legend.label), findsOneWidget);
