@@ -20,10 +20,14 @@ import '../effects/burst.dart';
 import '../effects/sparks.dart';
 import '../enemies/boss.dart';
 import '../enemies/enemy.dart';
+import '../weapons/common_weapons.dart';
 import '../weapons/ember_orb.dart';
 import '../weapons/fire_crossbow.dart';
 import '../weapons/flame_blade.dart';
+import '../weapons/hunter_weapons.dart';
+import '../weapons/knight_weapons.dart';
 import '../weapons/weapon.dart';
+import '../weapons/witch_weapons.dart';
 
 /// 캐릭터 스프라이트의 자세.
 enum PlayerPose { idle, run, hit }
@@ -63,6 +67,9 @@ class Player extends PositionComponent
   final _keyDirection = Vector2.zero();
   final _move = Vector2.zero();
 
+  /// 마지막으로 움직인 방향 (단위 벡터). 참격 · 단검이 이쪽을 노린다.
+  final facing = Vector2(1, 0);
+
   /// 발밑 그림자.
   final _shadowPaint = Paint()..color = const Color(0x66000000);
 
@@ -84,6 +91,10 @@ class Player extends PositionComponent
     });
     return total;
   }
+
+  /// 패시브로 늘어난 무기 범위 배율.
+  double get areaMultiplier =>
+      1 + (passives[PassiveId.spread] ?? 0) * PassiveId.spread.perLevel;
 
   double get maxHp => character.maxHp + bonus(StatType.maxHp);
   double get speed => character.speed * (1 + bonus(StatType.moveSpeed));
@@ -270,9 +281,55 @@ class Player extends PositionComponent
 
   static LeveledWeapon _createWeapon(WeaponId id) => switch (id) {
     WeaponId.flameBlade => FlameBlade(),
+    WeaponId.earthSlam => EarthSlam(),
+    WeaponId.cleave => Cleave(),
     WeaponId.emberOrb => EmberOrb(),
+    WeaponId.meteor => Meteor(),
+    WeaponId.fireTornado => FireTornado(),
     WeaponId.fireCrossbow => FireCrossbow(),
+    WeaponId.emberMine => EmberMine(),
+    WeaponId.throwingKnives => ThrowingKnives(),
+    WeaponId.ashAura => AshAura(),
+    WeaponId.thunder => Thunder(),
+    WeaponId.chakram => Chakram(),
   };
+
+  /// 최대 레벨 [id] 무기를 각성시키고, 금빛 기둥이 솟는 연출을 띄운다.
+  void awaken(WeaponId id) {
+    weapon(id)!.awaken();
+    const gold = Color(0xFFFFE08A);
+    world
+      ..add(
+        Burst(
+          position: position.clone(),
+          radius: Balance.awakenBurstRadius,
+          color: gold,
+        ),
+      )
+      ..add(
+        Ring(
+          position: position.clone(),
+          radius: Balance.awakenBurstRadius * 1.3,
+          color: const Color(0xFFFFFFFF),
+          duration: 0.6,
+          strokeWidth: 8,
+        ),
+      )
+      ..add(
+        Sparks(
+          position: position.clone(),
+          color: gold,
+          count: 28,
+          speed: 320,
+          duration: 0.7,
+          sparkSize: 4,
+        ),
+      )
+      ..add(LightningBolt(position: position.clone(), color: gold, length: 320))
+      ..shake(0.5);
+    game.notify('각성! ${id.awakenedLabel}', color: gold);
+    if (game.settings.vibration) HapticFeedback.mediumImpact();
+  }
 
   @override
   void update(double dt) {
@@ -298,6 +355,11 @@ class Player extends PositionComponent
       ..setFrom(_keyDirection)
       ..add(game.joystick.relativeDelta);
     if (_move.length2 > 1) _move.normalize();
+    if (_move.length2 > 0.01) {
+      facing
+        ..setFrom(_move)
+        ..normalize();
+    }
     position.addScaled(_move, speed * dt);
     world.obstacles.pushOut(position, Balance.playerRadius * 0.7);
     _updateSprite(dt);

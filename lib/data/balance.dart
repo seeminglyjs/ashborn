@@ -212,6 +212,14 @@ abstract final class Balance {
   static const double passiveMaxHpPerLevel = 20;
   static const double passiveMoveSpeedPerLevel = 0.08;
   static const double passiveMagnetPerLevel = 0.25;
+  static const double passiveDamagePerLevel = 0.08;
+  static const double passiveAttackSpeedPerLevel = 0.08;
+  static const double passiveCritChancePerLevel = 0.05;
+  static const double passiveCritDamagePerLevel = 0.2;
+  static const double passiveArmorPerLevel = 8;
+  static const double passiveRegenPerLevel = 0.5;
+  static const double passiveXpPerLevel = 0.1;
+  static const double passiveAreaPerLevel = 0.1;
 
   // 전투
   /// 치명타 기본 배율. 치명타 피해 능력치가 더해진다.
@@ -479,7 +487,7 @@ abstract final class Balance {
   static const double upgradeFateLuck = 0.1;
 
   // 무기 공통
-  static const int weaponMaxLevel = 5;
+  static const int weaponMaxLevel = 8;
 
   // 무기 각성: 최대 레벨 무기 + 짝이 되는 패시브가 있으면 레벨업 때 고를 수 있다.
   static const double awakenDamageMultiplier = 1.5;
@@ -496,9 +504,6 @@ abstract final class Balance {
   static const int stormArrows = 3;
   static const double stormSpread = 0.15;
   static const int stormPierceBonus = 3;
-
-  /// 레벨당 무기 피해 증가율.
-  static const double weaponDamagePerLevel = 0.2;
 
   // 무기: 잔불 구체 (재의 마녀)
   static const double emberOrbCooldown = 0.6;
@@ -531,6 +536,86 @@ abstract final class Balance {
 
   /// 첫 적을 맞힌 뒤 추가로 꿰뚫는 수.
   static const int crossbowPierce = 3;
+
+  // 무기: 대지 강타 (잿불 기사)
+  static const double earthSlamCooldown = 2.6;
+  static const double earthSlamDamage = 18;
+  static const double earthSlamRadius = 95;
+  static const double earthSlamKnockback = 280;
+
+  /// 지진(각성): 여진이 퍼지기까지의 시간과 반지름 배율.
+  static const double aftershockDelay = 0.35;
+  static const double aftershockScale = 1.5;
+
+  // 무기: 심판의 일격 (잿불 기사)
+  static const double cleaveCooldown = 1.5;
+  static const double cleaveDamage = 22;
+  static const double cleaveRadius = 90;
+
+  /// 참격 부채꼴 반각 (라디안).
+  static const double cleaveArc = 1.05;
+
+  // 무기: 운석 낙하 (재의 마녀)
+  static const double meteorCooldown = 2.4;
+  static const double meteorDamage = 30;
+  static const double meteorBlastRadius = 55;
+  static const double meteorFallTime = 0.45;
+  static const double meteorTargetRange = 420;
+
+  /// 유성우(각성): 떨어진 자리가 타오르는 시간과 0.5초마다 주는 피해 비율.
+  static const double meteorBurnTime = 2;
+  static const double meteorBurnRatio = 0.25;
+
+  // 무기: 화염 회오리 (재의 마녀)
+  static const double tornadoCooldown = 3;
+  static const double tornadoDamage = 9;
+  static const double tornadoRadius = 22;
+  static const double tornadoSpeed = 90;
+  static const double tornadoLifetime = 3;
+  static const double tornadoHitInterval = 0.4;
+
+  // 무기: 불씨 덫 (불씨 사냥꾼)
+  static const double mineCooldown = 1.8;
+  static const double mineDamage = 28;
+  static const double mineRadius = 60;
+  static const double mineTrigger = 24;
+  static const double mineArmTime = 0.4;
+  static const double mineLifetime = 12;
+  static const int maxMines = 10;
+
+  // 무기: 투척 단검 (불씨 사냥꾼)
+  static const double knifeCooldown = 0.55;
+  static const double knifeDamage = 7;
+  static const double knifeSpeed = 620;
+  static const double knifeLifetime = 0.7;
+  static const double knifeSpread = 0.12;
+
+  // 무기: 잿불 고리 (공용)
+  static const double auraDamage = 5;
+  static const double auraRadius = 60;
+  static const double auraTick = 0.6;
+
+  /// 지옥불 고리(각성): 반지름 배율과 닿은 적에게 거는 둔화.
+  static const double infernoAuraScale = 1.3;
+  static const double infernoAuraSlow = 0.3;
+
+  // 무기: 낙뢰 (공용)
+  static const double thunderCooldown = 2.2;
+  static const double thunderDamage = 24;
+  static const double thunderRadius = 30;
+  static const double thunderRange = 450;
+  static const int thunderChain = 2;
+
+  // 무기: 회전 차크람 (공용)
+  static const double chakramCooldown = 2.5;
+  static const double chakramDamage = 14;
+  static const double chakramRadius = 13;
+  static const double chakramSpeed = 380;
+  static const double chakramReach = 260;
+  static const double chakramHitInterval = 0.3;
+
+  // 각성 연출: 각성하는 순간 플레이어 둘레로 퍼지는 빛.
+  static const double awakenBurstRadius = 160;
 
   // 부술 수 있는 상자: 플레이어 둘레에 가끔 생기고, 무기로 부수면 보급품이 나온다.
   /// 첫 상자가 나오기까지와 그다음부터의 간격(초).

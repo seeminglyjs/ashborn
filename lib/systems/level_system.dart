@@ -11,8 +11,8 @@ abstract final class LevelSystem {
   static double xpToNext(int level) =>
       Balance.xpBase + Balance.xpGrowth * (level - 1);
 
-  /// 지금 고를 수 있는 모든 선택지. 최대 레벨인 것은 빠지고,
-  /// 최대 레벨 무기에 짝 패시브가 있으면 각성이 들어간다.
+  /// 지금 고를 수 있는 모든 선택지. 무기는 그 캐릭터 무기 풀(전용 + 공용)과 이미 가진 것만 나오고,
+  /// 최대 레벨인 것은 빠지며, 최대 레벨 무기에 짝 패시브가 있으면 각성이 들어간다.
   static List<LevelUpOption> available(Player player) => [
     for (final weapon in player.weapons)
       if (weapon.isMaxLevel &&
@@ -20,7 +20,9 @@ abstract final class LevelSystem {
           (player.passives[weapon.id.catalyst] ?? 0) > 0)
         AwakenOption(weapon.id),
     for (final id in WeaponId.values)
-      if ((player.weapon(id)?.level ?? 0) < WeaponId.maxLevel)
+      if ((WeaponId.poolFor(player.character.id).contains(id) ||
+              player.weapon(id) != null) &&
+          (player.weapon(id)?.level ?? 0) < WeaponId.maxLevel)
         WeaponOption(id, (player.weapon(id)?.level ?? 0) + 1),
     for (final id in PassiveId.values)
       if ((player.passives[id] ?? 0) < PassiveId.maxLevel)
@@ -73,7 +75,7 @@ class AwakenOption extends LevelUpOption {
   String get description => id.awakenedDescription;
 
   @override
-  void apply(Player player) => player.weapon(id)!.awaken();
+  void apply(Player player) => player.awaken(id);
 }
 
 class PassiveOption extends LevelUpOption {
@@ -85,7 +87,7 @@ class PassiveOption extends LevelUpOption {
   String get title => id.label;
 
   @override
-  String get description => id.stat.format(id.perLevel);
+  String get description => id.description;
 
   @override
   void apply(Player player) => player.gainPassive(id);

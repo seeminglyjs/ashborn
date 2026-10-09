@@ -30,12 +30,27 @@ mixin LeveledWeapon on HasWorldReference<RunWorld> {
 
   void onLevelChanged() {}
 
+  /// 레벨업으로 오른 [stat] 의 합.
+  double stat(WeaponStat stat) => id.total(stat, _level);
+
   /// 무기 레벨과 각성에 따른 피해 배율. 장비와 패시브는 [Player.strike] 가 더한다.
   double get damageMultiplier =>
-      WeaponId.damageMultiplier(_level) *
+      id.damageMultiplier(_level) *
       (_awakened ? Balance.awakenDamageMultiplier : 1);
 
-  int get bonusCount => id.bonusCount(_level);
+  /// 레벨업으로 늘어난 개수 (칼날 · 구체 · 화살 …).
+  int get bonusCount => stat(WeaponStat.count).round();
+
+  /// 레벨업과 패시브로 늘어난 범위 배율.
+  double get areaMultiplier =>
+      (1 + stat(WeaponStat.area)) * world.player.areaMultiplier;
+
+  double get speedMultiplier => 1 + stat(WeaponStat.speed);
+  double get durationMultiplier => 1 + stat(WeaponStat.duration);
+  int get bonusPierce => stat(WeaponStat.pierce).round();
+
+  /// 쿨다운 배율 (레벨업 쿨다운 감소만, 공격 속도는 따로).
+  double get cooldownMultiplier => 1 - stat(WeaponStat.cooldown);
 }
 
 /// 쿨다운마다 자동으로 발동하는 무기. 플레이어의 자식으로 붙는다.
@@ -48,6 +63,7 @@ abstract class Weapon extends Component
 
   double get cooldown =>
       baseCooldown *
+      cooldownMultiplier *
       world.player.character.cooldownMultiplier /
       world.player.attackSpeedMultiplier;
 

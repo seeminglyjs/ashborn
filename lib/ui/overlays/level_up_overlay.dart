@@ -57,8 +57,11 @@ class _OptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (kind, icon) = switch (option) {
-      WeaponOption() => ('무기', Icons.whatshot),
-      AwakenOption() => ('무기', Icons.bolt),
+      WeaponOption(:final id) => (
+        id.owner == null ? '공용 무기' : '전용 무기',
+        Icons.whatshot,
+      ),
+      AwakenOption() => ('무기 각성', Icons.bolt),
       PassiveOption() => ('패시브', Icons.auto_awesome),
     };
     final awaken = option is AwakenOption;

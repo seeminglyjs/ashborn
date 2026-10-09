@@ -153,13 +153,15 @@ void main() {
           AwakenOption(:final id) => 'awaken ${id.name}',
           PassiveOption(:final id) => '${id.name} ${o.level}',
         };
+        // 무기는 마녀 전용 셋과 공용 셋만 (기사 · 사냥꾼 전용은 없다).
         expect(options.map(describe), [
-          'flameBlade 1',
           'emberOrb 2',
-          'fireCrossbow 1',
-          'vitality 1',
-          'swiftness 1',
-          'magnetism 1',
+          'meteor 1',
+          'fireTornado 1',
+          'ashAura 1',
+          'thunder 1',
+          'chakram 1',
+          for (final p in PassiveId.values) '${p.name} 1',
         ]);
       },
     );

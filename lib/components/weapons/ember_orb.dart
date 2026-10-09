@@ -6,6 +6,7 @@ import 'package:flame/components.dart';
 import '../../data/balance.dart';
 import '../../data/weapons.dart';
 import '../effects/burst.dart';
+import '../effects/sparks.dart';
 import '../enemies/enemy.dart';
 import 'projectile.dart';
 import 'weapon.dart';
@@ -39,6 +40,9 @@ class EmberOrb extends Weapon {
           damage: damage,
           type: id.damageType,
           explodes: awakened,
+          pierce: bonusPierce,
+          speed: Balance.emberOrbSpeed * speedMultiplier,
+          radius: Balance.meteorRadius * areaMultiplier,
         ),
       );
     }
@@ -54,16 +58,23 @@ class EmberBolt extends Projectile {
     required super.damage,
     required super.type,
     this.explodes = false,
+    super.pierce,
+    super.speed = Balance.emberOrbSpeed,
+    this.radius = Balance.meteorRadius,
   }) : super(
-         speed: Balance.emberOrbSpeed,
          lifetime: Balance.emberOrbLifetime,
          size: Vector2.all(Balance.emberOrbRadius * 2),
        );
 
   static final _glow = Paint()..color = const Color(0x55FF8C42);
   static final _core = Paint()..color = const Color(0xFFFFD27A);
+  static final _meteorGlow = Paint()..color = const Color(0x77FF3A1A);
+  static final _meteorCore = Paint()..color = const Color(0xFFFFFFFF);
 
   final bool explodes;
+
+  /// 각성 폭발 반지름.
+  final double radius;
 
   @override
   ShapeHitbox createHitbox() => CircleHitbox();
@@ -73,13 +84,10 @@ class EmberBolt extends Projectile {
     if (!explodes) return;
     final at = enemy.position.clone();
     world.add(
-      Burst(
-        position: at,
-        radius: Balance.meteorRadius,
-        color: const Color(0xFFFF8C42),
-      ),
+      Burst(position: at, radius: radius, color: const Color(0xFFFF8C42)),
     );
-    for (final other in world.enemiesNear(at, Balance.meteorRadius)) {
+    world.add(Sparks(position: at.clone(), color: const Color(0xFFFFC56B)));
+    for (final other in world.enemiesNear(at, radius)) {
       if (other == enemy) continue;
       world.player.strike(
         other,
@@ -94,7 +102,11 @@ class EmberBolt extends Projectile {
   void render(Canvas canvas) {
     final c = Offset(size.x / 2, size.y / 2);
     canvas
-      ..drawCircle(c, Balance.emberOrbRadius * 1.8, _glow)
-      ..drawCircle(c, Balance.emberOrbRadius, _core);
+      ..drawCircle(
+        c,
+        Balance.emberOrbRadius * (explodes ? 2.4 : 1.8),
+        explodes ? _meteorGlow : _glow,
+      )
+      ..drawCircle(c, Balance.emberOrbRadius, explodes ? _meteorCore : _core);
   }
 }
