@@ -350,10 +350,14 @@ flowchart TD
 
 | 에셋 | 만든 사람 | 라이선스 | 쓰는 곳 |
 |:---|:---|:---|:---|
-| [16x16 DungeonTileset II](https://0x72.itch.io/dungeontileset-ii) v1.7 | Robert (0x72), 색 수정 GrafxKid | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (출처 표기 의무 없음) | 게임 안 캐릭터 · 적 · 보스 스프라이트 `assets/images/sprites/` (캐릭터는 knight_m · wizzard_f · elf_f 를 다시 칠함) |
+| [16x16 DungeonTileset II](https://0x72.itch.io/dungeontileset-ii) v1.7 | Robert (0x72), 색 수정 GrafxKid | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (출처 표기 의무 없음) | 캐릭터 · 적 · 보스 스프라이트, 타이틀 · 캐릭터 선택의 던전 바닥 · 벽 · 기둥, 공개 예정 캐릭터 실루엣 `assets/images/sprites/` (캐릭터는 knight_m · wizzard_f · elf_f 를 다시 칠함) |
+| [Galmuri11 Bold](https://github.com/quiple/galmuri) v2.40.4 | 이민서 (quiple) | [SIL OFL 1.1](assets/fonts/Galmuri-OFL.md) (앱에 넣어 배포 가능, 글꼴만 따로 팔 수 없음) | 로고 · 화면 제목 · 버튼의 픽셀 한글 글꼴 `assets/fonts/` |
 
 - CC0 는 저작자가 권리를 포기한 퍼블릭 도메인이라 상업적 이용 · 수정 · 재배포가 자유롭습니다. 출처 표기는 의무가 아니지만 감사의 뜻으로 적어 둡니다.
 - 스프라이트 시트는 [tool/assets/sprites.py](tool/assets/sprites.py) 로 원본 프레임을 붙이고 일러스트 톤에 맞게 다시 칠해 만듭니다. 원본 압축 파일은 저장소에 넣지 않습니다.
+- 화톳불 픽셀 애니메이션(`scene/campfire.png`)은 원본 팩에 없어 같은 스크립트가 직접 그립니다.
+- 예전 타이틀 · 캐릭터 일러스트는 앱에 넣지 않고 `art/illustrations/` 에 보관합니다 (스토어 이미지 등 참고용).
+- 앱 아이콘 원본은 `art/logo/app_icon.png` 이고, `python -I tool/assets/app_icons.py art/logo/app_icon.png` 로 Android (적응형 포함) · iOS · Windows 아이콘을 한 번에 만듭니다.
 
 ---
 
@@ -433,6 +437,8 @@ flutter run -d android   # 연결된 안드로이드 기기 / 에뮬레이터
 ```
 
 ### 🎮 조작법
+
+**세로 화면 전용**입니다. 휴대폰은 세로로 고정되고, Windows 개발용 창도 세로(450x900)로 열립니다.
 
 | 입력 | 동작 |
 |:---|:---|

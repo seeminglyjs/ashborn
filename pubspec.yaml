@@ -61,10 +61,17 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/
-    - assets/images/characters/
     - assets/images/sprites/
     - assets/images/sprites/enemies/
+    - assets/images/sprites/scene/
+    - assets/images/sprites/upcoming/
+
+  # 픽셀 한글 글꼴 (OFL-1.1, assets/fonts/Galmuri-OFL.md). 제목 · 버튼에 쓴다.
+  fonts:
+    - family: Galmuri11
+      fonts:
+        - asset: assets/fonts/Galmuri11-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

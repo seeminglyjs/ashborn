@@ -58,7 +58,7 @@ void main() {
   group('확률 정보 화면', () {
     testWidgets('설정에서 열고, 강화 · 초월 · 드랍 · 운명 확률을 보여 준다', (tester) async {
       tester.view
-        ..physicalSize = const Size(844, 390)
+        ..physicalSize = const Size(390, 844)
         ..devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(

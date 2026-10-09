@@ -26,9 +26,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
 
-/// 가로 모드 휴대폰(약 19.5:9)과 데스크톱 창 크기.
-const phoneLandscape = Size(844, 390);
-const desktop = Size(1280, 720);
+/// 세로 모드 휴대폰(약 9:19.5)과 데스크톱 창 크기.
+const phonePortrait = Size(390, 844);
+const desktop = Size(480, 960);
 
 void useScreen(WidgetTester tester, Size size) {
   tester.view
@@ -50,7 +50,7 @@ Widget gameScreen(CharacterDef character, {Inventory? inventory}) =>
     );
 
 void main() {
-  for (final size in [phoneLandscape, desktop]) {
+  for (final size in [phonePortrait, desktop]) {
     testWidgets('스플래시 → 메인 → 캐릭터 선택 → 게임 (${size.width.toInt()}x'
         '${size.height.toInt()})', (tester) async {
       useScreen(tester, size);
@@ -68,11 +68,11 @@ void main() {
       await settle(tester);
       expect(find.byType(CharacterSelectScreen), findsOneWidget);
       for (final c in Roster.all) {
-        expect(find.text(c.name), findsOneWidget);
+        expect(find.byKey(Key('pick-${c.id.name}')), findsOneWidget);
       }
 
       // 사냥꾼은 골드로 해금해야 출정할 수 있다.
-      await tester.tap(find.text(Roster.hunter.name));
+      await tester.tap(find.byKey(const Key('pick-hunter')));
       await settle(tester, 300);
       expect(find.byKey(const Key('depart')), findsNothing);
       await tester.tap(find.byKey(const Key('unlock')));
@@ -103,7 +103,7 @@ void main() {
     expect(find.byKey(const Key('depart')), findsOneWidget);
     expect(find.text('???'), findsWidgets);
 
-    await tester.tap(find.text(Roster.witch.name));
+    await tester.tap(find.byKey(const Key('pick-witch')));
     await settle(tester, 300);
     final unlock = tester.widget<AshButton>(find.byKey(const Key('unlock')));
     expect(unlock.onPressed, isNull);
@@ -125,7 +125,7 @@ void main() {
   });
 
   testWidgets('죽으면 게임 오버가 뜨고 다시 일어서면 런이 초기화된다', (tester) async {
-    useScreen(tester, phoneLandscape);
+    useScreen(tester, phonePortrait);
     await tester.pumpWidget(gameScreen(Roster.knight));
     await settle(tester, 100);
 
@@ -150,7 +150,7 @@ void main() {
   });
 
   testWidgets('HUD 가 떠 있어도 화면을 끌면 누른 곳의 조이스틱으로 움직인다', (tester) async {
-    useScreen(tester, phoneLandscape);
+    useScreen(tester, phonePortrait);
     await tester.pumpWidget(gameScreen(Roster.witch));
     await settle(tester, 100);
 
@@ -159,11 +159,11 @@ void main() {
         .game!;
     final start = game.world.player.position.clone();
 
-    final gesture = await tester.startGesture(const Offset(600, 250));
+    final gesture = await tester.startGesture(const Offset(200, 500));
     await gesture.moveBy(const Offset(20, 0));
     await gesture.moveBy(const Offset(80, 0));
     expect(game.joystick.isHeld, isTrue);
-    expect(game.joystick.origin.x, closeTo(600, 1));
+    expect(game.joystick.origin.x, closeTo(200, 1));
 
     await settle(tester, 200);
     expect(game.world.player.position.x, greaterThan(start.x));
@@ -174,7 +174,7 @@ void main() {
   });
 
   testWidgets('레벨이 오르면 게임이 멈추고 고른 만큼 강해진다', (tester) async {
-    useScreen(tester, phoneLandscape);
+    useScreen(tester, phonePortrait);
     await tester.pumpWidget(gameScreen(Roster.witch));
     await settle(tester, 100);
     final game = tester
@@ -206,7 +206,7 @@ void main() {
     expect(game.paused, isFalse);
   });
 
-  for (final size in [phoneLandscape, desktop]) {
+  for (final size in [phonePortrait, desktop]) {
     testWidgets('장비 화면에서 가방의 반지를 끼면 원래 반지는 가방으로 간다 '
         '(${size.width.toInt()}x${size.height.toInt()})', (tester) async {
       useScreen(tester, size);
@@ -234,7 +234,23 @@ void main() {
       expect(find.text('장비'), findsOneWidget);
 
       final index = inventory.bag.indexOf(ring);
-      await tester.ensureVisible(find.byKey(Key('bag-$index')));
+      // 가방이 가득해도 등급 · 부위 필터로 반지만 추려 찾는다.
+      for (final key in [
+        const Key('filter-type-ring'),
+        Key('filter-rarity-${ring.rarity.name}'),
+      ]) {
+        await tester.ensureVisible(find.byKey(key));
+        await tester.tap(find.byKey(key));
+        await tester.pump();
+      }
+      for (final (i, item) in inventory.bag.indexed) {
+        final visible =
+            item.type == ItemType.ring && item.rarity == ring.rarity;
+        expect(
+          find.byKey(Key('bag-$i')),
+          visible ? findsOneWidget : findsNothing,
+        );
+      }
       await tester.tap(find.byKey(Key('bag-$index')));
       await tester.pump();
       expect(find.text(ring.name), findsWidgets);
@@ -257,7 +273,7 @@ void main() {
       CharacterDef character, {
       required void Function(Inventory) fill,
     }) async {
-      useScreen(tester, phoneLandscape);
+      useScreen(tester, phonePortrait);
       final inventory = Inventory();
       fill(inventory);
       await tester.pumpWidget(
@@ -267,7 +283,7 @@ void main() {
         ),
       );
       await settle(tester, 300);
-      await tester.tap(find.text(character.name));
+      await tester.tap(find.byKey(Key('pick-${character.id.name}')));
       await settle(tester, 300);
       await tester.tap(find.byKey(const Key('open-equipment')));
       await settle(tester);
@@ -306,6 +322,106 @@ void main() {
       await tester.tap(find.byKey(const Key('close-equipment')));
       await settle(tester);
       expect(find.byType(CharacterSelectScreen), findsOneWidget);
+    });
+
+    testWidgets('장착 칸은 캐릭터 양옆에 부위 순서로 놓이고, 양손장비면 왼손이 막힌다', (tester) async {
+      await openFor(
+        tester,
+        Roster.witch,
+        fill: (inv) => inv.gear(CharacterId.witch).add(item(ItemType.twoHand)),
+      );
+      expect(find.byKey(const Key('paper-doll')), findsOneWidget);
+      Offset center(String slot) =>
+          tester.getCenter(find.byKey(Key('slot-$slot')));
+
+      // 캐릭터 양옆에 칸이 늘어서고 (귀걸이 · 손 · 반지는 좌우 한 쌍), 장화는 발밑.
+      for (final (left, right) in [
+        ('earring1', 'earring2'),
+        ('hand2-blocked', 'hand1'),
+        ('ring1', 'ring2'),
+      ]) {
+        expect(center(left).dx, lessThan(center(right).dx));
+      }
+      // 짝이 있는 칸은 양쪽 같은 줄.
+      for (final (left, right) in [
+        ('earring1', 'earring2'),
+        ('hand2-blocked', 'hand1'),
+        ('ring1', 'ring2'),
+      ]) {
+        expect(center(left).dy, closeTo(center(right).dy, 1));
+      }
+      expect(center('head').dy, lessThan(center('earring1').dy));
+      expect(center('boots').dy, greaterThan(center('belt').dy));
+      expect(
+        center('boots').dx,
+        closeTo(tester.getCenter(find.byKey(const Key('paper-doll'))).dx, 1),
+      );
+
+      expect(find.byKey(const Key('slot-hand2')), findsNothing);
+      expect(find.byKey(const Key('slot-hand2-blocked')), findsOneWidget);
+      expect(find.text('양손 사용'), findsOneWidget);
+    });
+
+    testWidgets('가방을 등급과 부위로 거른다', (tester) async {
+      final inventory = await openFor(
+        tester,
+        Roster.witch,
+        fill: (inv) {
+          final gear = inv.gear(CharacterId.witch);
+          for (final i in [
+            item(ItemType.ring),
+            item(ItemType.ring),
+            item(ItemType.ring, rarity: Rarity.legend),
+            item(ItemType.head, rarity: Rarity.legend),
+            item(ItemType.twoHand, rarity: Rarity.legend),
+            item(ItemType.oneHand),
+            item(ItemType.oneHand),
+          ]) {
+            gear.add(i);
+          }
+          // 빈 칸에 바로 끼워진 것까지 모두 가방으로 뺀다.
+          for (final slot in EquipSlot.values) {
+            gear.unequip(slot);
+          }
+        },
+      );
+      expect(inventory.bag, hasLength(7));
+      List<int> shown() => [
+        for (var i = 0; i < inventory.bag.length; i++)
+          if (find.byKey(Key('bag-$i')).evaluate().isNotEmpty) i,
+      ];
+      Future<void> tap(String key) async {
+        await tester.ensureVisible(find.byKey(Key(key)));
+        await tester.tap(find.byKey(Key(key)));
+        await tester.pump();
+      }
+
+      expect(shown(), hasLength(inventory.bag.length));
+      await tap('filter-rarity-legend');
+      expect(shown().map((i) => inventory.bag[i].rarity).toSet(), {
+        Rarity.legend,
+      });
+      // 무기는 한손 · 양손을 함께 본다.
+      await tap('filter-type-weapon');
+      expect(shown().map((i) => inventory.bag[i].type).toSet(), {
+        ItemType.twoHand,
+      });
+      await tap('filter-rarity-all');
+      expect(
+        shown().map((i) => inventory.bag[i].type).toSet(),
+        containsAll([ItemType.twoHand]),
+      );
+      expect(
+        shown().every(
+          (i) => {
+            ItemType.oneHand,
+            ItemType.twoHand,
+          }.contains(inventory.bag[i].type),
+        ),
+        isTrue,
+      );
+      await tap('filter-type-all');
+      expect(shown(), hasLength(inventory.bag.length));
     });
 
     testWidgets('교체하면 바뀌는 능력치를 비교해 보여 준다', (tester) async {
@@ -420,7 +536,7 @@ void main() {
   });
 
   testWidgets('캐릭터 선택에서 화톳불을 열어 강화를 살 수 있다', (tester) async {
-    useScreen(tester, phoneLandscape);
+    useScreen(tester, phonePortrait);
     await tester.pumpWidget(
       ProfileScope(
         profile: Profile(),
@@ -441,7 +557,7 @@ void main() {
   });
 
   testWidgets('출정할 스테이지는 클리어한 다음 스테이지까지 고를 수 있다', (tester) async {
-    useScreen(tester, phoneLandscape);
+    useScreen(tester, phonePortrait);
     final progress = Progress()..recordClear(const Stage(5));
     await tester.pumpWidget(
       ProfileScope(

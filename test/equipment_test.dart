@@ -185,7 +185,7 @@ void main() {
       expect(inv.bag, unorderedEquals([a, b]));
     });
 
-    test('양손장비를 낀 채 보조 손에 끼면 양손장비가 빠진다', () {
+    test('양손장비를 낀 채 왼손에 끼면 양손장비가 빠진다', () {
       final inv = Inventory();
       final gear = inv.gear(CharacterId.witch);
       final greatsword = item(ItemType.twoHand);

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// 청동 판에 금테를 두른 버튼. 타이틀 원화의 버튼 스타일을 따른다.
+/// 청동 판에 금테를 두른 픽셀풍 버튼. 모서리가 각지고 그림자가 번지지 않는다.
 class AshButton extends StatefulWidget {
   const AshButton({
     super.key,
@@ -52,7 +52,6 @@ class _AshButtonState extends State<AshButton> {
                 vertical: widget.fontSize * 0.6,
               ),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -62,42 +61,55 @@ class _AshButtonState extends State<AshButton> {
                 ),
                 border: Border.all(
                   color: enabled ? AshColors.gold : AshColors.ash,
-                  width: 1.5,
+                  width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AshColors.ember.withValues(alpha: lit ? 0.55 : 0.2),
-                    blurRadius: lit ? 24 : 12,
+                    color: Colors.black,
+                    offset: Offset(0, _down ? 1 : 4),
                   ),
+                  if (lit)
+                    BoxShadow(
+                      color: AshColors.ember.withValues(alpha: 0.5),
+                      blurRadius: 18,
+                    ),
                 ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 좁은 자리에서는 글씨를 줄여 버튼 안에 다 보이게 한다.
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        widget.label,
-                        style: TextStyle(
-                          color: enabled ? AshColors.parchment : AshColors.ash,
-                          fontSize: widget.fontSize,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: widget.fontSize * 0.15,
+              // 버튼이 넓게 늘어나도 글씨는 가운데에 둔다.
+              child: Align(
+                widthFactor: 1,
+                heightFactor: 1,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 좁은 자리에서는 글씨를 줄여 버튼 안에 다 보이게 한다.
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          widget.label,
+                          style: TextStyle(
+                            color: enabled
+                                ? AshColors.parchment
+                                : AshColors.ash,
+                            fontFamily: pixelFont,
+                            fontSize: widget.fontSize,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: widget.fontSize * 0.08,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  if (widget.icon != null) ...[
-                    SizedBox(width: widget.fontSize * 0.5),
-                    Icon(
-                      widget.icon,
-                      color: AshColors.gold,
-                      size: widget.fontSize,
-                    ),
+                    if (widget.icon != null) ...[
+                      SizedBox(width: widget.fontSize * 0.5),
+                      Icon(
+                        widget.icon,
+                        color: AshColors.gold,
+                        size: widget.fontSize,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

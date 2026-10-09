@@ -26,7 +26,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  // 세로 전용 게임이라 개발용 창도 휴대폰처럼 세로로 연다.
+  Win32Window::Size size(450, 900);
   if (!window.Create(L"ashborn", origin, size)) {
     return EXIT_FAILURE;
   }

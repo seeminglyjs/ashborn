@@ -8,11 +8,8 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 모바일은 가로 고정, 전체 화면. 데스크톱에서는 무시된다.
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
+  // 모바일은 세로 고정, 전체 화면. 데스크톱에서는 무시된다.
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   final profile = await Profile.load();
   runApp(AshbornApp(profile: profile));
