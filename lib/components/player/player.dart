@@ -261,10 +261,11 @@ class Player extends PositionComponent
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
-    if (other is Enemy && takeDamage(other.damage, type: other.damageType)) {
+    if (other is Enemy &&
+        takeDamage(other.contactDamage, type: other.damageType)) {
       // 가시: 부딪힌 적에게 원래 피해의 일부를 돌려준다.
       final thorns = transcend(TranscendOption.thorns);
-      if (thorns > 0) other.takeDamage(other.damage * thorns);
+      if (thorns > 0) other.takeDamage(other.contactDamage * thorns);
     }
   }
 

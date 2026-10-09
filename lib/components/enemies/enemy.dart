@@ -30,9 +30,6 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   double hp;
   double speed;
   final double contactDamage;
-
-  /// 지금 닿으면 주는 피해.
-  double get damage => contactDamage;
   final DamageType damageType;
   final Color color;
 

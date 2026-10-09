@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../components/enemies/boss.dart';
 import '../../game/ashborn_game.dart';
 import '../format.dart';
 import '../theme.dart';
@@ -125,7 +124,7 @@ class Hud extends StatelessWidget {
                             stats.stage,
                             stats.bossCountdown,
                             stats.bossHealth,
-                            stats.bossEnrage,
+                            stats.bossTimeLeft,
                             stats.stageCleared,
                           ]),
                           builder: (context, _) => _StageInfo(
@@ -134,7 +133,7 @@ class Hud extends StatelessWidget {
                             bossName: stats.stage.value.region.bossName,
                             countdown: stats.bossCountdown.value,
                             bossHealth: stats.bossHealth.value,
-                            enrage: stats.bossEnrage.value,
+                            timeLeft: stats.bossTimeLeft.value,
                             cleared: stats.stageCleared.value,
                           ),
                         ),
@@ -168,7 +167,7 @@ class Hud extends StatelessWidget {
   );
 }
 
-/// 지역 이름과, 보스까지 남은 시간 또는 보스 체력과 광폭화까지 남은 시간.
+/// 지역 이름과, 보스까지 남은 시간 또는 보스 체력과 보스를 잡아야 하는 남은 시간.
 class _StageInfo extends StatelessWidget {
   const _StageInfo({
     required this.name,
@@ -176,7 +175,7 @@ class _StageInfo extends StatelessWidget {
     required this.bossName,
     required this.countdown,
     required this.bossHealth,
-    required this.enrage,
+    required this.timeLeft,
     required this.cleared,
   });
 
@@ -185,7 +184,7 @@ class _StageInfo extends StatelessWidget {
   final String bossName;
   final int countdown;
   final double? bossHealth;
-  final int enrage;
+  final int timeLeft;
   final bool cleared;
 
   @override
@@ -217,11 +216,11 @@ class _StageInfo extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            enrage > 0 ? '광폭화까지 ${formatTime(enrage)}' : '광폭화!',
-            key: const Key('boss-enrage'),
+            '남은 시간 ${formatTime(timeLeft)}',
+            key: const Key('boss-time-left'),
             style: Hud._textStyle(
-              12,
-            ).copyWith(color: enrage > 10 ? Colors.white70 : Boss.enrageColor),
+              13,
+            ).copyWith(color: timeLeft > 30 ? Colors.white70 : AshColors.ember),
           ),
         ] else
           Text('보스까지 ${formatTime(countdown)}', style: Hud._textStyle(18)),

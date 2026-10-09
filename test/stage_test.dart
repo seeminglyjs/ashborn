@@ -156,25 +156,27 @@ void main() {
     });
 
     testWithGame<AshbornGame>(
-      '제한 시간 안에 못 잡으면 보스가 광폭화해 플레이어보다 빠르고 훨씬 아프다',
+      '제한 시간 안에 보스를 못 잡으면 런이 끝나고 얻은 재화는 정산된다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
-        final boss = await reachBoss(game);
-        expect(boss.isEnraged, isFalse);
-        expect(game.stats.bossEnrage.value, Balance.bossEnrageTime.ceil());
+        game.overlays.addEntry(
+          AshbornGame.gameOverOverlay,
+          (_, _) => const SizedBox(),
+        );
+        await reachBoss(game);
+        expect(game.stats.bossTimeLeft.value, Balance.bossTimeLimit.ceil());
 
-        boss.age = Balance.bossEnrageTime - 0.05;
+        game.world
+          ..onEnemyKilled(Vector2.zero())
+          ..bossTime = Balance.bossTimeLimit - 0.05;
         await advance(game, 0.1);
 
-        expect(boss.isEnraged, isTrue);
-        expect(game.stats.bossEnrage.value, 0);
-        expect(game.notices.value.last.text, contains('광폭화'));
-        expect(boss.speed, greaterThan(game.world.player.speed));
-        expect(
-          boss.damage,
-          closeTo(boss.contactDamage * Balance.bossEnrageDamage, 1e-9),
-        );
+        expect(game.world.timedOut, isTrue);
+        expect(game.world.player.isDead, isFalse);
+        expect(game.overlays.isActive(AshbornGame.gameOverOverlay), isTrue);
+        expect(game.paused, isTrue);
+        expect(game.inventory.gold, greaterThan(0));
       },
     );
 

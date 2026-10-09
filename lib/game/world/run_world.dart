@@ -79,6 +79,12 @@ class RunWorld extends World
   /// 이번 런에서 고른 운명.
   final fate = RunFate();
 
+  /// 보스가 나온 뒤 지난 시간.
+  double bossTime = 0;
+
+  /// 보스를 제한 시간 안에 잡지 못해 런이 끝났다.
+  bool timedOut = false;
+
   /// 운명 저주 · 보상 카드와 화톳불 강화로 늘어난 잔불 획득량.
   double get emberMultiplier =>
       fate.emberMultiplier * (1 + game.upgrades.value(Upgrade.emberGain));
@@ -111,9 +117,17 @@ class RunWorld extends World
       (Balance.stageDuration - stageTime).ceil(),
     );
     if (boss case final b?) {
+      bossTime += dt;
       stats
         ..bossHealth.value = b.hp / b.maxHp
-        ..bossEnrage.value = math.max(0, b.untilEnrage.ceil());
+        ..bossTimeLeft.value = math.max(
+          0,
+          (Balance.bossTimeLimit - bossTime).ceil(),
+        );
+      if (bossTime >= Balance.bossTimeLimit && !timedOut) {
+        timedOut = true;
+        game.onBossTimeout();
+      }
     }
   }
 
@@ -163,9 +177,6 @@ class RunWorld extends World
     game.stats.bossHealth.value = 1;
     game.notify('${region.bossName} 등장', color: const Color(0xFFE8463A));
   }
-
-  void onBossEnraged(Boss enraged) =>
-      game.notify('${enraged.name} 광폭화!', color: Boss.enrageColor);
 
   /// 보스를 잡으면 남은 졸개는 재가 되어 흩어지고 웨이브가 멈춘다.
   void onBossDefeated(Boss defeated) {
@@ -252,6 +263,7 @@ class RunWorld extends World
     final previous = stage;
     stage = stage.next;
     stageTime = 0;
+    bossTime = 0;
     _bossSpawned = false;
     _clearTimer = null;
     _publishStage();

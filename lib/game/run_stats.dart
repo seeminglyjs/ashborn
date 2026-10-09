@@ -22,8 +22,8 @@ class RunStats {
   /// 살아 있는 보스의 남은 체력 비율. 보스가 없으면 null.
   final bossHealth = ValueNotifier<double?>(null);
 
-  /// 보스 광폭화까지 남은 초. 0 이면 광폭화했다.
-  final bossEnrage = ValueNotifier<int>(0);
+  /// 보스를 잡아야 하는 남은 초.
+  final bossTimeLeft = ValueNotifier<int>(0);
   final stageCleared = ValueNotifier<bool>(false);
 
   /// 체력은 [Player] 가 로드될 때 채운다.
