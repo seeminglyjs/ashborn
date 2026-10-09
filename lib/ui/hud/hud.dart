@@ -124,6 +124,7 @@ class Hud extends StatelessWidget {
                             stats.stage,
                             stats.bossCountdown,
                             stats.bossHealth,
+                            stats.bossTimeLeft,
                             stats.stageCleared,
                           ]),
                           builder: (context, _) => _StageInfo(
@@ -132,6 +133,7 @@ class Hud extends StatelessWidget {
                             bossName: stats.stage.value.region.bossName,
                             countdown: stats.bossCountdown.value,
                             bossHealth: stats.bossHealth.value,
+                            timeLeft: stats.bossTimeLeft.value,
                             cleared: stats.stageCleared.value,
                           ),
                         ),
@@ -165,7 +167,7 @@ class Hud extends StatelessWidget {
   );
 }
 
-/// 지역 이름과, 보스까지 남은 시간 또는 보스 체력.
+/// 지역 이름과, 보스까지 남은 시간 또는 보스 체력과 보스를 잡아야 하는 남은 시간.
 class _StageInfo extends StatelessWidget {
   const _StageInfo({
     required this.name,
@@ -173,6 +175,7 @@ class _StageInfo extends StatelessWidget {
     required this.bossName,
     required this.countdown,
     required this.bossHealth,
+    required this.timeLeft,
     required this.cleared,
   });
 
@@ -181,6 +184,7 @@ class _StageInfo extends StatelessWidget {
   final String bossName;
   final int countdown;
   final double? bossHealth;
+  final int timeLeft;
   final bool cleared;
 
   @override
@@ -209,6 +213,14 @@ class _StageInfo extends StatelessWidget {
                 color: AshColors.ember,
               ),
             ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '남은 시간 ${formatTime(timeLeft)}',
+            key: const Key('boss-time-left'),
+            style: Hud._textStyle(
+              13,
+            ).copyWith(color: timeLeft > 30 ? Colors.white70 : AshColors.ember),
           ),
         ] else
           Text('보스까지 ${formatTime(countdown)}', style: Hud._textStyle(18)),

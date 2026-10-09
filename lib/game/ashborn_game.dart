@@ -106,6 +106,9 @@ class AshbornGame extends FlameGame<RunWorld>
     overlays.add(gameOverOverlay);
   }
 
+  /// 보스를 제한 시간 안에 잡지 못하면 쓰러진 것과 같이 런이 끝난다.
+  void onBossTimeout() => onPlayerDied();
+
   /// 보스를 잡고 전리품을 주울 시간이 끝나면 운명 카드와 다음 지역 선택을 띄운다.
   void onStageCleared() {
     fateOptions.value = FateSystem.roll(world.player, random);

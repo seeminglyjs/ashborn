@@ -449,6 +449,7 @@ void main() {
           game.world.enemies.first.contactDamage,
           closeTo(
             Balance.enemyContactDamage *
+                game.world.stage.enemyDamageMultiplier *
                 Balance.curseEnemyDamage *
                 Balance.curseEnemyDamage,
             1e-9,

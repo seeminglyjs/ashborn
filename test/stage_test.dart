@@ -156,6 +156,31 @@ void main() {
     });
 
     testWithGame<AshbornGame>(
+      '제한 시간 안에 보스를 못 잡으면 런이 끝나고 얻은 재화는 정산된다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        game.overlays.addEntry(
+          AshbornGame.gameOverOverlay,
+          (_, _) => const SizedBox(),
+        );
+        await reachBoss(game);
+        expect(game.stats.bossTimeLeft.value, Balance.bossTimeLimit.ceil());
+
+        game.world
+          ..onEnemyKilled(Vector2.zero())
+          ..bossTime = Balance.bossTimeLimit - 0.05;
+        await advance(game, 0.1);
+
+        expect(game.world.timedOut, isTrue);
+        expect(game.world.player.isDead, isFalse);
+        expect(game.overlays.isActive(AshbornGame.gameOverOverlay), isTrue);
+        expect(game.paused, isTrue);
+        expect(game.inventory.gold, greaterThan(0));
+      },
+    );
+
+    testWithGame<AshbornGame>(
       '보스를 잡으면 졸개가 사라지고, 잠시 뒤 다음 지역으로 넘어갈 수 있다',
       gameWith(Roster.witch),
       (game) async {

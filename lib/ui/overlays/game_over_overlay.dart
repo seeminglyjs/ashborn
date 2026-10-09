@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/balance.dart';
 import '../../game/ashborn_game.dart';
 import '../format.dart';
 import '../theme.dart';
@@ -26,7 +27,16 @@ class GameOverOverlay extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('재가 되었다', style: ashTitleStyle(34)),
+              Text(
+                game.world.timedOut ? '시간 초과' : '재가 되었다',
+                style: ashTitleStyle(34),
+              ),
+              if (game.world.timedOut)
+                Text(
+                  '${formatTime(Balance.bossTimeLimit.toInt())} 안에 '
+                  '${game.world.stage.region.bossName}을(를) 쓰러뜨리지 못했다',
+                  style: const TextStyle(color: AshColors.ember, fontSize: 13),
+                ),
               const SizedBox(height: 4),
               Text(
                 '${game.character.name} · ${game.world.stage.name} '
