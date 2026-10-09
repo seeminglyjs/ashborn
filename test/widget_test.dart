@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
@@ -41,6 +42,23 @@ void useScreen(WidgetTester tester, Size size) {
 Future<void> settle(WidgetTester tester, [int ms = 1000]) async {
   await tester.pump(Duration(milliseconds: ms));
   await tester.pump(const Duration(milliseconds: 16));
+}
+
+/// 장비 화면의 드롭다운 [dropdown] 을 펼쳐 [option] 항목을 고른다.
+Future<void> pickOption(
+  WidgetTester tester,
+  String dropdown,
+  String option,
+) async {
+  await tester.ensureVisible(find.byKey(Key(dropdown)));
+  await tester.tap(find.byKey(Key(dropdown)));
+  // 메뉴가 펼쳐지는 애니메이션이 끝나야 항목이 눌린다.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+  await tester.ensureVisible(find.byKey(Key(option)));
+  await tester.tap(find.byKey(Key(option)));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
 }
 
 Widget gameScreen(CharacterDef character, {Inventory? inventory}) =>
@@ -132,7 +150,7 @@ void main() {
     final game = tester
         .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
         .game!;
-    expect(find.text('보스까지 02:00'), findsOneWidget);
+    expect(find.text('보스까지 03:00'), findsOneWidget);
 
     game.world.player.takeDamage(10000);
     await tester.pump();
@@ -159,11 +177,17 @@ void main() {
         .game!;
     final start = game.world.player.position.clone();
 
+    final joystick = game.joystick;
     final gesture = await tester.startGesture(const Offset(200, 500));
     await gesture.moveBy(const Offset(20, 0));
+    expect(joystick.isHeld, isTrue);
+    expect(joystick.origin.x, closeTo(200, 1));
+    expect(joystick.delta.x, closeTo(20, 1));
+
+    // 바탕 밖으로 끌면 바탕이 손가락을 따라온다.
     await gesture.moveBy(const Offset(80, 0));
-    expect(game.joystick.isHeld, isTrue);
-    expect(game.joystick.origin.x, closeTo(200, 1));
+    expect(joystick.origin.x, closeTo(300 - joystick.knobRadius, 1));
+    expect(joystick.relativeDelta.x, closeTo(1, 1e-4));
 
     await settle(tester, 200);
     expect(game.world.player.position.x, greaterThan(start.x));
@@ -228,21 +252,21 @@ void main() {
           .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
           .game!;
 
-      await tester.tap(find.byKey(const Key('open-equipment')));
+      await tester.tap(find.byKey(const Key('open-pause')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('pause-equipment')));
       await tester.pump();
       expect(game.paused, isTrue);
       expect(find.text('장비'), findsOneWidget);
 
       final index = inventory.bag.indexOf(ring);
-      // 가방이 가득해도 등급 · 부위 필터로 반지만 추려 찾는다.
-      for (final key in [
-        const Key('filter-type-ring'),
-        Key('filter-rarity-${ring.rarity.name}'),
-      ]) {
-        await tester.ensureVisible(find.byKey(key));
-        await tester.tap(find.byKey(key));
-        await tester.pump();
-      }
+      // 가방이 가득해도 등급 · 부위 드롭다운으로 반지만 추려 찾는다.
+      await pickOption(tester, 'filter-type', 'filter-type-ring');
+      await pickOption(
+        tester,
+        'filter-rarity',
+        'filter-rarity-${ring.rarity.name}',
+      );
       for (final (i, item) in inventory.bag.indexed) {
         final visible =
             item.type == ItemType.ring && item.rarity == ring.rarity;
@@ -260,9 +284,15 @@ void main() {
       expect(gear.equipped[EquipSlot.ring1], ring);
       expect(inventory.bag, contains(oldRing));
 
+      // 닫으면 멈춘 채 일시정지 메뉴로 돌아오고, 계속하기로 이어 간다.
       await tester.tap(find.byKey(const Key('close-equipment')));
       await tester.pump();
-      expect(find.text('장비'), findsNothing);
+      expect(find.byKey(const Key('close-equipment')), findsNothing);
+      expect(find.byKey(const Key('pause-resume')), findsOneWidget);
+      expect(game.paused, isTrue);
+
+      await tester.tap(find.byKey(const Key('pause-resume')));
+      await tester.pump();
       expect(game.paused, isFalse);
     });
   }
@@ -390,23 +420,39 @@ void main() {
         for (var i = 0; i < inventory.bag.length; i++)
           if (find.byKey(Key('bag-$i')).evaluate().isNotEmpty) i,
       ];
-      Future<void> tap(String key) async {
-        await tester.ensureVisible(find.byKey(Key(key)));
-        await tester.tap(find.byKey(Key(key)));
-        await tester.pump();
-      }
+      String label(String dropdown) => tester
+          .widgetList<Text>(
+            find.descendant(
+              of: find.byKey(Key(dropdown)),
+              matching: find.byType(Text),
+            ),
+          )
+          .single
+          .data!;
 
       expect(shown(), hasLength(inventory.bag.length));
-      await tap('filter-rarity-legend');
+      expect(
+        (label('filter-rarity'), label('filter-type')),
+        ('전체 등급', '전체 부위'),
+      );
+      await pickOption(tester, 'filter-rarity', 'filter-rarity-legend');
+      // 펼친 메뉴는 닫히고, 버튼에는 고른 등급이 보인다.
+      expect(find.byKey(const Key('filter-rarity-rare')), findsNothing);
+      expect(label('filter-rarity'), '전설');
       expect(shown().map((i) => inventory.bag[i].rarity).toSet(), {
         Rarity.legend,
       });
+      expect(
+        find.text('가방 7 / ${Balance.bagCapacity} · 3개 표시'),
+        findsOneWidget,
+      );
       // 무기는 한손 · 양손을 함께 본다.
-      await tap('filter-type-weapon');
+      await pickOption(tester, 'filter-type', 'filter-type-weapon');
+      expect(label('filter-type'), '무기');
       expect(shown().map((i) => inventory.bag[i].type).toSet(), {
         ItemType.twoHand,
       });
-      await tap('filter-rarity-all');
+      await pickOption(tester, 'filter-rarity', 'filter-rarity-all');
       expect(
         shown().map((i) => inventory.bag[i].type).toSet(),
         containsAll([ItemType.twoHand]),
@@ -420,8 +466,117 @@ void main() {
         ),
         isTrue,
       );
-      await tap('filter-type-all');
+      await pickOption(tester, 'filter-type', 'filter-type-all');
       expect(shown(), hasLength(inventory.bag.length));
+
+      // 걸러서 하나도 없으면 안내와 필터 초기화 버튼을 보여 준다.
+      await pickOption(tester, 'filter-type', 'filter-type-boots');
+      expect(find.text('조건에 맞는 장비가 없습니다'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('filter-reset')));
+      await tester.pump();
+      expect(shown(), hasLength(inventory.bag.length));
+      expect(label('filter-type'), '전체 부위');
+    });
+
+    testWidgets('정렬 드롭다운으로 가방을 최근 획득 · 등급 · 레벨 · 강화 순으로 본다', (tester) async {
+      final normal = item(ItemType.ring);
+      final legend = item(ItemType.ring, rarity: Rarity.legend);
+      final rare = item(ItemType.ring, rarity: Rarity.rare)..enhance = 5;
+      final inventory = await openFor(
+        tester,
+        Roster.witch,
+        fill: (inv) {
+          final gear = inv.gear(CharacterId.witch);
+          for (final i in [normal, legend, rare]) {
+            gear.add(i);
+          }
+          gear
+            ..unequip(EquipSlot.ring1)
+            ..unequip(EquipSlot.ring2);
+        },
+      );
+      // 가방에 들어온 순서: rare(바로 가방), normal · legend(해제한 순서).
+      expect(inventory.bag, [rare, normal, legend]);
+      List<Item> order() {
+        final tiles = [
+          for (var i = 0; i < inventory.bag.length; i++)
+            (tester.getTopLeft(find.byKey(Key('bag-$i'))), inventory.bag[i]),
+        ]..sort((a, b) => a.$1.dx.compareTo(b.$1.dx));
+        return [for (final (_, item) in tiles) item];
+      }
+
+      // 기본은 최근에 가방에 들어온 것부터.
+      expect(order(), [legend, normal, rare]);
+      await pickOption(tester, 'sort', 'sort-rarity');
+      expect(order(), [legend, rare, normal]);
+      await pickOption(tester, 'sort', 'sort-enhance');
+      expect(order().first, rare);
+      await pickOption(tester, 'sort', 'sort-recent');
+      expect(order(), [legend, normal, rare]);
+    });
+
+    testWidgets('일괄 분해: 등급을 골라 가방의 장비를 한 번에 분해한다', (tester) async {
+      final normal = item(ItemType.ring);
+      final rare = item(ItemType.head, rarity: Rarity.rare);
+      final enhanced = item(ItemType.ring)..enhance = 3;
+      final hero = item(ItemType.belt, rarity: Rarity.hero);
+      final worn = item(ItemType.boots);
+      final inventory = await openFor(
+        tester,
+        Roster.witch,
+        fill: (inv) {
+          final gear = inv.gear(CharacterId.witch);
+          for (final i in [normal, rare, enhanced, hero]) {
+            gear.add(i);
+          }
+          for (final slot in EquipSlot.values) {
+            gear.unequip(slot);
+          }
+          // 장착 중인 장비는 대상이 아니다.
+          gear.add(worn);
+        },
+      );
+      expect(inventory.bag, hasLength(4));
+
+      await tester.tap(find.byKey(const Key('bulk-salvage')));
+      await settle(tester, 300);
+      String summary() =>
+          tester.widget<Text>(find.byKey(const Key('bulk-summary'))).data!;
+      // 기본: 노말 · 레어, 강화한 장비 제외.
+      expect(
+        summary(),
+        '대상 2개 · 잔불 +${normal.salvageValue + rare.salvageValue}',
+      );
+      expect(find.byKey(const Key('bulk-warning')), findsNothing);
+
+      // 강화한 장비 제외를 끄면 강화한 노말도 들어간다.
+      await tester.tap(find.byKey(const Key('bulk-keep-upgraded')));
+      await tester.pump();
+      expect(summary(), startsWith('대상 3개'));
+      await tester.tap(find.byKey(const Key('bulk-keep-upgraded')));
+      await tester.pump();
+
+      // 영웅을 고르면 경고한다.
+      await tester.tap(find.byKey(const Key('bulk-rarity-hero')));
+      await tester.pump();
+      expect(summary(), startsWith('대상 3개'));
+      expect(find.byKey(const Key('bulk-warning')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('bulk-rarity-hero')));
+      await tester.pump();
+
+      // 취소하면 아무것도 사라지지 않는다.
+      await tester.tap(find.byKey(const Key('cancel-bulk-salvage')));
+      await settle(tester, 300);
+      expect(inventory.bag, hasLength(4));
+
+      await tester.tap(find.byKey(const Key('bulk-salvage')));
+      await settle(tester, 300);
+      await tester.tap(find.byKey(const Key('confirm-bulk-salvage')));
+      await settle(tester, 300);
+      expect(inventory.bag, unorderedEquals([enhanced, hero]));
+      expect(inventory.ember, normal.salvageValue + rare.salvageValue);
+      expect(inventory.gear(CharacterId.witch).equipped.values, [worn]);
+      expect(find.byKey(const Key('bag-notice')), findsOneWidget);
     });
 
     testWidgets('교체하면 바뀌는 능력치를 비교해 보여 준다', (tester) async {

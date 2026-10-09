@@ -31,7 +31,11 @@ class FlameBlade extends PositionComponent
 
   double get orbitRadius =>
       Balance.flameBladeOrbitRadius *
+      areaMultiplier *
       (awakened ? Balance.infernoOrbitScale : 1);
+
+  /// 칼날을 만든 때의 궤도 반지름. 범위 패시브를 얻으면 다시 만든다.
+  double _builtRadius = 0;
 
   @override
   Future<void> onLoad() async => _buildBlades();
@@ -42,12 +46,16 @@ class FlameBlade extends PositionComponent
   void _buildBlades() {
     removeAll(_blades);
     _blades.clear();
+    _builtRadius = orbitRadius;
+    final scale = math.sqrt(areaMultiplier);
     for (var i = 0; i < bladeCount; i++) {
       final theta = math.pi * 2 * i / bladeCount;
       _blades.add(
         _Blade(
           position: Vector2(math.cos(theta), math.sin(theta)) * orbitRadius,
           angle: theta,
+          scale: scale,
+          awakened: awakened,
         ),
       );
     }
@@ -64,9 +72,12 @@ class FlameBlade extends PositionComponent
   void update(double dt) {
     super.update(dt);
     // 초월 옵션이 붙은 장비를 바꿔 끼면 칼날 수가 바뀐다.
-    if (_blades.length != bladeCount) _buildBlades();
+    if (_blades.length != bladeCount || _builtRadius != orbitRadius) {
+      _buildBlades();
+    }
     angle +=
         Balance.flameBladeAngularSpeed *
+        speedMultiplier *
         world.player.attackSpeedMultiplier *
         dt;
     if (_lastHit.length > 64) _lastHit.removeWhere((e, _) => e.isDead);
@@ -77,7 +88,9 @@ class FlameBlade extends PositionComponent
     final now = world.elapsed;
     final last = _lastHit[enemy];
     final interval =
-        Balance.flameBladeHitInterval / world.player.attackSpeedMultiplier;
+        Balance.flameBladeHitInterval *
+        cooldownMultiplier /
+        world.player.attackSpeedMultiplier;
     if (last != null && now - last < interval) return;
     _lastHit[enemy] = now;
     world.player.strike(
@@ -90,15 +103,26 @@ class FlameBlade extends PositionComponent
 
 class _Blade extends PositionComponent
     with CollisionCallbacks, ParentIsA<FlameBlade> {
-  _Blade({required super.position, required super.angle})
-    : super(
-        size: Vector2(Balance.flameBladeLength, Balance.flameBladeWidth),
-        anchor: Anchor.center,
-      );
+  _Blade({
+    required super.position,
+    required super.angle,
+    required double scale,
+    required this.awakened,
+  }) : super(
+         size:
+             Vector2(Balance.flameBladeLength, Balance.flameBladeWidth) * scale,
+         anchor: Anchor.center,
+       );
+
+  /// 업화의 대검: 하얗게 달아오른 칼날에 푸른 불꽃.
+  final bool awakened;
 
   static final _glow = Paint()..color = const Color(0x44FF6B35);
   static final _edge = Paint()..color = const Color(0xFFFFC56B);
   static final _core = Paint()..color = const Color(0xFFFFF1C9);
+  static final _infernoGlow = Paint()..color = const Color(0x664FC3FF);
+  static final _infernoEdge = Paint()..color = const Color(0xFFFFFFFF);
+  static final _infernoCore = Paint()..color = const Color(0xFF8FE3FF);
 
   @override
   Future<void> onLoad() async {
@@ -121,7 +145,7 @@ class _Blade extends PositionComponent
           Rect.fromLTWH(-4, -4, w + 8, h + 8),
           const Radius.circular(8),
         ),
-        _glow,
+        awakened ? _infernoGlow : _glow,
       )
       ..drawPath(
         Path()
@@ -131,8 +155,11 @@ class _Blade extends PositionComponent
           ..lineTo(w * 0.8, h)
           ..lineTo(0, h * 0.8)
           ..close(),
-        _edge,
+        awakened ? _infernoEdge : _edge,
       )
-      ..drawRect(Rect.fromLTWH(2, h * 0.4, w * 0.75, h * 0.2), _core);
+      ..drawRect(
+        Rect.fromLTWH(2, h * 0.4, w * 0.75, h * 0.2),
+        awakened ? _infernoCore : _core,
+      );
   }
 }

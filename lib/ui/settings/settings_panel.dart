@@ -132,7 +132,7 @@ class SettingsPanel extends StatelessWidget {
       dense: true,
       title: const Text('확률 정보', style: _style),
       subtitle: const Text(
-        '강화 · 초월 · 장비 드랍 · 운명 카드 확률표',
+        '강화 · 초월 · 장비 드랍 · 신의 은총 확률표',
         style: TextStyle(color: AshColors.ash, fontSize: 11),
       ),
       trailing: const Icon(Icons.chevron_right, color: AshColors.ash),

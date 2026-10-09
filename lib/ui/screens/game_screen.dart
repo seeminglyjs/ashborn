@@ -9,6 +9,7 @@ import '../profile_scope.dart';
 import '../overlays/equipment_overlay.dart';
 import '../overlays/game_over_overlay.dart';
 import '../overlays/level_up_overlay.dart';
+import '../overlays/pause_overlay.dart';
 import '../overlays/settings_overlay.dart';
 import '../overlays/stage_clear_overlay.dart';
 
@@ -33,29 +34,48 @@ class _GameScreenState extends State<GameScreen> {
     startStage: widget.stage,
   );
 
+  /// 타이틀(첫 화면)로 돌아간다.
+  void _toTitle(BuildContext context) =>
+      Navigator.of(context).popUntil((route) => route.isFirst);
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: GameWidget<AshbornGame>(
-        game: _game,
-        overlayBuilderMap: {
-          AshbornGame.hudOverlay: (context, game) => Hud(game: game),
-          AshbornGame.gameOverOverlay: (context, game) => GameOverOverlay(
-            game: game,
-            onChooseCharacter: () => Navigator.of(context).pop(),
-          ),
-          AshbornGame.levelUpOverlay: (context, game) =>
-              LevelUpOverlay(game: game),
-          AshbornGame.equipmentOverlay: (context, game) =>
-              EquipmentOverlay(game: game),
-          AshbornGame.settingsOverlay: (context, game) =>
-              SettingsOverlay(game: game),
-          AshbornGame.stageClearOverlay: (context, game) => StageClearOverlay(
-            game: game,
-            onReturn: () => Navigator.of(context).pop(),
-          ),
-        },
-        initialActiveOverlays: const [AshbornGame.hudOverlay],
+    // 뒤로 가기로 바로 나가지 않고 일시정지 메뉴를 연다 (떠 있으면 닫는다).
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _game.handleBack();
+      },
+      child: Scaffold(
+        body: GameWidget<AshbornGame>(
+          game: _game,
+          overlayBuilderMap: {
+            AshbornGame.hudOverlay: (context, game) => Hud(game: game),
+            AshbornGame.gameOverOverlay: (context, game) => GameOverOverlay(
+              game: game,
+              onChooseCharacter: () => Navigator.of(context).pop(),
+              onMainMenu: () => _toTitle(context),
+            ),
+            AshbornGame.levelUpOverlay: (context, game) =>
+                LevelUpOverlay(game: game),
+            AshbornGame.pauseOverlay: (context, game) => PauseOverlay(
+              game: game,
+              onQuit: () {
+                game.quitRun();
+                _toTitle(context);
+              },
+            ),
+            AshbornGame.equipmentOverlay: (context, game) =>
+                EquipmentOverlay(game: game),
+            AshbornGame.settingsOverlay: (context, game) =>
+                SettingsOverlay(game: game),
+            AshbornGame.stageClearOverlay: (context, game) => StageClearOverlay(
+              game: game,
+              onReturn: () => Navigator.of(context).pop(),
+            ),
+          },
+          initialActiveOverlays: const [AshbornGame.hudOverlay],
+        ),
       ),
     );
   }

@@ -17,12 +17,17 @@ import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
+import '../effects/sparks.dart';
 import '../enemies/boss.dart';
 import '../enemies/enemy.dart';
+import '../weapons/common_weapons.dart';
 import '../weapons/ember_orb.dart';
 import '../weapons/fire_crossbow.dart';
 import '../weapons/flame_blade.dart';
+import '../weapons/hunter_weapons.dart';
+import '../weapons/knight_weapons.dart';
 import '../weapons/weapon.dart';
+import '../weapons/witch_weapons.dart';
 
 /// 캐릭터 스프라이트의 자세.
 enum PlayerPose { idle, run, hit }
@@ -83,6 +88,10 @@ class Player extends PositionComponent
     });
     return total;
   }
+
+  /// 패시브로 늘어난 무기 범위 배율.
+  double get areaMultiplier =>
+      1 + (passives[PassiveId.spread] ?? 0) * PassiveId.spread.perLevel;
 
   double get maxHp => character.maxHp + bonus(StatType.maxHp);
   double get speed => character.speed * (1 + bonus(StatType.moveSpeed));
@@ -269,9 +278,55 @@ class Player extends PositionComponent
 
   static LeveledWeapon _createWeapon(WeaponId id) => switch (id) {
     WeaponId.flameBlade => FlameBlade(),
+    WeaponId.earthSlam => EarthSlam(),
+    WeaponId.cleave => Cleave(),
     WeaponId.emberOrb => EmberOrb(),
+    WeaponId.meteor => Meteor(),
+    WeaponId.fireTornado => FireTornado(),
     WeaponId.fireCrossbow => FireCrossbow(),
+    WeaponId.emberMine => EmberMine(),
+    WeaponId.throwingKnives => ThrowingKnives(),
+    WeaponId.ashAura => AshAura(),
+    WeaponId.thunder => Thunder(),
+    WeaponId.chakram => Chakram(),
   };
+
+  /// 최대 레벨 [id] 무기를 각성시키고, 금빛 기둥이 솟는 연출을 띄운다.
+  void awaken(WeaponId id) {
+    weapon(id)!.awaken();
+    const gold = Color(0xFFFFE08A);
+    world
+      ..add(
+        Burst(
+          position: position.clone(),
+          radius: Balance.awakenBurstRadius,
+          color: gold,
+        ),
+      )
+      ..add(
+        Ring(
+          position: position.clone(),
+          radius: Balance.awakenBurstRadius * 1.3,
+          color: const Color(0xFFFFFFFF),
+          duration: 0.6,
+          strokeWidth: 8,
+        ),
+      )
+      ..add(
+        Sparks(
+          position: position.clone(),
+          color: gold,
+          count: 28,
+          speed: 320,
+          duration: 0.7,
+          sparkSize: 4,
+        ),
+      )
+      ..add(LightningBolt(position: position.clone(), color: gold, length: 320))
+      ..shake(0.5);
+    game.notify('각성! ${id.awakenedLabel}', color: gold);
+    if (game.settings.vibration) HapticFeedback.mediumImpact();
+  }
 
   @override
   void update(double dt) {
@@ -298,6 +353,7 @@ class Player extends PositionComponent
       ..add(game.joystick.relativeDelta);
     if (_move.length2 > 1) _move.normalize();
     position.addScaled(_move, speed * dt);
+    world.obstacles.pushOut(position, Balance.playerRadius * 0.7);
     _updateSprite(dt);
   }
 
@@ -366,6 +422,7 @@ class Player extends PositionComponent
     if (damage > 0) {
       _hitPose = Balance.playerHitPoseTime;
       game.hitVignette.flash();
+      world.shake(damage >= maxHp * 0.15 ? 0.3 : 0.12);
       if (game.settings.vibration) HapticFeedback.lightImpact();
     }
     final revives = isDead ? reviveHps : const <double>[];
@@ -411,6 +468,7 @@ class Player extends PositionComponent
     if (!secondary) {
       for (final t in DamageType.values) {
         hit.add(t, bonus(t.added));
+        hit.add(t, base * world.fate.extraDamage(t));
       }
     }
     var multiplier = damageMultiplier;
@@ -424,7 +482,25 @@ class Player extends PositionComponent
     hit.scale(multiplier);
 
     final dealt = enemy.takeDamage(hit.total);
-    world.showDamage(enemy.position, dealt, crit: hit.crit);
+    world.showDamage(enemy.position, dealt, crit: hit.crit, type: hit.main);
+    if (!secondary) {
+      final away = enemy.position - position;
+      enemy.knock(
+        away,
+        Balance.hitKnockback * (hit.crit ? Balance.critKnockback : 1),
+      );
+      world.add(
+        Sparks(
+          position: enemy.position.clone(),
+          color: hitColor(hit.main, crit: hit.crit),
+          count: hit.crit ? 8 : 4,
+          speed: hit.crit ? 220 : 150,
+          angle: math.atan2(away.y, away.x),
+          spread: 1.6,
+        ),
+      );
+      if (hit.crit && enemy is Boss) world.shake(0.08);
+    }
     _applyAilments(enemy, hit, random);
     if (!secondary &&
         effects.contains(UniqueEffect.chainLightning) &&

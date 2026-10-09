@@ -1,6 +1,8 @@
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/equipment.dart';
+import 'package:ashborn/data/fates.dart';
 import 'package:ashborn/data/profile.dart';
+import 'package:ashborn/systems/fate_system.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:ashborn/ui/odds/odds_screen.dart';
 import 'package:ashborn/ui/profile_scope.dart';
@@ -39,7 +41,7 @@ void main() {
       );
     });
 
-    test('운명 카드 등급 확률도 같은 식이다', () {
+    test('은총 카드 등급 확률도 같은 식이다', () {
       expect(
         _sum((r) => LootSystem.rarityChance(r, ratio: Balance.fateRarityRatio)),
         closeTo(1, 1e-9),
@@ -56,7 +58,7 @@ void main() {
   });
 
   group('확률 정보 화면', () {
-    testWidgets('설정에서 열고, 강화 · 초월 · 드랍 · 운명 확률을 보여 준다', (tester) async {
+    testWidgets('설정에서 열고, 강화 · 초월 · 드랍 · 은총 확률을 보여 준다', (tester) async {
       tester.view
         ..physicalSize = const Size(390, 844)
         ..devicePixelRatio = 1;
@@ -76,7 +78,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(OddsScreen), findsOneWidget);
-      for (final title in ['장비 강화', '장비 초월', '장비 드랍', '랜덤옵션', '재화', '운명 카드']) {
+      for (final title in ['장비 강화', '장비 초월', '장비 드랍', '랜덤옵션', '재화', '신의 은총']) {
         await tester.scrollUntilVisible(find.text(title), 200);
         expect(find.text(title), findsOneWidget);
       }
@@ -95,6 +97,40 @@ void main() {
       await tester.scrollUntilVisible(find.text('장비 드랍'), 200);
       await tester.pumpAndSettle();
       expect(find.text('타락 2'), findsWidgets);
+    });
+
+    testWidgets('신의 은총: 모든 카드와 그 확률(기본 · 지금)을 계산값 그대로 보여 준다', (tester) async {
+      const luck = 0.3;
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: OddsList(corruption: 0, fateLuck: luck)),
+        ),
+      );
+      for (final card in FateCard.values) {
+        final label =
+            '${card.title} (${card.domain.label}${card.curse ? ' · 저주' : ''})';
+        await tester.scrollUntilVisible(find.text(label), 200);
+        final row = find.ancestor(
+          of: find.text(label),
+          matching: find.byType(Table),
+        );
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.text(pct(FateSystem.cardChance(card))),
+          ),
+          findsWidgets,
+          reason: card.title,
+        );
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.text(pct(FateSystem.cardChance(card, luck: luck))),
+          ),
+          findsWidgets,
+          reason: card.title,
+        );
+      }
     });
   });
 }

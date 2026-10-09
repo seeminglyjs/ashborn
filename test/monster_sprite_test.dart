@@ -31,9 +31,15 @@ void draw(Enemy enemy) {
 }
 
 void main() {
-  test('지역마다 졸개와 보스 스프라이트가 모두 다르다', () {
+  test('지역마다 졸개 여섯 종류와 보스 스프라이트가 모두 다르다', () {
+    for (final r in Region.values) {
+      expect(r.roster, hasLength(6), reason: r.label);
+    }
     final all = [
-      for (final r in Region.values) ...[r.enemySprite, r.bossSprite],
+      for (final r in Region.values) ...[
+        for (final k in r.roster) k.sprite,
+        r.bossSprite,
+      ],
     ];
     expect(all.toSet().length, all.length);
     expect(all.toSet(), MonsterSprite.values.toSet());
@@ -54,7 +60,7 @@ void main() {
       await advance(game, 3);
       final region = game.world.stage.region;
       final minion = game.world.enemies.first;
-      expect(minion.sprite, region.enemySprite);
+      expect(region.roster.map((k) => k.sprite), contains(minion.sprite));
       draw(minion);
 
       game.world.spawnBoss();

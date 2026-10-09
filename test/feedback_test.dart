@@ -3,6 +3,7 @@ import 'package:ashborn/components/effects/hit_vignette.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/damage.dart';
 import 'package:ashborn/game/ashborn_game.dart';
+import 'package:ashborn/game/floating_joystick.dart';
 import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,29 +78,85 @@ void main() {
   });
 
   group('조이스틱', () {
-    testWithGame<AshbornGame>(
-      '누른 곳에 나타나고 손잡이는 반지름 안에서만 움직인다',
-      gameWith(Roster.witch),
-      (game) async {
-        await game.ready();
-        final joystick = game.joystick;
-        final rest = joystick.origin.clone();
+    test('바탕은 작고, 손잡이는 바탕 반지름 안에서만 움직인다', () {
+      final joystick = FloatingJoystick();
+      expect(joystick.knobRadius, inInclusiveRange(40, 44));
 
-        joystick.hold(Vector2(500, 200));
-        expect(joystick.origin, Vector2(500, 200));
+      joystick.hold(Vector2(500, 200));
+      expect(joystick.origin, Vector2(500, 200));
 
-        joystick.moveTo(Vector2(530, 200));
-        expect(joystick.relativeDelta, Vector2(0.5, 0));
+      joystick.moveTo(Vector2(500, 200 + joystick.knobRadius * 0.9));
+      expect(joystick.origin, Vector2(500, 200));
+      expect(joystick.delta.length, closeTo(joystick.knobRadius * 0.9, 1e-4));
+      expect(joystick.relativeDelta.y, closeTo(1, 1e-4));
 
-        joystick.moveTo(Vector2(500, 500));
-        expect(joystick.delta.length, closeTo(joystick.knobRadius, 1e-9));
-        expect(joystick.relativeDelta.y, closeTo(1, 1e-9));
+      joystick.release();
+      expect(joystick.delta, Vector2.zero());
+    });
 
-        joystick.release();
-        expect(joystick.delta, Vector2.zero());
-        expect(joystick.origin, rest);
-      },
-    );
+    test('데드존 안의 작은 떨림은 무시한다', () {
+      final joystick = FloatingJoystick()..hold(Vector2(500, 200));
+
+      joystick.moveTo(Vector2(500 + FloatingJoystick.deadZone - 0.5, 200));
+      expect(joystick.relativeDelta, Vector2.zero());
+
+      joystick.moveTo(Vector2(500 + FloatingJoystick.deadZone + 2, 200));
+      expect(joystick.relativeDelta.x, greaterThan(0));
+    });
+
+    test('바탕 반지름보다 짧게 밀어도 최대 속도가 나고, 길이는 0~1 이다', () {
+      final joystick = FloatingJoystick()..hold(Vector2(500, 200));
+      final full = joystick.knobRadius * FloatingJoystick.fullSpeedRatio;
+      expect(full, lessThan(joystick.knobRadius * 0.75));
+
+      // 데드존과 최대 속도 사이는 고르게 오른다.
+      final halfway = (FloatingJoystick.deadZone + full) / 2;
+      joystick.moveTo(Vector2(500 + halfway, 200));
+      expect(joystick.relativeDelta.x, closeTo(0.5, 1e-4));
+      expect(joystick.relativeDelta.y, 0);
+
+      joystick.moveTo(Vector2(500 + full, 200));
+      expect(joystick.relativeDelta.length, closeTo(1, 1e-4));
+
+      // 대각선으로 바탕 끝까지 밀어도 1을 넘지 않는다.
+      joystick.moveTo(Vector2(530, 230));
+      expect(joystick.relativeDelta.length, closeTo(1, 1e-4));
+      expect(joystick.relativeDelta.x, closeTo(joystick.relativeDelta.y, 1e-4));
+    });
+
+    test('손가락이 바탕 밖으로 나가면 바탕이 따라와 반대로 끌면 바로 방향이 바뀐다', () {
+      final joystick = FloatingJoystick()..hold(Vector2(500, 200));
+      final r = joystick.knobRadius;
+
+      // 오른쪽으로 바탕 반지름보다 100 더 끌었다.
+      joystick.moveTo(Vector2(500 + r + 100, 200));
+      expect(joystick.origin.x, closeTo(600, 1e-4));
+      expect(joystick.delta.length, closeTo(r, 1e-4));
+      expect(joystick.relativeDelta.x, closeTo(1, 1e-4));
+
+      // 따라온 바탕 덕에 조금만 되돌려도 왼쪽으로 꺾인다.
+      // 바탕이 따라오지 않았다면 여전히 오른쪽(+x)이었을 자리다.
+      joystick.moveTo(Vector2(600 - 10, 200));
+      expect(joystick.relativeDelta.x, lessThan(0));
+      expect(joystick.relativeDelta.length, lessThanOrEqualTo(1));
+    });
+
+    testWithGame<AshbornGame>('손을 떼면 기본 자리로 돌아간다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      await game.ready();
+      final joystick = game.joystick;
+      final rest = joystick.origin.clone();
+
+      joystick
+        ..hold(Vector2(300, 200))
+        ..moveTo(Vector2(500, 200));
+      joystick.release();
+
+      expect(joystick.delta, Vector2.zero());
+      expect(joystick.relativeDelta, Vector2.zero());
+      expect(joystick.origin, rest);
+    });
 
     testWithGame<AshbornGame>('손을 떼면 왼쪽 아래 기본 자리에 있다', gameWith(Roster.witch), (
       game,

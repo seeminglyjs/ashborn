@@ -124,6 +124,39 @@ class Inventory extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 강화했거나 초월한 장비. 재료가 들어간 장비라 일괄 분해에서 기본으로 지킨다.
+  static bool isUpgraded(Item item) =>
+      item.enhance > 0 || item.transcends.isNotEmpty;
+
+  /// 일괄 분해 대상: 가방에서 등급이 [rarities] 에 드는 장비. [keepUpgraded] 면
+  /// 강화했거나 초월한 장비는 뺀다. 장착 중인 장비는 가방에 없으니 대상이 아니다.
+  List<Item> salvageTargets(
+    Set<Rarity> rarities, {
+    bool keepUpgraded = true,
+  }) => [
+    for (final item in _bag)
+      if (rarities.contains(item.rarity) && !(keepUpgraded && isUpgraded(item)))
+        item,
+  ];
+
+  /// 가방의 [items] 를 한꺼번에 분해해 잔불로 바꾸고, 얻은 잔불 합계를 돌려준다.
+  /// 가방에 없는 장비(장착 중이거나 이미 분해한 것)는 건너뛴다. 알림은 한 번만 보낸다.
+  int salvageAll(Iterable<Item> items) {
+    final targets = Set<Item>.identity()..addAll(items);
+    var removed = 0;
+    var ember = 0;
+    _bag.removeWhere((item) {
+      if (!targets.contains(item)) return false;
+      removed++;
+      ember += item.salvageValue;
+      return true;
+    });
+    if (removed == 0) return 0;
+    _ember += ember;
+    notifyListeners();
+    return ember;
+  }
+
   List<Item> get bag => UnmodifiableListView(_bag);
 
   /// 가방이 차면 바닥의 장비를 더 주울 수 없다.

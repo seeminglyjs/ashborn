@@ -40,6 +40,21 @@ class AshbornGame extends FlameGame<RunWorld>
   static const equipmentOverlay = 'equipment';
   static const stageClearOverlay = 'stageClear';
   static const settingsOverlay = 'settings';
+  static const pauseOverlay = 'pause';
+
+  /// 각자 게임을 멈추고 자기 버튼으로만 닫히는 화면. 떠 있는 동안 일시정지 메뉴를 열지 않는다.
+  static const _blockingOverlays = [
+    gameOverOverlay,
+    levelUpOverlay,
+    stageClearOverlay,
+  ];
+
+  /// 일시정지 메뉴와 거기서 여는 화면.
+  static const _pauseMenuOverlays = [
+    pauseOverlay,
+    settingsOverlay,
+    equipmentOverlay,
+  ];
 
   /// 화면 짧은 변에 보이는 월드 크기. 기기 해상도와 상관없이 시야를 고정한다.
   static const double viewShortSide = 540;
@@ -136,7 +151,7 @@ class AshbornGame extends FlameGame<RunWorld>
     continueToNextStage();
     FateSystem.apply(fate, world);
     notify(
-      '운명: ${fate.card.title} (${fate.rarity.label})',
+      '신의 은총: ${fate.card.title} (${fate.rarity.label})',
       color: fate.rarity.color,
     );
   }
@@ -146,20 +161,75 @@ class AshbornGame extends FlameGame<RunWorld>
     if (overlays.remove(stageClearOverlay)) resumeEngine();
   }
 
-  void openSettings() {
-    if (overlays.add(settingsOverlay)) pauseEngine();
+  /// 일시정지 메뉴, 또는 거기서 연 설정 · 장비 화면이 떠 있다.
+  bool get isPauseMenuOpen => _pauseMenuOverlays.any(overlays.isActive);
+
+  /// 설정 · 장비 화면을 일시정지 메뉴에서 열었으면 닫을 때 메뉴로 돌아간다.
+  bool _returnToPauseMenu = false;
+
+  /// 게임을 멈추고 일시정지 메뉴를 연다. 레벨업 · 클리어 · 사망 화면이 떠 있거나
+  /// 이미 메뉴가 열려 있으면 아무것도 하지 않고 false 를 돌려준다.
+  bool openPauseMenu() {
+    if (_blockingOverlays.any(overlays.isActive) || isPauseMenuOpen) {
+      return false;
+    }
+    overlays.add(pauseOverlay);
+    pauseEngine();
+    return true;
   }
 
-  void closeSettings() {
-    if (overlays.remove(settingsOverlay)) resumeEngine();
+  /// 일시정지 메뉴(와 거기서 연 화면)를 닫고 게임을 다시 돌린다.
+  void resumeFromPause() {
+    _returnToPauseMenu = false;
+    overlays.removeAll(_pauseMenuOverlays);
+    if (!_blockingOverlays.any(overlays.isActive)) resumeEngine();
   }
 
-  void openEquipment() {
-    if (overlays.add(equipmentOverlay)) pauseEngine();
+  /// 안드로이드 뒤로 가기. 설정 · 장비는 닫고 일시정지 메뉴로, 일시정지 메뉴는
+  /// 닫고 이어서 싸우고, 전투 중이면 일시정지 메뉴를 연다.
+  void handleBack() {
+    if (overlays.isActive(settingsOverlay)) {
+      closeSettings();
+    } else if (overlays.isActive(equipmentOverlay)) {
+      closeEquipment();
+    } else if (overlays.isActive(pauseOverlay)) {
+      resumeFromPause();
+    } else {
+      openPauseMenu();
+    }
   }
 
-  void closeEquipment() {
-    if (overlays.remove(equipmentOverlay)) resumeEngine();
+  /// 런을 여기서 끝낸다. 쓰러졌을 때처럼 처치로 모은 잔불 · 골드 · 강화석을
+  /// 정산하고 게임을 멈춘다. 메인 화면으로 가는 화면 이동은 부르는 쪽이 한다.
+  void quitRun() {
+    world
+      ..bankEmber()
+      ..bankLoot();
+    pauseEngine();
+  }
+
+  void openSettings() => _openFromPauseMenu(settingsOverlay);
+
+  void closeSettings() => _closeToPauseMenu(settingsOverlay);
+
+  void openEquipment() => _openFromPauseMenu(equipmentOverlay);
+
+  void closeEquipment() => _closeToPauseMenu(equipmentOverlay);
+
+  void _openFromPauseMenu(String overlay) {
+    _returnToPauseMenu = overlays.remove(pauseOverlay);
+    if (overlays.add(overlay)) pauseEngine();
+  }
+
+  /// 일시정지 메뉴에서 열었으면 메뉴로 돌아가고(게임은 계속 멈춤), 아니면 게임을 이어 간다.
+  void _closeToPauseMenu(String overlay) {
+    if (!overlays.remove(overlay)) return;
+    if (_returnToPauseMenu) {
+      _returnToPauseMenu = false;
+      overlays.add(pauseOverlay);
+    } else {
+      resumeEngine();
+    }
   }
 
   /// 한꺼번에 여러 레벨이 오르면 한 장씩 차례로 고른다.
@@ -191,6 +261,7 @@ class AshbornGame extends FlameGame<RunWorld>
   /// [stage] 부터 새 런을 시작한다. 기본은 이 런을 시작한 스테이지.
   void restart({Stage? stage}) {
     _pendingLevelUps = 0;
+    _returnToPauseMenu = false;
     notices.clear();
     overlays.removeAll([
       gameOverOverlay,
@@ -198,6 +269,7 @@ class AshbornGame extends FlameGame<RunWorld>
       equipmentOverlay,
       stageClearOverlay,
       settingsOverlay,
+      pauseOverlay,
     ]);
     world = RunWorld(character, stage: stage ?? startStage);
     resumeEngine();

@@ -17,11 +17,13 @@ class FireCrossbow extends Weapon {
 
   int get pierce =>
       Balance.crossbowPierce +
-      bonusCount +
+      bonusPierce +
       (awakened ? Balance.stormPierceBonus : 0);
 
   int get arrowCount =>
-      (awakened ? Balance.stormArrows : 1) + world.player.extraProjectiles;
+      (awakened ? Balance.stormArrows : 1) +
+      bonusCount +
+      world.player.extraProjectiles;
 
   @override
   bool fire() {
@@ -41,6 +43,8 @@ class FireCrossbow extends Weapon {
           damage: Balance.crossbowDamage * damageMultiplier,
           type: id.damageType,
           pierce: pierce,
+          speed: Balance.crossbowSpeed * speedMultiplier,
+          storm: awakened,
         ),
       );
     }
@@ -55,15 +59,18 @@ class FireArrow extends Projectile {
     required super.damage,
     required super.type,
     required super.pierce,
-  }) : super(
-         speed: Balance.crossbowSpeed,
-         lifetime: Balance.crossbowLifetime,
-         size: Vector2(24, 6),
-       );
+    super.speed = Balance.crossbowSpeed,
+    this.storm = false,
+  }) : super(lifetime: Balance.crossbowLifetime, size: Vector2(24, 6));
+
+  /// 폭풍 석궁 화살: 푸른 번개를 두른다.
+  final bool storm;
 
   static final _trail = Paint()..color = const Color(0x66FF6B35);
   static final _shaft = Paint()..color = const Color(0xFFFFE0A3);
   static final _tip = Paint()..color = const Color(0xFFFF6B35);
+  static final _stormTrail = Paint()..color = const Color(0x886FD6FF);
+  static final _stormTip = Paint()..color = const Color(0xFFFFFFFF);
 
   @override
   ShapeHitbox createHitbox() => RectangleHitbox();
@@ -71,7 +78,10 @@ class FireArrow extends Projectile {
   @override
   void render(Canvas canvas) {
     canvas
-      ..drawRect(Rect.fromLTWH(-10, 1, size.x, size.y - 2), _trail)
+      ..drawRect(
+        Rect.fromLTWH(storm ? -18 : -10, 1, size.x, size.y - 2),
+        storm ? _stormTrail : _trail,
+      )
       ..drawRect(Rect.fromLTWH(0, 2, size.x - 6, 2), _shaft)
       ..drawPath(
         Path()
@@ -79,7 +89,7 @@ class FireArrow extends Projectile {
           ..lineTo(size.x, size.y / 2)
           ..lineTo(size.x - 7, size.y)
           ..close(),
-        _tip,
+        storm ? _stormTip : _tip,
       );
   }
 }

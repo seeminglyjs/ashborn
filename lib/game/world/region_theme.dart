@@ -26,30 +26,54 @@ enum Decor {
   lavaCrack,
 }
 
-/// 바닥에 선 큰 구조물. 한 타일을 딛고 위로 솟는다.
+/// 바닥에 선 큰 구조물. 한 타일을 딛고 위로 솟는다. 밑동은 단단해서 지나갈 수 없다.
 ///
 /// [flames] 는 원본 픽셀 좌표의 불꽃 자리 (불꽃 밑동 가운데 x, y, 크기 배율).
 /// 불꽃은 바닥 그림에 굽지 않고 매 프레임 일렁이게 그린다.
 enum Structure {
-  pillar('column.png', bottomPad: 9),
-  brokenPillar('column_broken.png'),
-  deadTree('dead_tree.png'),
-  charredTree('charred_tree.png'),
+  pillar('column.png', 16, 48, bottomPad: 9, foot: 6),
+  brokenPillar('column_broken.png', 16, 30, foot: 6),
+  deadTree('dead_tree.png', 32, 40, foot: 4),
+  charredTree('charred_tree.png', 32, 40, foot: 4),
   // 가지 끝 좌표는 tool/assets/sprites.py 의 TREE_TIPS 와 같다.
   burningTree(
     'charred_tree.png',
+    32,
+    40,
+    foot: 4,
     flames: [(4, 12, 0.7), (28, 10, 0.75), (10, 8, 0.6), (18, 5, 0.85)],
   ),
-  brazier('brazier.png', bottomPad: 2, flames: [(8, 11, 0.8)]),
-  flamePillar('column.png', bottomPad: 9, flames: [(8, 7, 1)]),
-  fireVent('fire_vent.png', bottomPad: 3, flames: [(8, 10, 0.9)]);
+  brazier('brazier.png', 16, 24, bottomPad: 2, foot: 5, flames: [(8, 11, 0.8)]),
+  flamePillar('column.png', 16, 48, bottomPad: 9, foot: 6, flames: [(8, 7, 1)]),
+  fireVent(
+    'fire_vent.png',
+    16,
+    16,
+    bottomPad: 3,
+    foot: 0,
+    flames: [(8, 10, 0.9)],
+  );
 
-  const Structure(this.file, {this.bottomPad = 0, this.flames = const []});
+  const Structure(
+    this.file,
+    this.width,
+    this.height, {
+    this.bottomPad = 0,
+    required this.foot,
+    this.flames = const [],
+  });
 
   final String file;
 
+  /// 그림의 원본 픽셀 크기.
+  final int width;
+  final int height;
+
   /// 그림 아래쪽의 빈 줄 수. 그만큼 내려 그려 발이 타일 바닥에 닿게 한다.
   final int bottomPad;
+
+  /// 밑동 반지름 (원본 픽셀). 0 이면 밟고 지나갈 수 있다 (화염 분출구는 함정이다).
+  final double foot;
   final List<(double, double, double)> flames;
 
   /// `assets/images/` 기준 경로.
@@ -57,6 +81,14 @@ enum Structure {
 
   /// 물 위에 서도 어색하지 않은 것 (물에 잠긴 성당의 기둥).
   bool get standsInWater => this == pillar || this == brokenPillar;
+
+  /// 조각 안 ([tx], [ty]) 타일에 세웠을 때 조각 밖으로 잘리지 않는가.
+  /// 잘리는 자리에는 그리지 않고, 그리지 않은 구조물은 부딪히지도 않는다.
+  bool fitsChunk(int tx, int ty, int chunkTiles) {
+    final above = ((height - bottomPad - 16) / 16).ceil();
+    final side = ((width - 16) / 32).ceil();
+    return ty >= above && tx >= side && tx < chunkTiles - side;
+  }
 }
 
 /// 지역마다 다른 전투 맵의 겉모습: 바닥, 장식, 구조물, 물, 안개, 불티.

@@ -101,7 +101,7 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '운명 조작: 다시 뽑기 횟수와 카드 수가 는다',
+      '신탁: 다시 기도하기는 다시 뽑기 횟수를, 만신전의 문은 카드 수를 늘린다',
       gameWith(
         Roster.witch,
         upgrades: Upgrades({Upgrade.fateRerolls: 2, Upgrade.fateChoices: 1}),
@@ -115,7 +115,7 @@ void main() {
       },
     );
 
-    testWithGame<AshbornGame>('별의 가호는 운명 카드 등급을 높인다', gameWith(Roster.witch), (
+    testWithGame<AshbornGame>('깊은 신앙은 은총 카드 등급을 높인다', gameWith(Roster.witch), (
       game,
     ) async {
       await game.ready();

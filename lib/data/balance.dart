@@ -23,7 +23,9 @@ abstract final class Balance {
 
   // 레벨: 다음 레벨까지 xpBase + xpGrowth * (레벨 - 1) 경험치.
   static const double xpBase = 5;
-  static const double xpGrowth = 5;
+
+  /// 졸개가 다양해지며 (떼 · 거구) 경험치가 늘어난 만큼 레벨 곡선을 가파르게 했다.
+  static const double xpGrowth = 9;
 
   /// 레벨업 때 제시되는 선택지 수.
   static const int levelUpChoices = 3;
@@ -47,15 +49,100 @@ abstract final class Balance {
   /// 겹친 적끼리 밀어내는 속도.
   static const double enemySeparationStrength = 120;
 
+  // 졸개 행동 (EnemyBehavior)
+  /// 떼: 한 번에 몇 마리씩 몰려 나오고, 다가오며 좌우로 흔들리는 세기와 빠르기.
+  static const int swarmPack = 3;
+  static const double swarmWeave = 0.6;
+  static const double swarmWeaveFrequency = 3;
+
+  /// 망령: 지그재그 세기와 빠르기, 비치는 정도.
+  static const double phantomZigzag = 1.1;
+  static const double phantomZigzagFrequency = 2.2;
+  static const double phantomOpacity = 0.7;
+
+  /// 돌진: 이 거리 안에 들면 멈춰서 [chargeWindup] 초 동안 힘을 모은 뒤
+  /// 이동 속도의 [chargeSpeed] 배로 [chargeDash] 초 돌진한다. 다음 돌진까지 [chargeCooldown] 초.
+  static const double chargeRange = 260;
+  static const double chargeWindup = 0.7;
+  static const double chargeDash = 0.55;
+  static const double chargeSpeed = 4.5;
+  static const double chargeCooldown = 3.5;
+
+  /// 사격: 이 거리를 지키며 [shooterCooldown] 초마다 [shooterWindup] 초 조준한 뒤 쏜다.
+  static const double shooterRange = 240;
+  static const double shooterCooldown = 2.8;
+  static const double shooterWindup = 0.45;
+
+  /// 적 탄: 속도, 반지름, 수명, 접촉 피해 대비 배율. 한꺼번에 날아다닐 수 있는 수.
+  static const double enemyBulletSpeed = 200;
+  static const double enemyBulletRadius = 6;
+  static const double enemyBulletLifetime = 4;
+  static const double enemyBulletDamage = 0.8;
+  static const int maxEnemyBullets = 60;
+
+  /// 주술: 이 거리를 지키며 [casterCooldown] 초마다 플레이어 발밑에 장판을 깐다.
+  /// 장판은 [casterBlastDelay] 초 뒤 터지며 접촉 피해의 [casterBlastDamage] 배.
+  static const double casterRange = 280;
+  static const double casterCooldown = 4;
+  static const double casterBlastRadius = 55;
+  static const double casterBlastDelay = 1.1;
+  static const double casterBlastDamage = 1.2;
+
+  /// 자폭: 이 거리 안에 들면 멈춰서 [bomberFuse] 초 깜빡이다 터진다.
+  static const double bomberTrigger = 60;
+  static const double bomberFuse = 0.9;
+  static const double bomberRadius = 75;
+  static const double bomberDamage = 1.5;
+
+  /// 분열: 쓰러지면 이만큼 갈라지고, 새끼는 부모 최대 체력과 크기의 이 비율.
+  static const int splitCount = 2;
+  static const double splitHp = 0.35;
+  static const double splitSize = 0.65;
+
+  // 맵 함정
+  /// 가시: 이 주기마다 [spikeUpTime] 초 솟는다. 솟기 [spikeWarning] 초 전부터 끝이 차오른다.
+  static const double spikePeriod = 3.5;
+  static const double spikeUpTime = 1;
+  static const double spikeWarning = 0.6;
+
+  /// 화염 분출구: 이 주기마다 [ventBurstTime] 초 불기둥을 뿜고, 밑동에서 [ventRadius] 안이 탄다.
+  static const double ventPeriod = 4.5;
+  static const double ventBurstTime = 1.2;
+  static const double ventWarning = 0.8;
+  static const double ventRadius = 30;
+
+  /// 함정 피해: 플레이어는 그 스테이지 졸개 접촉 피해의 이 배율, 적은 최대 체력의 이 비율.
+  static const double trapDamage = 1.5;
+  static const double trapEnemyDamage = 0.3;
+
+  // 타격감
+  /// 맞은 졸개가 뒤로 밀리는 속도와 그 속도가 줄어드는 빠르기. 치명타는 [critKnockback] 배.
+  static const double hitKnockback = 110;
+  static const double knockbackDecay = 9;
+  static const double critKnockback = 1.8;
+
+  /// 거구는 밀림이 이 비율로 줄어든다. 보스는 밀리지 않는다.
+  static const double bruteKnockback = 0.25;
+
+  /// 화면 흔들림 최대 폭 (월드 단위, 흔들림 0.5초어치일 때).
+  static const double shakePower = 14;
+
+  /// 맞은 적이 커졌다 돌아오는 정도와 시간.
+  static const double hitPop = 0.18;
+  static const double hitPopTime = 0.12;
+
   // 스테이지: 레벨(1부터)이 오를 때마다 적 체력과 피해가 이 배율로 는다.
   static const double stageHpGrowth = 1.35;
   static const double stageDamageGrowth = 1.2;
 
   /// 첫 스테이지들의 적 체력 · 피해 배율. 그 뒤는 1.
-  static const List<double> earlyStageEase = [0.5, 0.7, 0.85];
+  static const List<double> earlyStageEase = [0.35, 0.55, 0.75, 0.9];
 
   /// 스테이지 시작 후 이 시간(초)이 지나면 보스가 나온다.
-  static const double stageDuration = 120;
+  static const double stageDuration = 180;
+
+  /// 지역 졸개 종류(로스터 순서대로)가 나오기 시작하는 스테이지 시간(초).
+  static const List<double> rosterUnlock = [0, 0, 25, 55, 90, 125];
 
   /// 보스를 잡은 뒤 다음 지역 선택이 뜨기까지 전리품을 줍는 시간.
   static const double stageClearDelay = 3;
@@ -70,10 +157,39 @@ abstract final class Balance {
   /// 피하기만으로는 깰 수 없고, 보스를 잡을 화력(장비 · 강화)이 있어야 한다.
   static const double bossTimeLimit = 180;
 
-  /// 보스는 이 간격마다 잠깐 빠르게 돌진한다.
-  static const double bossChargeInterval = 4;
+  /// 보스는 걸어오다 이 간격마다 지역 기술을 하나 쓴다 (BossMove).
+  /// 소환은 [bossSummon] 마리 (격노하면 [bossEnragedSummon]).
+  static const int bossSummon = 3;
+  static const int bossEnragedSummon = 5;
+
+  /// 체력이 [bossEnrageHp] 아래로 떨어지면 격노해 간격이 [bossEnragedInterval] 배가 된다.
+  static const double bossMoveInterval = 3.6;
+  static const double bossEnrageHp = 0.5;
+  static const double bossEnragedInterval = 0.65;
+
+  /// 돌진: 힘 모으는 시간(연속 돌진은 더 짧다), 돌진 시간과 걷기 대비 속도.
+  static const double bossChargeWindup = 0.8;
+  static const double bossRushWindup = 0.45;
   static const double bossChargeDuration = 0.6;
   static const double bossChargeSpeed = 3.5;
+
+  /// 내려찍기: 힘 모으는 시간과 충격파가 퍼지는 거리.
+  static const double bossSlamWindup = 0.8;
+  static const double bossSlamRadius = 340;
+
+  /// 충격파 · 운석은 보스 접촉 피해의 이 배율, 탄은 [bossBulletDamage] 배.
+  static const double bossHazardDamage = 1;
+  static const double bossBulletDamage = 0.5;
+  static const double bossSpiralTime = 2.4;
+
+  /// 운석: 떨어지기까지의 시간, 크기, 플레이어 둘레로 흩어지는 거리, 불타는 숲에서 타오르는 시간.
+  static const double bossMeteorDelay = 1.2;
+  static const double bossMeteorRadius = 70;
+  static const double bossMeteorSpread = 150;
+  static const double bossMeteorLinger = 2.5;
+
+  /// 순간이동: 플레이어에게서 이 거리에 나타난다.
+  static const double bossBlinkDistance = 160;
 
   /// 타락 단계마다 적 이동 속도 증가율과 그 상한 배율.
   static const double corruptionSpeedBonus = 0.04;
@@ -102,6 +218,14 @@ abstract final class Balance {
   static const double passiveMaxHpPerLevel = 20;
   static const double passiveMoveSpeedPerLevel = 0.08;
   static const double passiveMagnetPerLevel = 0.25;
+  static const double passiveDamagePerLevel = 0.08;
+  static const double passiveAttackSpeedPerLevel = 0.08;
+  static const double passiveCritChancePerLevel = 0.05;
+  static const double passiveCritDamagePerLevel = 0.2;
+  static const double passiveArmorPerLevel = 8;
+  static const double passiveRegenPerLevel = 0.5;
+  static const double passiveXpPerLevel = 0.1;
+  static const double passiveAreaPerLevel = 0.1;
 
   // 전투
   /// 치명타 기본 배율. 치명타 피해 능력치가 더해진다.
@@ -173,7 +297,7 @@ abstract final class Balance {
 
   // 잔불: 스테이지 클리어와 처치로 얻고, 장비 분해로도 얻는다. 화톳불 영구 강화에 쓴다.
   static const double stageClearEmber = 20;
-  static const double killEmber = 0.2;
+  static const double killEmber = 0.15;
   static const double salvageEmber = 3;
 
   /// 분해 잔불은 등급이 오를 때마다 이 배율로 는다.
@@ -183,14 +307,16 @@ abstract final class Balance {
   static const double emberPerItemLevel = 0.1;
 
   // 골드와 강화석: 처치와 보스로 얻고, 쓰러지거나 클리어할 때 정산된다. 장비 강화에 쓴다.
+  // 졸개가 다양해지며(떼 · 분열) 처치 수가 약 두 배가 되어 처치당 보상을 낮췄다.
+  // 강화석은 1/3, 골드 · 잔불 · 장비 드랍은 0.75배 (골드까지 절반이면 강화가 막혀 진행이 멈춘다).
   /// 처치당 골드 (스테이지 레벨마다).
-  static const double killGold = 1;
+  static const double killGold = 0.75;
 
   /// 스테이지 클리어 골드 (스테이지 레벨마다, 타락 보상 배율이 붙는다).
   static const double stageClearGold = 50;
 
   /// 처치당 강화석이 나올 확률 (타락 보상 배율이 붙는다).
-  static const double stoneDropChance = 0.03;
+  static const double stoneDropChance = 0.01;
 
   /// 보스가 주는 강화석. 타락 단계마다 하나씩 더.
   static const int bossStones = 3;
@@ -258,10 +384,10 @@ abstract final class Balance {
   static const int bagCapacity = 60;
 
   // 장비 드랍: 처치당 드랍 확률, 등급이 오를 때마다 드랍 가중치는 이 배율로 준다.
-  static const double itemDropChance = 0.02;
+  static const double itemDropChance = 0.015;
   static const double rarityDropRatio = 0.25;
 
-  /// 영웅 이상 장비는 드랍 가중치에 이 배율이 한 번 더 붙는다 (운명 카드 · 옵션 등급에는 없음).
+  /// 영웅 이상 장비는 드랍 가중치에 이 배율이 한 번 더 붙는다 (은총 카드 · 옵션 등급에는 없음).
   static const double highRarityDropScale = 0.5;
 
   /// 등급이 오를 때마다 장비 수치가 이 배율로 는다.
@@ -301,14 +427,14 @@ abstract final class Balance {
   static const double rollMagnetRange = 0.1;
   static const double rollXpGain = 0.05;
 
-  // 운명: 스테이지를 클리어하면 카드 몇 장 중 하나를 고른다.
+  // 신의 은총 (코드 이름 fate): 스테이지를 클리어하면 카드 몇 장 중 하나를 고른다.
   static const int fateChoices = 3;
 
   /// 한 번에 나오는 같은 종류 카드 수 상한. 보상 카드는 더 적다.
   static const int fateTypeLimit = 2;
   static const int fateRewardLimit = 1;
 
-  /// 런마다 운명 카드를 다시 뽑을 수 있는 횟수.
+  /// 런마다 은총 카드를 다시 뽑을 수 있는 횟수.
   static const int fateRerolls = 1;
 
   /// 카드 등급은 장비와 같은 6등급. 한 등급 오를 때마다 나올 가중치가 이 배율로 준다
@@ -321,7 +447,7 @@ abstract final class Balance {
   /// 카드 한 장이 저주로 나올 확률 (저주가 있는 종류에서만).
   static const double fateCurseChance = 0.1;
 
-  // 운명 카드 수치
+  // 은총 카드 수치
   static const double fateMaxHp = 20;
   static const double fateMoveSpeed = 0.08;
   static const double fateDamage = 0.1;
@@ -346,6 +472,22 @@ abstract final class Balance {
   static const double fateLordDamage = 0.3;
   static const double fateLordMaxHp = 50;
 
+  // 신의 은총 2차: 영역마다 3장 이상이 되도록 더한 카드. 노말 기준 수치.
+  static const double fateHpRegen = 1;
+  static const double fateEnergyShield = 20;
+  static const double fateCritDamage = 0.25;
+  static const double fateEvasion = 0.05;
+  static const double fatePhysicalReduction = 0.06;
+
+  /// 원소 은총 (레어 기준): 모든 공격에 무기 기본 피해의 이 비율만큼 그 속성 피해를 더한다.
+  static const double fateElementDamage = 0.15;
+
+  /// 원소 은총의 상태이상 확률 (화상 · 동상 · 감전 · 출혈).
+  static const double fateElementAilment = 0.1;
+
+  /// 바람 은총은 상태이상 대신 이동 속도를 준다.
+  static const double fateWindMoveSpeed = 0.05;
+
   // 저주: 고정 페널티와 등급만큼 커지는 보상을 함께 준다. 같은 저주를 또 고르면 곱해진다.
   static const double curseEnemyHp = 1.3;
   static const double curseEmberGain = 1;
@@ -365,11 +507,11 @@ abstract final class Balance {
   static const double upgradeXpGain = 0.05;
   static const double upgradeEmberGain = 0.05;
 
-  /// 운명 카드 등급 운. 타락 단계의 등급 운에 더해진다.
+  /// 은총 카드 등급 운. 타락 단계의 등급 운에 더해진다.
   static const double upgradeFateLuck = 0.1;
 
   // 무기 공통
-  static const int weaponMaxLevel = 5;
+  static const int weaponMaxLevel = 8;
 
   // 무기 각성: 최대 레벨 무기 + 짝이 되는 패시브가 있으면 레벨업 때 고를 수 있다.
   static const double awakenDamageMultiplier = 1.5;
@@ -386,9 +528,6 @@ abstract final class Balance {
   static const int stormArrows = 3;
   static const double stormSpread = 0.15;
   static const int stormPierceBonus = 3;
-
-  /// 레벨당 무기 피해 증가율.
-  static const double weaponDamagePerLevel = 0.2;
 
   // 무기: 잔불 구체 (재의 마녀)
   static const double emberOrbCooldown = 0.6;
@@ -421,6 +560,86 @@ abstract final class Balance {
 
   /// 첫 적을 맞힌 뒤 추가로 꿰뚫는 수.
   static const int crossbowPierce = 3;
+
+  // 무기: 대지 강타 (잿불 기사)
+  static const double earthSlamCooldown = 2.2;
+  static const double earthSlamDamage = 26;
+  static const double earthSlamRadius = 95;
+  static const double earthSlamKnockback = 280;
+
+  /// 지진(각성): 여진이 퍼지기까지의 시간과 반지름 배율.
+  static const double aftershockDelay = 0.35;
+  static const double aftershockScale = 1.5;
+
+  // 무기: 심판의 일격 (잿불 기사)
+  static const double cleaveCooldown = 1.5;
+  static const double cleaveDamage = 28;
+  static const double cleaveRadius = 90;
+
+  /// 참격 부채꼴 반각 (라디안).
+  static const double cleaveArc = 1.05;
+
+  // 무기: 운석 낙하 (재의 마녀)
+  static const double meteorCooldown = 2.4;
+  static const double meteorDamage = 30;
+  static const double meteorBlastRadius = 55;
+  static const double meteorFallTime = 0.45;
+  static const double meteorTargetRange = 420;
+
+  /// 유성우(각성): 떨어진 자리가 타오르는 시간과 0.5초마다 주는 피해 비율.
+  static const double meteorBurnTime = 2;
+  static const double meteorBurnRatio = 0.25;
+
+  // 무기: 화염 회오리 (재의 마녀)
+  static const double tornadoCooldown = 3;
+  static const double tornadoDamage = 9;
+  static const double tornadoRadius = 22;
+  static const double tornadoSpeed = 90;
+  static const double tornadoLifetime = 3;
+  static const double tornadoHitInterval = 0.4;
+
+  // 무기: 불씨 덫 (불씨 사냥꾼)
+  static const double mineCooldown = 1.8;
+  static const double mineDamage = 28;
+  static const double mineRadius = 60;
+  static const double mineTrigger = 24;
+  static const double mineArmTime = 0.4;
+  static const double mineLifetime = 12;
+  static const int maxMines = 10;
+
+  // 무기: 투척 단검 (불씨 사냥꾼)
+  static const double knifeCooldown = 0.55;
+  static const double knifeDamage = 7;
+  static const double knifeSpeed = 620;
+  static const double knifeLifetime = 0.7;
+  static const double knifeSpread = 0.12;
+
+  // 무기: 잿불 고리 (공용)
+  static const double auraDamage = 5;
+  static const double auraRadius = 60;
+  static const double auraTick = 0.6;
+
+  /// 지옥불 고리(각성): 반지름 배율과 닿은 적에게 거는 둔화.
+  static const double infernoAuraScale = 1.3;
+  static const double infernoAuraSlow = 0.3;
+
+  // 무기: 낙뢰 (공용)
+  static const double thunderCooldown = 2.2;
+  static const double thunderDamage = 24;
+  static const double thunderRadius = 30;
+  static const double thunderRange = 450;
+  static const int thunderChain = 2;
+
+  // 무기: 회전 차크람 (공용)
+  static const double chakramCooldown = 2.5;
+  static const double chakramDamage = 14;
+  static const double chakramRadius = 13;
+  static const double chakramSpeed = 380;
+  static const double chakramReach = 260;
+  static const double chakramHitInterval = 0.3;
+
+  // 각성 연출: 각성하는 순간 플레이어 둘레로 퍼지는 빛.
+  static const double awakenBurstRadius = 160;
 
   // 부술 수 있는 상자: 플레이어 둘레에 가끔 생기고, 무기로 부수면 보급품이 나온다.
   /// 첫 상자가 나오기까지와 그다음부터의 간격(초).

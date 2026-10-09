@@ -174,9 +174,29 @@ void main() {
 
   group('무기 레벨', () {
     test('레벨업 효과 설명', () {
-      expect(WeaponId.emberOrb.upgradeText(2), '피해 +20%');
-      expect(WeaponId.emberOrb.upgradeText(3), '피해 +20%, 구체 +1');
-      expect(WeaponId.fireCrossbow.upgradeText(2), '피해 +20%, 관통 +1');
+      expect(WeaponId.emberOrb.upgradeText(2), '구체 +1');
+      expect(WeaponId.emberOrb.upgradeText(3), '피해 +20%');
+      expect(WeaponId.fireCrossbow.upgradeText(2), '관통 +1, 피해 +10%');
+      expect(WeaponId.flameBlade.upgradeText(5), '피해 +20%, 속도 +15%');
+      expect(WeaponId.fireTornado.upgradeText(2), '지속 시간 +25%');
+      expect(WeaponId.earthSlam.upgradeText(4), '쿨다운 -12%');
+    });
+
+    test('무기마다 최대 레벨까지 오를 것이 정해져 있고, 같은 표를 쓰지 않는다', () {
+      for (final id in WeaponId.values) {
+        expect(id.upgrades, hasLength(WeaponId.maxLevel - 1), reason: id.name);
+      }
+      final tables = WeaponId.values.map((id) => id.upgrades.toString());
+      expect(tables.toSet(), hasLength(WeaponId.values.length));
+    });
+
+    test('캐릭터마다 전용 무기 셋과 공용 무기를 얻을 수 있다', () {
+      for (final c in Roster.all) {
+        final pool = WeaponId.poolFor(c.id);
+        expect(pool, contains(c.startWeapon));
+        expect(pool.where((id) => id.owner == c.id), hasLength(3));
+        expect(pool.where((id) => id.owner == null), hasLength(3));
+      }
     });
 
     testWithGame<AshbornGame>('레벨이 오르면 피해와 관통이 는다', gameWith(Roster.hunter), (
@@ -190,7 +210,7 @@ void main() {
         ..gainWeapon(WeaponId.fireCrossbow);
       final weapon = player.children.whereType<FireCrossbow>().single;
       expect(weapon.level, 3);
-      expect(weapon.pierce, Balance.crossbowPierce + 2);
+      expect(weapon.pierce, Balance.crossbowPierce + 1);
 
       final enemy = await addEnemy(game, Vector2(120, 0));
       weapon.fire();
@@ -198,7 +218,7 @@ void main() {
 
       expect(
         enemy.hp,
-        closeTo(enemy.maxHp - Balance.crossbowDamage * 1.4, 1e-9),
+        closeTo(enemy.maxHp - Balance.crossbowDamage * 1.1, 1e-9),
       );
     });
 

@@ -2,6 +2,9 @@
 import 'dart:math' as math;
 
 import 'package:ashborn/components/enemies/boss.dart';
+import 'package:ashborn/components/enemies/hazards.dart';
+import 'package:ashborn/components/enemies/minions.dart';
+import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/components/pickups/ash_shard.dart';
 import 'package:ashborn/components/pickups/item_drop.dart';
 import 'package:ashborn/components/pickups/pickup.dart';
@@ -12,6 +15,8 @@ import 'package:ashborn/data/fates.dart';
 import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/upgrades.dart';
 import 'package:ashborn/game/ashborn_game.dart';
+import 'package:ashborn/game/world/obstacles.dart';
+import 'package:ashborn/game/world/region_theme.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/widgets.dart';
@@ -165,6 +170,60 @@ class Bot {
   final _force = Vector2.zero();
   final _d = Vector2.zero();
 
+  /// 예고된 공격을 피한다: 다가오는 탄은 옆으로, 터지기 전 · 타는 장판과 불붙은 자폭병,
+  /// 힘을 모으거나 돌진하는 적에게서는 멀어진다. 사람이 예고를 보고 피하는 정도를 흉내 낸다.
+  void _dodge(Vector2 p) {
+    void away(Vector2 from, double reach, double weight) {
+      _d
+        ..setFrom(p)
+        ..sub(from);
+      final dist = _d.length;
+      if (dist >= reach) return;
+      if (dist < 1e-3) _d.setValues(1, 0);
+      _force.addScaled(_d.normalized(), weight * (reach - dist) / reach);
+    }
+
+    final w = game.world;
+    for (final c in w.children) {
+      switch (c) {
+        case EnemyBullet(:final position, :final velocity):
+          _d
+            ..setFrom(p)
+            ..sub(position);
+          final dist = _d.length;
+          if (dist > 120 || velocity.dot(_d) <= 0) continue;
+          final side = Vector2(-velocity.y, velocity.x)..normalize();
+          if (side.dot(_d) < 0) side.negate();
+          _force.addScaled(side, 2 * (120 - dist) / 120);
+        case GroundBlast g when !g.exploded || g.linger > 0:
+          away(g.position, g.radius + 30, 3);
+      }
+    }
+    // 둘레 타일의 함정: 예고 중이거나 작동 중이면 그 타일 가운데에서 멀어진다.
+    final theme = RegionTheme.of(w.stage.region);
+    final (tx, ty) = TrapSystem.tileOf(p);
+    const tile = 32.0;
+    for (var gy = ty - 1; gy <= ty + 1; gy++) {
+      for (var gx = tx - 1; gx <= tx + 1; gx++) {
+        final trap = TrapSystem.trapAt(gx, gy, theme);
+        if (trap == null) continue;
+        final state = trap == Decor.spikes
+            ? TrapSystem.spikeState(gx, gy, w.elapsed)
+            : TrapSystem.ventState(gx, gy, w.elapsed);
+        if (state == TrapState.down) continue;
+        away(Vector2((gx + 0.5) * tile, (gy + 0.5) * tile), tile * 1.2, 3);
+      }
+    }
+    for (final e in w.enemies) {
+      switch (e) {
+        case Bomber b when b.isLit:
+          away(b.position, Balance.bomberRadius + 30, 3);
+        case Charger ch when ch.isWindingUp || ch.isDashing:
+          away(ch.position, 200, 2);
+      }
+    }
+  }
+
   /// 가까운 적에게서 멀어지고, 안전하면 경험치 · 장비 · 보급품 쪽으로 간다.
   void _steer() {
     _sinceSteer += dt;
@@ -189,6 +248,7 @@ class Bot {
       final k = (reach - dist) / reach;
       _force.addScaled(_d, k * k * (boss ? 4 : 1) / dist);
     }
+    _dodge(p);
     if (_frame++ % 10 == 0 || !(_target?.isMounted ?? false)) {
       _target = null;
       var best = 450.0 * 450;

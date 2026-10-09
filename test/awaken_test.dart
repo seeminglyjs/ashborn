@@ -68,7 +68,9 @@ void main() {
     expect(blade.children.length, blade.bladeCount);
     expect(
       blade.orbitRadius,
-      Balance.flameBladeOrbitRadius * Balance.infernoOrbitScale,
+      Balance.flameBladeOrbitRadius *
+          blade.areaMultiplier *
+          Balance.infernoOrbitScale,
     );
   });
 
@@ -119,7 +121,7 @@ void main() {
       await game.ready();
 
       final arrows = game.world.children.whereType<FireArrow>().toList();
-      expect(arrows.length, Balance.stormArrows);
+      expect(arrows.length, Balance.stormArrows + bow.bonusCount);
       expect(
         arrows.every((a) => a.pierce == pierce + Balance.stormPierceBonus),
         isTrue,
