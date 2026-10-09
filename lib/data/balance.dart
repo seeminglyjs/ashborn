@@ -293,7 +293,7 @@ abstract final class Balance {
 
   // 잔불: 스테이지 클리어와 처치로 얻고, 장비 분해로도 얻는다. 화톳불 영구 강화에 쓴다.
   static const double stageClearEmber = 20;
-  static const double killEmber = 0.2;
+  static const double killEmber = 0.1;
   static const double salvageEmber = 3;
 
   /// 분해 잔불은 등급이 오를 때마다 이 배율로 는다.
@@ -303,14 +303,16 @@ abstract final class Balance {
   static const double emberPerItemLevel = 0.1;
 
   // 골드와 강화석: 처치와 보스로 얻고, 쓰러지거나 클리어할 때 정산된다. 장비 강화에 쓴다.
+  // 졸개가 다양해지며(떼 · 분열) 처치 수가 약 두 배가 되어 처치당 보상(골드 · 강화석 ·
+  // 잔불 · 장비 드랍)을 절반으로 낮췄다. 시간당 공급은 이전과 비슷하다.
   /// 처치당 골드 (스테이지 레벨마다).
-  static const double killGold = 1;
+  static const double killGold = 0.5;
 
   /// 스테이지 클리어 골드 (스테이지 레벨마다, 타락 보상 배율이 붙는다).
   static const double stageClearGold = 50;
 
   /// 처치당 강화석이 나올 확률 (타락 보상 배율이 붙는다).
-  static const double stoneDropChance = 0.03;
+  static const double stoneDropChance = 0.015;
 
   /// 보스가 주는 강화석. 타락 단계마다 하나씩 더.
   static const int bossStones = 3;
@@ -378,7 +380,7 @@ abstract final class Balance {
   static const int bagCapacity = 60;
 
   // 장비 드랍: 처치당 드랍 확률, 등급이 오를 때마다 드랍 가중치는 이 배율로 준다.
-  static const double itemDropChance = 0.02;
+  static const double itemDropChance = 0.01;
   static const double rarityDropRatio = 0.25;
 
   /// 영웅 이상 장비는 드랍 가중치에 이 배율이 한 번 더 붙는다 (은총 카드 · 옵션 등급에는 없음).

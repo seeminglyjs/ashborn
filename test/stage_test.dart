@@ -190,7 +190,9 @@ void main() {
         await reachBoss(game);
         expect(game.stats.bossTimeLeft.value, Balance.bossTimeLimit.ceil());
 
+        // 처치당 골드가 1 보다 작아 두 번 잡아야 정산할 골드가 생긴다.
         game.world
+          ..onEnemyKilled(Vector2.zero())
           ..onEnemyKilled(Vector2.zero())
           ..bossTime = Balance.bossTimeLimit - 0.05;
         await advance(game, 0.1);
