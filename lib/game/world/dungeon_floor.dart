@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'dart:ui';
 
@@ -7,32 +8,16 @@ import 'package:flame/components.dart';
 import '../../data/balance.dart';
 import '../../data/stages.dart';
 import '../ashborn_game.dart';
+import 'region_theme.dart';
 
-/// `assets/images/sprites/scene/decor.png` 의 16x16 바닥 장식 순서.
-/// `tool/assets/sprites.py` 의 DECOR 와 같아야 한다.
-enum Decor {
-  skull,
-  bones,
-  rubble,
-  crack,
-  ash,
-  puddle,
-  candles,
-  stump,
-  embers,
-  blood,
-  brokenSword,
-  spikes,
-  hole,
-  grass,
-}
-
-/// 끝없는 던전 바닥. 0x72 바닥 타일을 깔고 지역마다 다른 장식과 기둥을 흩뿌린다.
+/// 끝없는 전투 맵 바닥. 지역마다 다른 바닥 타일을 깔고 장식 · 구조물 · 물을 흩뿌린다
+/// ([RegionTheme]).
 ///
 /// 타일 좌표의 해시로 무늬와 장식을 정해 같은 자리는 언제 돌아와도 같은 모습이다.
 /// [chunkTiles] x [chunkTiles] 타일을 원본 픽셀 크기의 그림 한 장으로 구워 두고
-/// 카메라가 보는 조각만 키워 그린다. 지역이 바뀌면 색과 장식이 달라 새로 굽는다.
-/// 장식은 밟고 지나갈 수 있는 그림일 뿐 충돌하지 않는다.
+/// 카메라가 보는 조각만 키워 그린다. 지역이 바뀌면 새로 굽는다.
+/// 구조물의 불꽃만은 굽지 않고 매 프레임 일렁이게 그린다.
+/// 장식 · 구조물은 밟고 지나갈 수 있는 그림일 뿐 충돌하지 않는다.
 class DungeonFloor extends Component with HasGameReference<AshbornGame> {
   DungeonFloor() : super(priority: -100);
 
@@ -42,18 +27,26 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
   static const int chunkTiles = 8;
   static const double chunkSize = chunkTiles * tile * pixel;
 
-  /// 구워 둔 조각을 이만큼만 들고 있는다. 화면 하나는 많아야 4x7 조각.
+  /// 구워 둔 조각을 이만큼만 들고 있는다. 화면 하나는 많아야 4x8 조각.
   static const int _maxChunks = 48;
 
-  ui.Image? _tiles;
-  ui.Image? _decor;
-  ui.Image? _column;
-  ui.Image? _brokenColumn;
-  Region? _region;
-  final _chunks = <int, ui.Image>{}; // 넣은 순서를 기억한다: 맨 앞이 가장 오래 안 쓴 조각.
-  final _paint = Paint()..filterQuality = FilterQuality.none;
+  /// 불꽃 시트 (16x24 프레임 6장). 불꽃 밑동은 프레임의 21번째 줄이다.
+  static const _flamePath = 'sprites/scene/flame.png';
+  static const _decorPath = 'sprites/scene/decor.png';
+  static const _flameFrames = 6;
+  static const double _flameBase = 21;
+  static const double _flameFps = 10;
 
-  bool get _loaded => _tiles != null;
+  final _images = <String, ui.Image>{};
+  ui.Image? _glow;
+  bool _loaded = false;
+  Region? _region;
+
+  /// 넣은 순서를 기억한다: 맨 앞이 가장 오래 안 쓴 조각.
+  final _chunks = <int, _Chunk>{};
+  final _paint = Paint()..filterQuality = FilterQuality.none;
+  final _glowPaint = Paint()..blendMode = BlendMode.plus;
+  double _time = 0;
 
   @override
   void onLoad() {
@@ -62,17 +55,42 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
   }
 
   Future<void> _load() async {
-    final images = game.images;
-    final [tiles, decor, column, broken] = await Future.wait([
-      images.load('sprites/scene/tiles.png'),
-      images.load('sprites/scene/decor.png'),
-      images.load('sprites/scene/column.png'),
-      images.load('sprites/scene/column_broken.png'),
-    ]);
-    _decor = decor;
-    _column = column;
-    _brokenColumn = broken;
-    _tiles = tiles;
+    final paths = {
+      _flamePath,
+      _decorPath,
+      for (final r in Region.values) RegionTheme.of(r).floorSheet,
+      for (final s in Structure.values) s.path,
+    };
+    final images = await Future.wait(paths.map(game.images.load));
+    _images.addAll(Map.fromIterables(paths, images));
+    _glow = _bakeGlow();
+    _loaded = true;
+  }
+
+  /// 가운데가 밝고 가장자리로 갈수록 사라지는 둥근 빛. 불꽃 둘레를 밝힌다.
+  static ui.Image _bakeGlow() {
+    const size = 64.0;
+    const center = Offset(size / 2, size / 2);
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder).drawCircle(
+      center,
+      size / 2,
+      Paint()
+        ..shader = ui.Gradient.radial(center, size / 2, const [
+          Color(0xFFFFFFFF),
+          Color(0x00FFFFFF),
+        ]),
+    );
+    final picture = recorder.endRecording();
+    final image = picture.toImageSync(size.toInt(), size.toInt());
+    picture.dispose();
+    return image;
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _time += dt;
   }
 
   @override
@@ -82,8 +100,8 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
   }
 
   void _clear() {
-    for (final image in _chunks.values) {
-      image.dispose();
+    for (final chunk in _chunks.values) {
+      chunk.image.dispose();
     }
     _chunks.clear();
   }
@@ -96,14 +114,19 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
       _clear();
       _region = region;
     }
+    final theme = RegionTheme.of(region);
     final view = game.camera.visibleWorldRect;
     final x0 = (view.left / chunkSize).floor();
     final x1 = (view.right / chunkSize).floor();
     final y0 = (view.top / chunkSize).floor();
-    final y1 = (view.bottom / chunkSize).floor();
+    // 아래 조각의 불꽃이 위로 솟아 화면에 들어올 수 있어 한 줄 더 본다.
+    final y1 = (view.bottom / chunkSize).floor() + 1;
+    final visible = <_Chunk>[];
     for (var cy = y0; cy <= y1; cy++) {
       for (var cx = x0; cx <= x1; cx++) {
-        final image = _chunk(cx, cy, region);
+        final chunk = _chunk(cx, cy, theme);
+        visible.add(chunk);
+        final image = chunk.image;
         canvas.drawImageRect(
           image,
           Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
@@ -112,35 +135,74 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
         );
       }
     }
+    _renderFlames(canvas, visible);
   }
 
-  ui.Image _chunk(int cx, int cy, Region region) {
+  /// 구조물의 불꽃과 그 둘레의 빛. 불꽃마다 박자를 달리해 함께 일렁이지 않게 한다.
+  void _renderFlames(Canvas canvas, List<_Chunk> chunks) {
+    final flame = _images[_flamePath]!;
+    final glow = _glow!;
+    for (final chunk in chunks) {
+      for (final f in chunk.flames) {
+        final flicker = 0.85 + 0.15 * math.sin(_time * 9 + f.phase * 7);
+        _glowPaint.colorFilter = ColorFilter.mode(
+          Color.fromRGBO(255, 110, 40, 0.5 * flicker),
+          BlendMode.modulate,
+        );
+        canvas.drawImageRect(
+          glow,
+          const Rect.fromLTWH(0, 0, 64, 64),
+          Rect.fromCircle(
+            center: Offset(f.x, f.y - 10 * f.scale),
+            radius: 46 * f.scale * flicker,
+          ),
+          _glowPaint,
+        );
+      }
+    }
+    for (final chunk in chunks) {
+      for (final f in chunk.flames) {
+        final frame =
+            (_time * _flameFps + f.phase * _flameFrames).floor() % _flameFrames;
+        final w = 16 * pixel * f.scale;
+        final h = 24 * pixel * f.scale;
+        canvas.drawImageRect(
+          flame,
+          Rect.fromLTWH(frame * 16.0, 0, 16, 24),
+          Rect.fromLTWH(f.x - w / 2, f.y - _flameBase * pixel * f.scale, w, h),
+          _paint,
+        );
+      }
+    }
+  }
+
+  _Chunk _chunk(int cx, int cy, RegionTheme theme) {
     final key = ((cx & 0xFFFF) << 16) | (cy & 0xFFFF);
     final cached = _chunks.remove(key);
     if (cached != null) return _chunks[key] = cached;
     if (_chunks.length >= _maxChunks) {
-      _chunks.remove(_chunks.keys.first)!.dispose();
+      _chunks.remove(_chunks.keys.first)!.image.dispose();
     }
-    return _chunks[key] = _bake(cx, cy, region);
+    return _chunks[key] = _bake(cx, cy, theme);
   }
 
-  /// 조각 하나를 원본 픽셀 크기로 굽는다. 위 줄부터 그려 키 큰 기둥이 윗 타일을 덮는다.
-  ui.Image _bake(int cx, int cy, Region region) {
+  /// 조각 하나를 원본 픽셀 크기로 굽는다. 위 줄부터 그려 키 큰 구조물이 윗 타일을 덮는다.
+  _Chunk _bake(int cx, int cy, RegionTheme theme) {
     const size = chunkTiles * tile;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final paint = Paint()
       ..filterQuality = FilterQuality.none
-      ..colorFilter = ColorFilter.mode(region.floor, BlendMode.modulate);
+      ..colorFilter = ColorFilter.mode(theme.floorTint, BlendMode.modulate);
     // 장식은 바닥보다 덜 어둡게 칠해 어두운 바닥에 묻히지 않게 한다.
     final propPaint = Paint()
       ..filterQuality = FilterQuality.none
       ..colorFilter = ColorFilter.mode(
-        Color.lerp(region.floor, const Color(0xFFFFFFFF), 0.45)!,
+        Color.lerp(theme.floorTint, const Color(0xFFFFFFFF), 0.45)!,
         BlendMode.modulate,
       );
-    final tiles = _tiles!;
-    final decor = _decor!;
+    final floor = _images[theme.floorSheet]!;
+    final decor = _images[_decorPath]!;
     void cell(ui.Image sheet, int index, double x, double y, Paint paint) =>
         canvas.drawImageRect(
           sheet,
@@ -153,26 +215,51 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
       for (var tx = 0; tx < chunkTiles; tx++) {
         final gx = cx * chunkTiles + tx;
         final gy = cy * chunkTiles + ty;
-        cell(tiles, floorAt(gx, gy), tx * 16.0, ty * 16.0, paint);
+        cell(floor, floorAt(gx, gy, theme), tx * 16.0, ty * 16.0, paint);
       }
     }
+    if (theme.water case final threshold?) {
+      _paintWater(canvas, cx * size, cy * size, threshold);
+    }
+    final flames = <_Flame>[];
     for (var ty = 0; ty < chunkTiles; ty++) {
       for (var tx = 0; tx < chunkTiles; tx++) {
         final gx = cx * chunkTiles + tx;
         final gy = cy * chunkTiles + ty;
         final x = tx * 16.0;
         final bottom = (ty + 1) * 16.0;
-        switch (propAt(gx, gy, region)) {
+        switch (propAt(gx, gy, theme)) {
           case null:
             break;
           case final Decor d:
             cell(decor, d.index, x, bottom - 16, propPaint);
-          // 키 큰 기둥은 조각 위로 잘리지 않을 만큼 아래 줄에만 선다.
-          case _Pillar.full when ty >= 2:
-            _pillar(canvas, _column!, x, bottom + 9, propPaint);
-          case _Pillar.broken when ty >= 1:
-            _pillar(canvas, _brokenColumn!, x, bottom, propPaint);
-          case _Pillar():
+          case final Structure s:
+            final image = _images[s.path]!;
+            final w = image.width.toDouble();
+            final h = image.height.toDouble();
+            // 조각 밖으로 잘리지 않을 만큼 안쪽 타일에만 선다.
+            final above = ((h - s.bottomPad - 16) / 16).ceil();
+            final side = ((w - 16) / 32).ceil();
+            if (ty < above || tx < side || tx >= chunkTiles - side) break;
+            final left = x + 8 - w / 2;
+            final top = bottom + s.bottomPad - h;
+            canvas.drawImageRect(
+              image,
+              Rect.fromLTWH(0, 0, w, h),
+              Rect.fromLTWH(left, top, w, h),
+              propPaint,
+            );
+            for (final (i, (fx, fy, scale)) in s.flames.indexed) {
+              flames.add(
+                _Flame(
+                  x: (cx * size + left + fx) * pixel,
+                  y: (cy * size + top + fy) * pixel,
+                  scale: scale,
+                  phase: hash(gx, gy, 10 + i),
+                ),
+              );
+            }
+          default:
             break;
         }
       }
@@ -180,27 +267,82 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
     final picture = recorder.endRecording();
     final image = picture.toImageSync(size, size);
     picture.dispose();
-    return image;
+    return _Chunk(image, flames);
   }
 
-  /// 기둥 그림의 맨 아래가 [bottom] 에 오도록 세운다.
-  /// 원본 기둥은 아래 9줄이 비어 있어 그만큼 내려 그린다.
-  static void _pillar(
-    Canvas canvas,
-    ui.Image image,
-    double x,
-    double bottom,
-    Paint paint,
-  ) {
-    final w = image.width.toDouble();
-    final h = image.height.toDouble();
-    canvas.drawImageRect(
-      image,
-      Rect.fromLTWH(0, 0, w, h),
-      Rect.fromLTWH(x, bottom - h, w, h),
-      paint,
+  static final _deep = Paint()..color = const Color(0xE81A3448);
+  static final _shallow = Paint()..color = const Color(0xE0305878);
+  static final _shore = Paint()..color = const Color(0xFF5E8EB0);
+  static final _sparkle = Paint()..color = const Color(0xFFA8D8EE);
+
+  /// 물에 잠긴 땅. 원본 픽셀마다 물인지 보고, 한 줄에서 같은 색이 이어지는 만큼 한 번에 칠한다.
+  /// 가장자리는 밝은 물가, 깊은 곳은 어둡게, 가끔 반짝임을 찍는다.
+  static void _paintWater(Canvas canvas, int ox, int oy, double threshold) {
+    const size = chunkTiles * tile;
+    // 둘레 한 줄까지 물 높이를 한 번만 계산해 둔다.
+    const span = size + 2;
+    final levels = List<double>.generate(
+      span * span,
+      (i) => waterLevel(ox + i % span - 1, oy + i ~/ span - 1),
     );
+    double levelAt(int x, int y) => levels[(y + 1) * span + x + 1];
+    bool wet(int x, int y) => levelAt(x, y) > threshold;
+    for (var y = 0; y < size; y++) {
+      Paint? run;
+      var start = 0;
+      for (var x = 0; x <= size; x++) {
+        Paint? paint;
+        if (x < size) {
+          final level = levelAt(x, y);
+          if (level > threshold) {
+            if (!wet(x - 1, y) ||
+                !wet(x + 1, y) ||
+                !wet(x, y - 1) ||
+                !wet(x, y + 1)) {
+              paint = _shore;
+            } else if (hash(ox + x, oy + y, 20) < 0.0015) {
+              paint = _sparkle;
+            } else {
+              paint = level > threshold + 0.06 ? _deep : _shallow;
+            }
+          }
+        }
+        if (identical(paint, run)) continue;
+        if (run != null) {
+          canvas.drawRect(
+            Rect.fromLTRB(start.toDouble(), y.toDouble(), x.toDouble(), y + 1),
+            run,
+          );
+        }
+        run = paint;
+        start = x;
+      }
+    }
   }
+
+  /// 원본 픽셀 좌표의 물 높이 (0~1). 넓게 퍼진 웅덩이 위에 작은 굴곡을 더한다.
+  static double waterLevel(int x, int y) =>
+      _valueNoise(x / 72, y / 72, 30) * 0.75 +
+      _valueNoise(x / 18, y / 18, 31) * 0.25;
+
+  /// 격자 점마다 해시 값을 두고 부드럽게 이어 붙인 노이즈 (0~1).
+  static double _valueNoise(double x, double y, int salt) {
+    final ix = x.floor();
+    final iy = y.floor();
+    double smooth(double t) => t * t * (3 - 2 * t);
+    final fx = smooth(x - ix);
+    final fy = smooth(y - iy);
+    double at(int dx, int dy) => hash(ix + dx, iy + dy, salt);
+    final top = at(0, 0) + (at(1, 0) - at(0, 0)) * fx;
+    final bottom = at(0, 1) + (at(1, 1) - at(0, 1)) * fx;
+    return top + (bottom - top) * fy;
+  }
+
+  /// 타일 (가운데 픽셀) 이 물에 잠겼는가.
+  static bool flooded(int x, int y, RegionTheme theme) => switch (theme.water) {
+    null => false,
+    final threshold => waterLevel(x * tile + 8, y * tile + 8) > threshold,
+  };
 
   /// 타일 좌표의 0 이상 1 미만 해시. [salt] 마다 독립적이다.
   static double hash(int x, int y, [int salt = 0]) {
@@ -210,74 +352,69 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
     return h / 0x80000000;
   }
 
-  /// 바닥 무늬 (scene/tiles.png 의 0~7). 대부분 민바닥이고 가끔 금 간 바닥이 섞인다.
-  static int floorAt(int x, int y) {
-    final r = hash(x, y);
-    if (r < 0.86) return 0;
-    return 1 + ((r - 0.86) / 0.14 * 7).floor().clamp(0, 6);
+  static T _pick<T>(Map<T, int> weights, double r) {
+    final total = weights.values.fold(0, (sum, w) => sum + w);
+    var pick = r * total;
+    for (final MapEntry(key: value, value: weight) in weights.entries) {
+      pick -= weight;
+      if (pick < 0) return value;
+    }
+    return weights.keys.last;
   }
 
-  /// 이 타일에 놓인 장식이나 기둥. 대부분 null.
-  static Object? propAt(int x, int y, Region region) {
+  /// 바닥 타일 (지역 바닥 시트의 0~7).
+  static int floorAt(int x, int y, RegionTheme theme) {
+    final weights = theme.floorWeights;
+    final total = weights.fold(0, (sum, w) => sum + w);
+    var pick = hash(x, y) * total;
+    for (final (i, w) in weights.indexed) {
+      pick -= w;
+      if (pick < 0) return i;
+    }
+    return weights.length - 1;
+  }
+
+  /// 이 타일에 놓인 장식([Decor])이나 구조물([Structure]). 대부분 null.
+  /// 물 위에는 기둥만 선다.
+  static Object? propAt(int x, int y, RegionTheme theme) {
     final r = hash(x, y, 1);
-    if (r < Balance.floorDecorChance) {
-      final set = decorSet(region);
-      final total = set.values.fold(0, (sum, w) => sum + w);
-      var pick = hash(x, y, 2) * total;
-      for (final MapEntry(key: decor, value: weight) in set.entries) {
-        pick -= weight;
-        if (pick < 0) return decor;
-      }
-      return set.keys.last;
+    final Object prop;
+    if (r < theme.decorChance) {
+      prop = _pick(theme.decor, hash(x, y, 2));
+    } else if (r < theme.decorChance + theme.structureChance) {
+      prop = _pick(theme.structures, hash(x, y, 3));
+    } else {
+      return null;
     }
-    if (r < Balance.floorDecorChance + Balance.floorPillarChance) {
-      return hash(x, y, 3) < 0.35 ? _Pillar.full : _Pillar.broken;
+    if (flooded(x, y, theme) && !(prop is Structure && prop.standsInWater)) {
+      return null;
     }
-    return null;
+    return prop;
   }
-
-  /// 지역마다 흩뿌리는 장식과 가중치.
-  static Map<Decor, int> decorSet(Region region) => switch (region) {
-    Region.ashPlains => const {
-      Decor.bones: 3,
-      Decor.skull: 2,
-      Decor.ash: 3,
-      Decor.grass: 3,
-      Decor.crack: 3,
-      Decor.rubble: 2,
-    },
-    Region.sunkenCathedral => const {
-      Decor.puddle: 4,
-      Decor.candles: 2,
-      Decor.rubble: 3,
-      Decor.crack: 2,
-      Decor.skull: 1,
-      Decor.bones: 1,
-    },
-    Region.burningForest => const {
-      Decor.embers: 4,
-      Decor.stump: 3,
-      Decor.ash: 3,
-      Decor.grass: 2,
-      Decor.crack: 1,
-    },
-    Region.rustedFortress => const {
-      Decor.brokenSword: 3,
-      Decor.spikes: 2,
-      Decor.rubble: 3,
-      Decor.crack: 2,
-      Decor.hole: 1,
-      Decor.skull: 1,
-    },
-    Region.undyingHeart => const {
-      Decor.blood: 4,
-      Decor.bones: 3,
-      Decor.skull: 2,
-      Decor.crack: 2,
-      Decor.hole: 1,
-    },
-  };
 }
 
-/// 바닥에 선 기둥. 온전한 것과 윗단이 깨진 것.
-enum _Pillar { full, broken }
+class _Chunk {
+  _Chunk(this.image, this.flames);
+
+  final ui.Image image;
+
+  /// 이 조각 구조물들의 불꽃 (월드 좌표).
+  final List<_Flame> flames;
+}
+
+class _Flame {
+  _Flame({
+    required this.x,
+    required this.y,
+    required this.scale,
+    required this.phase,
+  });
+
+  /// 불꽃 밑동 가운데.
+  final double x;
+  final double y;
+  final double scale;
+
+  /// 0~1. 불꽃마다 다른 박자.
+  final double phase;
+}

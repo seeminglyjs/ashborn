@@ -16,7 +16,9 @@ python -I tool/assets/sprites.py <압축 푼 0x72_DungeonTilesetII_v1.7/frames> 
   원본에 없는 갑옷 · 장신구는 이 스크립트에 글자 그림으로 직접 그린다.
 """
 import colorsys
+import math
 import os
+import random
 import sys
 
 from PIL import Image
@@ -79,8 +81,9 @@ TILES = [f'floor_{i}' for i in range(1, 9)] + [
 UPCOMING = ['lizard_m', 'dwarf_m', 'knight_f']
 
 
-def campfire(frames=6, w=16, h=24):
-    """장작 위에서 일렁이는 불꽃. 프레임마다 폭과 끝이 조금씩 흔들린다."""
+def campfire(frames=6, w=16, h=24, logs=True):
+    """장작 위에서 일렁이는 불꽃. 프레임마다 폭과 끝이 조금씩 흔들린다.
+    [logs] 가 False 면 불꽃만 그린다 (전투 맵의 불타는 나무 · 화로 · 불기둥)."""
     import math
     import random
     dark, red, orange, yellow, core = (
@@ -117,6 +120,9 @@ def campfire(frames=6, w=16, h=24):
         for _ in range(2):
             x, y = rnd.randint(3, 12), rnd.randint(0, 6)
             px[x, y] = yellow + (255,)
+        if not logs:
+            out.append(img)
+            continue
         # 엇갈린 장작 두 개 (불꽃 밑동을 가린다)
         for i in range(14):
             for x, y in ((1 + i, 23 - i // 5), (14 - i, 23 - i // 5)):
@@ -624,6 +630,97 @@ DECOR = {
         '................',
         '................',
     ], False),
+    # ── 지역 장식 (평원 · 성당 · 심장) ──
+    'tall_grass': ([
+        '................',
+        '................',
+        '................',
+        '.......y........',
+        '....y..y...y....',
+        '....y..yy..y....',
+        '.....y.y..y..y..',
+        '..y..y.y..y.y...',
+        '...y.yyy.yy.y...',
+        '...yy.yy.y.y....',
+        '....yyyyyyy.....',
+        '.....bbbbb......',
+        '................',
+        '................',
+        '................',
+        '................',
+    ], True),
+    'dead_bush': ([
+        '................',
+        '................',
+        '................',
+        '................',
+        '...b.....b......',
+        '....b...b...b...',
+        '..b..b.b...b....',
+        '...b..bb..b..b..',
+        '....b.bb.b..b...',
+        '.....bbbbb.b....',
+        '......bbbb......',
+        '.......bb.......',
+        '......BbbB......',
+        '................',
+        '................',
+        '................',
+    ], True),
+    'withered_flower': ([
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+        '.....nn.........',
+        '....nNNn....o...',
+        '.....nn....oOo..',
+        '......y.....o...',
+        '......y....y....',
+        '.......y..y.....',
+        '.......y.y......',
+        '........y.......',
+        '................',
+        '................',
+        '................',
+    ], True),
+    'pew': ([
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+        '..BBBBBBB.......',
+        '..BbbbbbbB.B....',
+        '..B.......BB....',
+        '..BBBBBBBBBBB...',
+        '..bbbbbbbbbbb...',
+        '..b.........b...',
+        '..b.........b...',
+        '................',
+        '................',
+        '................',
+        '................',
+    ], True),
+    'lava_crack': ([
+        '................',
+        '................',
+        '................',
+        '.....r..........',
+        '.....rF.........',
+        '......Fr........',
+        '......rFr...r...',
+        '.......rF..rF...',
+        '......rFfFFFr...',
+        '.....rF..rr.....',
+        '....rFr.........',
+        '....r...........',
+        '................',
+        '................',
+        '................',
+        '................',
+    ], False),
 }
 
 
@@ -649,6 +746,251 @@ def fit16(img):
     out = Image.new('RGBA', (16, 16))
     out.paste(img, ((16 - img.width) // 2, 16 - img.height))
     return out
+
+
+# ── 지역별 바닥 타일 · 큰 구조물 ─────────────────────────────────────────
+# 잿빛 평원 · 불타는 숲 · 꺼지지 않는 심장은 0x72 돌바닥 대신 직접 만든 바닥을 깐다.
+# 16x16 8장. 가장자리에 무늬가 걸리지 않게 점 · 얼룩만 찍어 이어 붙여도 이음매가 없다.
+# 순서와 쓰임새(평범한 바닥이 앞쪽)는 lib/game/world/region_theme.dart 의 floorWeights 와 맞춘다.
+
+
+def _blotches(px, rnd, color, count, size=(1, 3)):
+    for _ in range(count):
+        x, y = rnd.randrange(16), rnd.randrange(16)
+        for _ in range(rnd.randint(*size)):
+            px[x % 16, y % 16] = color + (255,)
+            x += rnd.choice((-1, 0, 1))
+            y += rnd.choice((-1, 0, 1))
+
+
+def plains_floor():
+    """시든 풀밭. 0~4 풀, 5~6 맨흙이 드러난 풀, 7 자갈."""
+    base = (0x44, 0x45, 0x33)
+    dark, light = (0x3A, 0x3B, 0x2C), (0x50, 0x50, 0x3A)
+    blade, straw = (0x66, 0x64, 0x44), (0x7C, 0x6E, 0x48)
+    dirt, dirt_dark = (0x4E, 0x42, 0x33), (0x40, 0x36, 0x2A)
+    pebble, pebble_dark = (0x76, 0x72, 0x6A), (0x52, 0x4E, 0x48)
+    out = []
+    for i in range(8):
+        rnd = random.Random(100 + i)
+        img = Image.new('RGBA', (16, 16), base + (255,))
+        px = img.load()
+        _blotches(px, rnd, dark, 10)
+        _blotches(px, rnd, light, 8)
+        if i in (5, 6):
+            _blotches(px, rnd, dirt, 7, (3, 6))
+            _blotches(px, rnd, dirt_dark, 4)
+        if i == 7:
+            for _ in range(3):
+                x, y = rnd.randrange(16), rnd.randrange(16)
+                px[x, y] = pebble + (255,)
+                px[(x + 1) % 16, y] = pebble + (255,)
+                px[x, (y + 1) % 16] = pebble_dark + (255,)
+        # 짧은 풀잎: 밑동은 어둡고 끝은 밝다.
+        for _ in range(7 if i < 5 else 3):
+            x, y = rnd.randrange(16), rnd.randrange(16)
+            px[x, y] = blade + (255,)
+            px[x, (y - 1) % 16] = (straw if rnd.random() < 0.4 else blade) + (255,)
+        out.append(img)
+    return out
+
+
+def forest_floor():
+    """그을린 숲 바닥. 0~3 흙과 낙엽, 4~5 숯이 된 자리, 6 재, 7 잔불이 남은 숯."""
+    base = (0x33, 0x25, 0x1C)
+    dark, light = (0x29, 0x1D, 0x16), (0x3E, 0x2D, 0x22)
+    leaf, leaf_dark = (0x7A, 0x3E, 0x1C), (0x5A, 0x2E, 0x18)
+    char, char_hi = (0x1B, 0x15, 0x13), (0x26, 0x1F, 0x1C)
+    ash, ember = (0x5C, 0x56, 0x50), (0xFF, 0x7A, 0x2A)
+    out = []
+    for i in range(8):
+        rnd = random.Random(200 + i)
+        img = Image.new('RGBA', (16, 16), base + (255,))
+        px = img.load()
+        _blotches(px, rnd, dark, 10)
+        _blotches(px, rnd, light, 6)
+        if i >= 4:
+            _blotches(px, rnd, char, 8, (3, 7))
+            _blotches(px, rnd, char_hi, 4)
+        if i == 6:
+            _blotches(px, rnd, ash, 6, (2, 4))
+        if i == 7:
+            for _ in range(3):
+                px[rnd.randrange(16), rnd.randrange(16)] = ember + (255,)
+        for _ in range(5 if i < 4 else 2):
+            x, y = rnd.randrange(16), rnd.randrange(16)
+            px[x, y] = leaf + (255,)
+            px[(x + 1) % 16, y] = leaf_dark + (255,)
+        out.append(img)
+    return out
+
+
+def temple_floor():
+    """검붉은 신전 석판. 0~3 석판, 4 금 간 석판, 5 용암이 비치는 균열, 6 불의 문양, 7 작은 석판 넷."""
+    grout = (0x1A, 0x0C, 0x0E)
+    slab, slab_dark, slab_hi = (0x45, 0x24, 0x26), (0x3B, 0x1E, 0x21), (0x55, 0x30, 0x30)
+    crack = (0x24, 0x10, 0x12)
+    lava, lava_dark = (0xFF, 0x7A, 0x2A), (0xC2, 0x3A, 0x1A)
+    rune = (0x9A, 0x5A, 0x28)
+    out = []
+    for i in range(8):
+        rnd = random.Random(300 + i)
+        img = Image.new('RGBA', (16, 16), slab + (255,))
+        px = img.load()
+        _blotches(px, rnd, slab_dark, 8)
+        _blotches(px, rnd, slab_hi, 3, (1, 2))
+        lines = [0] if i != 7 else [0, 8]
+        for g in lines:
+            for t in range(16):
+                px[g, t] = grout + (255,)
+                px[t, g] = grout + (255,)
+        if i in (4, 5):
+            x, y = 4, 3
+            for _ in range(12):
+                px[x, y] = (lava if i == 5 else crack) + (255,)
+                if i == 5:
+                    for dx, dy in ((1, 0), (-1, 0)):
+                        if px[x + dx, y + dy][:3] != lava:
+                            px[x + dx, y + dy] = lava_dark + (255,)
+                x = min(13, max(2, x + rnd.choice((-1, 0, 1))))
+                y = min(14, y + 1)
+        if i == 6:
+            for a in range(24):
+                import math
+                t = a / 24 * math.tau
+                px[round(8 + 4.5 * math.cos(t)), round(8 + 4.5 * math.sin(t))] = rune + (255,)
+            for x, y in ((8, 6), (7, 7), (8, 7), (9, 7), (7, 8), (8, 8), (9, 8), (8, 9)):
+                px[x, y] = lava_dark + (255,)
+        out.append(img)
+    return out
+
+
+def _thick_line(px, a, b, color, r=0.0):
+    (x0, y0), (x1, y1) = a, b
+    n = max(abs(x1 - x0), abs(y1 - y0), 1) * 2
+    for i in range(n + 1):
+        t = i / n
+        cx, cy = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+        for dx in range(-2, 3):
+            for dy in range(-2, 3):
+                if dx * dx + dy * dy <= r * r + 0.01:
+                    x, y = round(cx + dx), round(cy + dy)
+                    if 0 <= x < px.width and 0 <= y < px.height:
+                        px.img[x, y] = color + (255,)
+
+
+class _Px:
+    def __init__(self, img):
+        self.img = img.load()
+        self.width, self.height = img.size
+
+
+# 나무 모양 (32x40). 가지 끝 좌표는 불타는 나무의 불꽃 자리이고
+# lib/game/world/region_theme.dart 의 Structure.burningTree 와 같아야 한다.
+TREE_TRUNK = [((16, 39), (16, 22), 2.2), ((16, 22), (15, 12), 1.4)]
+TREE_BRANCHES = [
+    ((16, 26), (7, 17)), ((7, 17), (4, 11)), ((16, 23), (25, 15)),
+    ((25, 15), (28, 9)), ((15, 15), (10, 7)), ((15, 12), (18, 4)),
+    ((21, 19), (24, 22)),
+]
+TREE_TIPS = [(4, 11), (28, 9), (10, 7), (18, 4)]
+
+
+def tree(bark, bark_dark, bark_hi, embers=None):
+    img = Image.new('RGBA', (32, 40))
+    px = _Px(img)
+    for a, b, r in TREE_TRUNK:
+        _thick_line(px, a, b, bark, r)
+    for i, (a, b) in enumerate(TREE_BRANCHES):
+        # 줄기에서 갈라지는 첫 마디는 굵고 끝 가지는 가늘다.
+        _thick_line(px, a, b, bark, 1.0 if a[0] in (15, 16) else 0.5)
+    raw = img.load()
+    # 줄기 왼쪽은 밝게, 오른쪽은 어둡게.
+    for y in range(40):
+        row = [x for x in range(32) if raw[x, y][3]]
+        if len(row) >= 3 and y > 20:
+            raw[row[0], y] = bark_hi + (255,)
+            raw[row[-1], y] = bark_dark + (255,)
+    # 뿌리
+    for x, y in ((12, 39), (13, 38), (20, 39), (19, 38)):
+        raw[x, y] = bark_dark + (255,)
+    if embers:
+        rnd = random.Random(7)
+        cells = [(x, y) for y in range(18, 39) for x in range(32) if raw[x, y][3]]
+        for x, y in rnd.sample(cells, 9):
+            raw[x, y] = embers + (255,)
+    return _outlined(img)
+
+
+def _outlined(img):
+    px = img.load()
+    w, h = img.size
+    filled = {(x, y) for y in range(h) for x in range(w) if px[x, y][3]}
+    for y in range(h):
+        for x in range(w):
+            if (x, y) not in filled and any(
+                    (x + dx, y + dy) in filled
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                px[x, y] = OUTLINE + (255,)
+    return img
+
+
+def dead_tree():
+    return tree((0x6A, 0x5A, 0x4A), (0x4A, 0x3E, 0x33), (0x86, 0x74, 0x60))
+
+
+def charred_tree():
+    return tree((0x2E, 0x26, 0x23), (0x1E, 0x18, 0x17), (0x44, 0x38, 0x33),
+                embers=(0xFF, 0x7A, 0x2A))
+
+
+# 화로 (16x24). 불꽃은 그릇 위 (8, 9) 에 선다.
+BRAZIER = [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '.....FfFfF......',
+    '..YYFFFFFFFFYY..',
+    '..yDDDDDDDDDDy..',
+    '...DMMMMMMMMD...',
+    '....DMMMMMMD....',
+    '.....DDDDDD.....',
+    '.......DD.......',
+    '.......MD.......',
+    '.......MD.......',
+    '.......MD.......',
+    '......DMDD......',
+    '.....DMMMDD.....',
+    '....DDDDDDDD....',
+    '................',
+    '................',
+]
+
+# 바닥 불구멍 (16x16). 문양 가운데서 불꽃이 솟는다.
+FIRE_VENT = [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '......yyyy......',
+    '....yyrrrryy....',
+    '...yrrFFFFrry...',
+    '...yrFfffFFry...',
+    '...yrrFFFFrry...',
+    '....yyrrrryy....',
+    '......yyyy......',
+    '................',
+    '................',
+    '................',
+]
 
 
 def sheet(frames):
@@ -701,6 +1043,15 @@ def main(src, out):
             rows, outline = art
             decor.append(pixel_art(rows, outline=outline))
     sheet(decor).save(f'{out}/scene/decor.png', optimize=True)
+    sheet(plains_floor()).save(f'{out}/scene/floor_plains.png', optimize=True)
+    sheet(forest_floor()).save(f'{out}/scene/floor_forest.png', optimize=True)
+    sheet(temple_floor()).save(f'{out}/scene/floor_temple.png', optimize=True)
+    dead_tree().save(f'{out}/scene/dead_tree.png', optimize=True)
+    charred_tree().save(f'{out}/scene/charred_tree.png', optimize=True)
+    pixel_art(BRAZIER).save(f'{out}/scene/brazier.png', optimize=True)
+    pixel_art(FIRE_VENT, outline=False).save(
+        f'{out}/scene/fire_vent.png', optimize=True)
+    sheet(campfire(logs=False)).save(f'{out}/scene/flame.png', optimize=True)
     os.makedirs(f'{out}/items', exist_ok=True)
     sheet([sword() if art is None else pixel_art(art) for art in GEAR.values()]
           ).save(f'{out}/items/gear.png', optimize=True)

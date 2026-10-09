@@ -29,6 +29,7 @@ import '../../systems/level_system.dart';
 import '../../systems/loot_system.dart';
 import '../../systems/wave_system.dart';
 import '../ashborn_game.dart';
+import 'atmosphere.dart';
 import 'dungeon_floor.dart';
 
 /// 런 하나의 월드. 재시작하면 통째로 새로 만든다.
@@ -108,6 +109,7 @@ class RunWorld extends World
       WaveSystem(),
       CrowdSystem(),
       CrateSystem(),
+      Atmosphere(),
     ]);
     game.camera.follow(player);
   }
