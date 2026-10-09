@@ -437,10 +437,10 @@ abstract final class Balance {
   static const double crateRadius = 13;
 
   /// 나무 상자에서 나오는 것의 가중치. 순서는 CrateDrop (물약 · 골드 · 강화석 · 자석 · 장비).
-  static const List<int> crateDropWeights = [40, 30, 12, 8, 10];
+  static const List<int> crateDropWeights = [20, 50, 12, 8, 10];
 
   /// 회복 물약: 최대 체력의 이 비율을 채운다.
-  static const double potionHeal = 0.3;
+  static const double potionHeal = 0.1;
 
   /// 골드 주머니 (스테이지 레벨마다). 보물 상자는 [chestGoldScale] 배.
   static const double crateGold = 15;
