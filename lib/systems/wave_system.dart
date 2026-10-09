@@ -2,13 +2,16 @@ import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 
-import '../components/enemies/enemy.dart';
+import '../components/enemies/minions.dart';
 import '../data/balance.dart';
+import '../data/enemies.dart';
+import '../data/stages.dart';
 import '../game/ashborn_game.dart';
 import '../game/world/run_world.dart';
 
 /// 스테이지 시간에 따라 점점 더 많고 강한 적을 화면 밖에서 스폰한다.
-/// 적의 기본 강도와 성향은 스테이지(레벨, 지역, 타락 단계)가 정한다.
+/// 적의 기본 강도는 스테이지(레벨, 지역, 타락 단계)가 정하고, 종류는 지역 로스터에서
+/// 스테이지 시간에 따라 풀린 것 중 가중치로 뽑는다.
 class WaveSystem extends Component
     with HasGameReference<AshbornGame>, HasWorldReference<RunWorld> {
   double _timer = 0;
@@ -37,25 +40,51 @@ class WaveSystem extends Component
 
     final stage = world.stage;
     final region = stage.region;
-    final room = Balance.maxEnemies - world.enemies.length;
-    final count = math.min(batchSize(time), room);
     final fate = world.fate;
     final hp = enemyHp(time) * stage.enemyHpMultiplier * fate.enemyHpMultiplier;
-    for (var i = 0; i < count; i++) {
-      world.add(
-        Enemy(
-          position: world.offscreenPoint(),
-          maxHp: hp,
-          contactDamage:
-              Balance.enemyContactDamage *
-              stage.enemyDamageMultiplier *
-              fate.enemyDamageMultiplier,
-          damageType: region.damageType,
-          speed: Balance.enemySpeed * stage.enemySpeedMultiplier,
-          color: region.enemy,
-          sprite: region.enemySprite,
-        ),
-      );
+    final damage =
+        Balance.enemyContactDamage *
+        stage.enemyDamageMultiplier *
+        fate.enemyDamageMultiplier;
+    final speed = Balance.enemySpeed * stage.enemySpeedMultiplier;
+    final kinds = unlocked(region, time);
+    var count = batchSize(time);
+    while (count > 0 && world.enemies.length < Balance.maxEnemies) {
+      final kind = pick(kinds, game.random);
+      // 떼는 한자리에 몇 마리씩 몰려 나온다 (한 마리로 친다).
+      final pack = kind.behavior == EnemyBehavior.swarm ? Balance.swarmPack : 1;
+      final at = world.offscreenPoint();
+      for (var i = 0; i < pack; i++) {
+        world.add(
+          spawnMinion(
+            kind,
+            position: at + Vector2(i * 18.0, (i % 2) * 18.0),
+            maxHp: hp,
+            contactDamage: damage,
+            damageType: region.damageType,
+            speed: speed,
+            color: region.enemy,
+          ),
+        );
+      }
+      count--;
     }
+  }
+
+  /// [time] 에 나올 수 있는 [region] 졸개 종류 (로스터 앞에서부터 차례로 풀린다).
+  static List<EnemyKind> unlocked(Region region, double time) => [
+    for (final (i, kind) in region.roster.indexed)
+      if (time >= Balance.rosterUnlock[i]) kind,
+  ];
+
+  /// 가중치대로 하나 고른다.
+  static EnemyKind pick(List<EnemyKind> kinds, math.Random random) {
+    final total = kinds.fold(0, (sum, k) => sum + k.weight);
+    var r = random.nextInt(total);
+    for (final kind in kinds) {
+      r -= kind.weight;
+      if (r < 0) return kind;
+    }
+    return kinds.last;
   }
 }

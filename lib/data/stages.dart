@@ -3,9 +3,10 @@ import 'dart:ui';
 
 import 'balance.dart';
 import 'damage.dart';
+import 'enemies.dart';
 import 'monster_sprites.dart';
 
-/// 한 루프를 이루는 지역. 지역마다 적의 색, 피해 속성, 성향과 보스가 다르다.
+/// 한 루프를 이루는 지역. 지역마다 적의 색, 피해 속성, 졸개 여섯 종류와 보스가 다르다.
 enum Region {
   ashPlains(
     '잿빛 평원',
@@ -13,7 +14,14 @@ enum Region {
     DamageType.physical,
     background: Color(0xFF1A1414),
     enemy: Color(0xFF8A7F7A),
-    enemySprite: MonsterSprite.tinyZombie,
+    roster: [
+      EnemyKind.ashWalker,
+      EnemyKind.ashBat,
+      EnemyKind.ashSlime,
+      EnemyKind.boneThrower,
+      EnemyKind.ashRaider,
+      EnemyKind.ashOgre,
+    ],
     bossSprite: MonsterSprite.bigZombie,
   ),
   sunkenCathedral(
@@ -22,7 +30,14 @@ enum Region {
     DamageType.cold,
     background: Color(0xFF0F161D),
     enemy: Color(0xFF6F8FA8),
-    enemySprite: MonsterSprite.skelet,
+    roster: [
+      EnemyKind.drownedSkeleton,
+      EnemyKind.frostWisp,
+      EnemyKind.frostSlime,
+      EnemyKind.paleChanter,
+      EnemyKind.bloatedDrowned,
+      EnemyKind.tideWarden,
+    ],
     bossSprite: MonsterSprite.necromancer,
   ),
   burningForest(
@@ -31,7 +46,14 @@ enum Region {
     DamageType.fire,
     background: Color(0xFF1E120C),
     enemy: Color(0xFFB5552B),
-    enemySprite: MonsterSprite.imp,
+    roster: [
+      EnemyKind.fireImp,
+      EnemyKind.emberBat,
+      EnemyKind.lavaSlime,
+      EnemyKind.emberShaman,
+      EnemyKind.flameWisp,
+      EnemyKind.charredHulk,
+    ],
     bossSprite: MonsterSprite.ogre,
     speed: 1.25,
   ),
@@ -41,7 +63,14 @@ enum Region {
     DamageType.lightning,
     background: Color(0xFF16140E),
     enemy: Color(0xFF8C7A4B),
-    enemySprite: MonsterSprite.orcWarrior,
+    roster: [
+      EnemyKind.orcSoldier,
+      EnemyKind.sparkWisp,
+      EnemyKind.powderGoblin,
+      EnemyKind.rustArcher,
+      EnemyKind.orcLancer,
+      EnemyKind.rustOgre,
+    ],
     bossSprite: MonsterSprite.maskedOrc,
     speed: 0.9,
     hp: 1.4,
@@ -52,7 +81,14 @@ enum Region {
     DamageType.wind,
     background: Color(0xFF1C0A0E),
     enemy: Color(0xFFA33A4F),
-    enemySprite: MonsterSprite.chort,
+    roster: [
+      EnemyKind.chort,
+      EnemyKind.bloodBat,
+      EnemyKind.bloodSlime,
+      EnemyKind.bloodPriest,
+      EnemyKind.voidRunner,
+      EnemyKind.fleshHulk,
+    ],
     bossSprite: MonsterSprite.bigDemon,
     speed: 1.1,
     hp: 1.2,
@@ -64,7 +100,7 @@ enum Region {
     this.damageType, {
     required this.background,
     required this.enemy,
-    required this.enemySprite,
+    required this.roster,
     required this.bossSprite,
     this.speed = 1,
     this.hp = 1,
@@ -79,8 +115,11 @@ enum Region {
 
   final Color enemy;
 
-  /// 이 지역 졸개와 보스의 스프라이트.
-  final MonsterSprite enemySprite;
+  /// 이 지역 졸개 종류. 앞에서부터 스테이지 시간이 지나며 차례로 나오기 시작한다
+  /// ([Balance.rosterUnlock]).
+  final List<EnemyKind> roster;
+
+  /// 이 지역 보스의 스프라이트.
   final MonsterSprite bossSprite;
 
   /// 기본 대비 적 이동 속도와 체력 배율.

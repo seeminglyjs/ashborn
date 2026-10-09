@@ -17,6 +17,7 @@ import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
+import '../effects/sparks.dart';
 import '../enemies/boss.dart';
 import '../enemies/enemy.dart';
 import '../weapons/ember_orb.dart';
@@ -298,6 +299,7 @@ class Player extends PositionComponent
       ..add(game.joystick.relativeDelta);
     if (_move.length2 > 1) _move.normalize();
     position.addScaled(_move, speed * dt);
+    world.obstacles.pushOut(position, Balance.playerRadius * 0.7);
     _updateSprite(dt);
   }
 
@@ -366,6 +368,7 @@ class Player extends PositionComponent
     if (damage > 0) {
       _hitPose = Balance.playerHitPoseTime;
       game.hitVignette.flash();
+      world.shake(damage >= maxHp * 0.15 ? 0.3 : 0.12);
       if (game.settings.vibration) HapticFeedback.lightImpact();
     }
     final revives = isDead ? reviveHps : const <double>[];
@@ -424,7 +427,25 @@ class Player extends PositionComponent
     hit.scale(multiplier);
 
     final dealt = enemy.takeDamage(hit.total);
-    world.showDamage(enemy.position, dealt, crit: hit.crit);
+    world.showDamage(enemy.position, dealt, crit: hit.crit, type: hit.main);
+    if (!secondary) {
+      final away = enemy.position - position;
+      enemy.knock(
+        away,
+        Balance.hitKnockback * (hit.crit ? Balance.critKnockback : 1),
+      );
+      world.add(
+        Sparks(
+          position: enemy.position.clone(),
+          color: hitColor(hit.main, crit: hit.crit),
+          count: hit.crit ? 8 : 4,
+          speed: hit.crit ? 220 : 150,
+          angle: math.atan2(away.y, away.x),
+          spread: 1.6,
+        ),
+      );
+      if (hit.crit && enemy is Boss) world.shake(0.08);
+    }
     _applyAilments(enemy, hit, random);
     if (!secondary &&
         effects.contains(UniqueEffect.chainLightning) &&

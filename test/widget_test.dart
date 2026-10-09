@@ -132,7 +132,7 @@ void main() {
     final game = tester
         .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
         .game!;
-    expect(find.text('보스까지 02:00'), findsOneWidget);
+    expect(find.text('보스까지 03:00'), findsOneWidget);
 
     game.world.player.takeDamage(10000);
     await tester.pump();

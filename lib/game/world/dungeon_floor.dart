@@ -8,6 +8,7 @@ import 'package:flame/components.dart';
 import '../../data/balance.dart';
 import '../../data/stages.dart';
 import '../ashborn_game.dart';
+import 'obstacles.dart';
 import 'region_theme.dart';
 
 /// 끝없는 전투 맵 바닥. 지역마다 다른 바닥 타일을 깔고 장식 · 구조물 · 물을 흩뿌린다
@@ -16,8 +17,8 @@ import 'region_theme.dart';
 /// 타일 좌표의 해시로 무늬와 장식을 정해 같은 자리는 언제 돌아와도 같은 모습이다.
 /// [chunkTiles] x [chunkTiles] 타일을 원본 픽셀 크기의 그림 한 장으로 구워 두고
 /// 카메라가 보는 조각만 키워 그린다. 지역이 바뀌면 새로 굽는다.
-/// 구조물의 불꽃만은 굽지 않고 매 프레임 일렁이게 그린다.
-/// 장식 · 구조물은 밟고 지나갈 수 있는 그림일 뿐 충돌하지 않는다.
+/// 구조물의 불꽃과 함정(가시)만은 굽지 않고 매 프레임 상태에 맞춰 그린다.
+/// 장식은 밟고 지나갈 수 있고, 구조물 밑동은 [Obstacles] 가 막는다.
 class DungeonFloor extends Component with HasGameReference<AshbornGame> {
   DungeonFloor() : super(priority: -100);
 
@@ -135,7 +136,53 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
         );
       }
     }
+    _renderSpikes(canvas, visible);
     _renderFlames(canvas, visible);
+  }
+
+  /// 가시 함정. 들어가 있을 땐 구멍만, 예고 동안 끝이 차오르고, 솟으면 다 보인다.
+  void _renderSpikes(Canvas canvas, List<_Chunk> chunks) {
+    final decor = _images[_decorPath]!;
+    final time = game.world.elapsed;
+    final index = Decor.spikes.index * tile.toDouble();
+    for (final chunk in chunks) {
+      for (final (gx, gy) in chunk.spikes) {
+        final x = gx * tile * pixel;
+        final y = gy * tile * pixel;
+        final rise = switch (TrapSystem.spikeState(gx, gy, time)) {
+          TrapState.down => 0.0,
+          TrapState.warning => 0.15 + 0.25 * TrapSystem.spikeRise(gx, gy, time),
+          TrapState.up => 1.0,
+        };
+        // 구멍 네 개.
+        for (final (hx, hy) in const [(4, 5), (11, 5), (4, 12), (11, 12)]) {
+          canvas.drawRect(
+            Rect.fromLTWH(x + hx * pixel, y + hy * pixel, 2 * pixel, pixel),
+            _hole,
+          );
+        }
+        if (rise <= 0) continue;
+        final h = 16 * rise;
+        canvas.drawImageRect(
+          decor,
+          Rect.fromLTWH(index, 0, 16, h),
+          Rect.fromLTWH(x, y + (16 - h) * pixel, 16 * pixel, h * pixel),
+          _paint,
+        );
+      }
+    }
+  }
+
+  static final _hole = Paint()..color = const Color(0xFF0A0706);
+
+  /// 화염 분출구 불꽃 크기: 쉬는 동안 작게 일렁이고, 예고 동안 떨며 커지고, 분출하면 크게.
+  double _ventScale(_Flame f) {
+    final (gx, gy) = f.vent!;
+    return switch (TrapSystem.ventState(gx, gy, game.world.elapsed)) {
+      TrapState.down => 0.35,
+      TrapState.warning => 0.55 + 0.1 * math.sin(_time * 40),
+      TrapState.up => 1.7,
+    };
   }
 
   /// 구조물의 불꽃과 그 둘레의 빛. 불꽃마다 박자를 달리해 함께 일렁이지 않게 한다.
@@ -144,6 +191,7 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
     final glow = _glow!;
     for (final chunk in chunks) {
       for (final f in chunk.flames) {
+        final scale = f.vent == null ? f.scale : f.scale * _ventScale(f);
         final flicker = 0.85 + 0.15 * math.sin(_time * 9 + f.phase * 7);
         _glowPaint.colorFilter = ColorFilter.mode(
           Color.fromRGBO(255, 110, 40, 0.5 * flicker),
@@ -153,8 +201,8 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
           glow,
           const Rect.fromLTWH(0, 0, 64, 64),
           Rect.fromCircle(
-            center: Offset(f.x, f.y - 10 * f.scale),
-            radius: 46 * f.scale * flicker,
+            center: Offset(f.x, f.y - 10 * scale),
+            radius: 46 * scale * flicker,
           ),
           _glowPaint,
         );
@@ -164,12 +212,13 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
       for (final f in chunk.flames) {
         final frame =
             (_time * _flameFps + f.phase * _flameFrames).floor() % _flameFrames;
-        final w = 16 * pixel * f.scale;
-        final h = 24 * pixel * f.scale;
+        final scale = f.vent == null ? f.scale : f.scale * _ventScale(f);
+        final w = 16 * pixel * scale;
+        final h = 24 * pixel * scale;
         canvas.drawImageRect(
           flame,
           Rect.fromLTWH(frame * 16.0, 0, 16, 24),
-          Rect.fromLTWH(f.x - w / 2, f.y - _flameBase * pixel * f.scale, w, h),
+          Rect.fromLTWH(f.x - w / 2, f.y - _flameBase * pixel * scale, w, h),
           _paint,
         );
       }
@@ -222,6 +271,7 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
       _paintWater(canvas, cx * size, cy * size, threshold);
     }
     final flames = <_Flame>[];
+    final spikes = <(int, int)>[];
     for (var ty = 0; ty < chunkTiles; ty++) {
       for (var tx = 0; tx < chunkTiles; tx++) {
         final gx = cx * chunkTiles + tx;
@@ -231,6 +281,8 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
         switch (propAt(gx, gy, theme)) {
           case null:
             break;
+          case Decor.spikes:
+            spikes.add((gx, gy));
           case final Decor d:
             cell(decor, d.index, x, bottom - 16, propPaint);
           case final Structure s:
@@ -238,9 +290,7 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
             final w = image.width.toDouble();
             final h = image.height.toDouble();
             // 조각 밖으로 잘리지 않을 만큼 안쪽 타일에만 선다.
-            final above = ((h - s.bottomPad - 16) / 16).ceil();
-            final side = ((w - 16) / 32).ceil();
-            if (ty < above || tx < side || tx >= chunkTiles - side) break;
+            if (!s.fitsChunk(tx, ty, chunkTiles)) break;
             final left = x + 8 - w / 2;
             final top = bottom + s.bottomPad - h;
             canvas.drawImageRect(
@@ -256,6 +306,7 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
                   y: (cy * size + top + fy) * pixel,
                   scale: scale,
                   phase: hash(gx, gy, 10 + i),
+                  vent: s == Structure.fireVent ? (gx, gy) : null,
                 ),
               );
             }
@@ -267,7 +318,7 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
     final picture = recorder.endRecording();
     final image = picture.toImageSync(size, size);
     picture.dispose();
-    return _Chunk(image, flames);
+    return _Chunk(image, flames, spikes);
   }
 
   static final _deep = Paint()..color = const Color(0xE81A3448);
@@ -394,12 +445,15 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
 }
 
 class _Chunk {
-  _Chunk(this.image, this.flames);
+  _Chunk(this.image, this.flames, this.spikes);
 
   final ui.Image image;
 
   /// 이 조각 구조물들의 불꽃 (월드 좌표).
   final List<_Flame> flames;
+
+  /// 이 조각의 가시 함정 타일 좌표.
+  final List<(int, int)> spikes;
 }
 
 class _Flame {
@@ -408,7 +462,11 @@ class _Flame {
     required this.y,
     required this.scale,
     required this.phase,
+    this.vent,
   });
+
+  /// 화염 분출구 불꽃이면 그 타일. 분출 주기에 맞춰 크기가 바뀐다.
+  final (int, int)? vent;
 
   /// 불꽃 밑동 가운데.
   final double x;

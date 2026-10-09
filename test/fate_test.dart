@@ -420,7 +420,8 @@ void main() {
           closeTo(
             WaveSystem.enemyHp(game.world.stageTime) *
                 const Stage(2).enemyHpMultiplier *
-                Balance.curseEnemyHp,
+                Balance.curseEnemyHp *
+                enemy.kind!.hp,
             enemy.maxHp * 0.02,
           ),
         );
@@ -445,13 +446,15 @@ void main() {
         final drop = 1 + Balance.curseDropGain;
         expect(game.world.fate.dropMultiplier, drop * drop);
         await advance(game, Balance.baseSpawnInterval + 0.1);
+        final enemy = game.world.enemies.first;
         expect(
-          game.world.enemies.first.contactDamage,
+          enemy.contactDamage,
           closeTo(
             Balance.enemyContactDamage *
                 game.world.stage.enemyDamageMultiplier *
                 Balance.curseEnemyDamage *
-                Balance.curseEnemyDamage,
+                Balance.curseEnemyDamage *
+                enemy.kind!.damage,
             1e-9,
           ),
         );

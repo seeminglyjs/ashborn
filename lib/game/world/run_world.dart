@@ -9,6 +9,7 @@ import '../../components/effects/damage_number.dart';
 import '../../components/enemies/boss.dart';
 import '../../components/enemies/death_puff.dart';
 import '../../components/enemies/enemy.dart';
+import '../../components/enemies/hazards.dart';
 import '../../components/pickups/ash_shard.dart';
 import '../../components/pickups/item_drop.dart';
 import '../../components/pickups/supply_drop.dart';
@@ -31,6 +32,8 @@ import '../../systems/wave_system.dart';
 import '../ashborn_game.dart';
 import 'atmosphere.dart';
 import 'dungeon_floor.dart';
+import 'obstacles.dart';
+import 'region_theme.dart';
 
 /// 런 하나의 월드. 재시작하면 통째로 새로 만든다.
 ///
@@ -46,6 +49,20 @@ class RunWorld extends World
 
   /// 살아 있는 적 목록. [Enemy] 가 마운트/제거될 때 스스로 갱신한다.
   final enemies = <Enemy>[];
+
+  /// 날아다니는 적 탄 수. [EnemyBullet] 이 스스로 갱신한다.
+  int enemyBullets = 0;
+
+  bool get canAddBullet => enemyBullets < Balance.maxEnemyBullets;
+
+  /// 구조물 밑동. 플레이어와 적이 뚫고 지나가지 못한다.
+  late final obstacles = Obstacles(() => RegionTheme.of(stage.region));
+
+  /// 카메라가 따라가는 점. 플레이어 위치에 화면 흔들림을 더한다.
+  final _camera = PositionComponent();
+
+  /// 남은 흔들림 세기 (초 단위로 줄어든다).
+  double _shake = 0;
 
   /// 런 전체 시간.
   double elapsed = 0;
@@ -103,20 +120,45 @@ class RunWorld extends World
     // 스프라이트는 기다리지 않는다. 다 읽기 전에 나온 적은 원으로 그려진다.
     unawaited(game.monsterSprites.load(game.images));
     unawaited(game.props.load(game.images));
+    _camera.position.setFrom(player.position);
     addAll([
       DungeonFloor(),
       player,
       WaveSystem(),
       CrowdSystem(),
       CrateSystem(),
+      TrapSystem(),
       Atmosphere(),
+      _camera,
     ]);
-    game.camera.follow(player);
+    game.camera.follow(_camera);
+  }
+
+  /// 화면을 [amount] (초) 만큼 흔든다. 더 센 흔들림이 이긴다. 설정에서 진동을 끄면 약하게.
+  void shake(double amount) => _shake = math.max(_shake, amount);
+
+  /// [at] 이 지금 화면 안에 보이는가.
+  bool isOnScreen(Vector2 at) =>
+      game.camera.visibleWorldRect.contains(at.toOffset());
+
+  void _updateCamera(double dt) {
+    _camera.position.setFrom(player.position);
+    if (_shake <= 0) return;
+    _shake = math.max(0, _shake - dt);
+    final power = math.min(_shake, 0.5) * Balance.shakePower;
+    final r = game.random;
+    _camera.position.add(
+      Vector2(
+        (r.nextDouble() * 2 - 1) * power,
+        (r.nextDouble() * 2 - 1) * power,
+      ),
+    );
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+    _updateCamera(dt);
     elapsed += dt;
     final stats = game.stats;
     stats.elapsedSeconds.value = elapsed.floor();
@@ -188,11 +230,13 @@ class RunWorld extends World
       color: region.enemy,
       sprite: region.bossSprite,
       name: region.bossName,
+      region: region,
     );
     boss = b;
     add(b);
     game.stats.bossHealth.value = 1;
     game.notify('${region.bossName} 등장', color: const Color(0xFFE8463A));
+    shake(0.5);
   }
 
   /// 보스를 잡으면 남은 졸개는 재가 되어 흩어지고 웨이브가 멈춘다.
@@ -231,6 +275,10 @@ class RunWorld extends World
       add(DeathPuff(position: enemy.position.clone()));
       enemy.removeFromParent();
     }
+    for (final hazard in children.whereType<Hazard>()) {
+      hazard.removeFromParent();
+    }
+    shake(0.6);
     game.stats
       ..bossHealth.value = null
       ..stageCleared.value = true;
@@ -294,9 +342,22 @@ class RunWorld extends World
     game.notify(stage.name, color: const Color(0xFFE8C887));
   }
 
-  void onEnemyKilled(Vector2 position) {
+  /// [xp] 는 떨어뜨릴 재의 결정 수 (거구는 여럿).
+  void onEnemyKilled(Vector2 position, {int xp = 1}) {
     game.stats.kills.value++;
-    add(AshShard(position: position));
+    for (var i = 0; i < xp; i++) {
+      add(
+        AshShard(
+          position: i == 0
+              ? position
+              : position +
+                    Vector2(
+                      (game.random.nextDouble() - 0.5) * 24,
+                      (game.random.nextDouble() - 0.5) * 24,
+                    ),
+        ),
+      );
+    }
     _pendingEmber += Balance.killEmber * stage.level * emberMultiplier;
     _pendingGold += Balance.killGold * stage.level * goldMultiplier;
     final heal = player.transcend(TranscendOption.healOnKill);
@@ -388,7 +449,12 @@ class RunWorld extends World
   int damageNumbers = 0;
 
   /// [at] 의 적 위로 피해 숫자를 띄운다. 너무 많이 떠 있으면 건너뛴다.
-  void showDamage(Vector2 at, double amount, {required bool crit}) {
+  void showDamage(
+    Vector2 at,
+    double amount, {
+    required bool crit,
+    DamageType type = DamageType.physical,
+  }) {
     if (amount < 0.5 || damageNumbers >= DamageNumber.maxAlive) return;
     add(
       DamageNumber(
@@ -398,6 +464,7 @@ class RunWorld extends World
         ),
         amount: amount,
         crit: crit,
+        color: hitColor(type, crit: crit),
       ),
     );
   }

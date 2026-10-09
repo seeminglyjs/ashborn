@@ -69,19 +69,28 @@ void main() {
       await advance(game, 2);
 
       final enemy = game.world.enemies.first;
+      final kind = enemy.kind!;
       expect(stage.region, Region.burningForest);
+      expect(Region.burningForest.roster, contains(kind));
       expect(enemy.color, Region.burningForest.enemy);
       expect(enemy.damageType, DamageType.fire);
       expect(
         enemy.maxHp,
         closeTo(
-          WaveSystem.enemyHp(game.world.stageTime) * stage.enemyHpMultiplier,
-          stage.enemyHpMultiplier,
+          WaveSystem.enemyHp(game.world.stageTime) *
+              stage.enemyHpMultiplier *
+              kind.hp,
+          stage.enemyHpMultiplier * kind.hp,
         ),
       );
       expect(
         enemy.contactDamage,
-        Balance.enemyContactDamage * stage.enemyDamageMultiplier,
+        closeTo(
+          Balance.enemyContactDamage *
+              stage.enemyDamageMultiplier *
+              kind.damage,
+          1e-9,
+        ),
       );
     },
   );
@@ -142,17 +151,31 @@ void main() {
       },
     );
 
-    testWithGame<AshbornGame>('보스는 주기적으로 돌진한다', gameWith(Roster.witch), (
+    testWithGame<AshbornGame>('보스는 주기적으로 지역 기술을 쓴다', gameWith(Roster.witch), (
       game,
     ) async {
       await game.ready();
       final boss = await reachBoss(game);
-      final walk = boss.speed;
+      expect(boss.moves, BossMove.of(boss.region));
+      expect(boss.currentMove, isNull);
 
-      await advance(game, Balance.bossChargeInterval);
+      // 첫 기술은 나온 뒤 간격의 0.6 배에 쓴다.
+      await advance(game, Balance.bossMoveInterval * 0.6 + 0.1);
 
-      expect(boss.isCharging, isTrue);
-      expect(boss.speed, closeTo(walk * Balance.bossChargeSpeed, 1e-9));
+      expect(boss.currentMove, isNotNull);
+      expect(boss.moves, contains(boss.currentMove));
+    });
+
+    testWithGame<AshbornGame>('보스는 체력이 절반 아래면 격노한다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      await game.ready();
+      final boss = await reachBoss(game);
+      expect(boss.isEnraged, isFalse);
+      boss.takeDamage(boss.maxHp * (1 - Balance.bossEnrageHp) + 1);
+      await advance(game, 1 / 30);
+      expect(boss.isEnraged, isTrue);
+      expect(game.notices.value.last.text, contains('격노'));
     });
 
     testWithGame<AshbornGame>(

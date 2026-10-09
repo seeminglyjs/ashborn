@@ -47,6 +47,88 @@ abstract final class Balance {
   /// 겹친 적끼리 밀어내는 속도.
   static const double enemySeparationStrength = 120;
 
+  // 졸개 행동 (EnemyBehavior)
+  /// 떼: 한 번에 몇 마리씩 몰려 나오고, 다가오며 좌우로 흔들리는 세기와 빠르기.
+  static const int swarmPack = 3;
+  static const double swarmWeave = 0.6;
+  static const double swarmWeaveFrequency = 3;
+
+  /// 망령: 지그재그 세기와 빠르기, 비치는 정도.
+  static const double phantomZigzag = 1.1;
+  static const double phantomZigzagFrequency = 2.2;
+  static const double phantomOpacity = 0.7;
+
+  /// 돌진: 이 거리 안에 들면 멈춰서 [chargeWindup] 초 동안 힘을 모은 뒤
+  /// 이동 속도의 [chargeSpeed] 배로 [chargeDash] 초 돌진한다. 다음 돌진까지 [chargeCooldown] 초.
+  static const double chargeRange = 260;
+  static const double chargeWindup = 0.7;
+  static const double chargeDash = 0.55;
+  static const double chargeSpeed = 4.5;
+  static const double chargeCooldown = 3.5;
+
+  /// 사격: 이 거리를 지키며 [shooterCooldown] 초마다 [shooterWindup] 초 조준한 뒤 쏜다.
+  static const double shooterRange = 240;
+  static const double shooterCooldown = 2.8;
+  static const double shooterWindup = 0.45;
+
+  /// 적 탄: 속도, 반지름, 수명, 접촉 피해 대비 배율. 한꺼번에 날아다닐 수 있는 수.
+  static const double enemyBulletSpeed = 200;
+  static const double enemyBulletRadius = 6;
+  static const double enemyBulletLifetime = 4;
+  static const double enemyBulletDamage = 0.8;
+  static const int maxEnemyBullets = 60;
+
+  /// 주술: 이 거리를 지키며 [casterCooldown] 초마다 플레이어 발밑에 장판을 깐다.
+  /// 장판은 [casterBlastDelay] 초 뒤 터지며 접촉 피해의 [casterBlastDamage] 배.
+  static const double casterRange = 280;
+  static const double casterCooldown = 4;
+  static const double casterBlastRadius = 55;
+  static const double casterBlastDelay = 1.1;
+  static const double casterBlastDamage = 1.2;
+
+  /// 자폭: 이 거리 안에 들면 멈춰서 [bomberFuse] 초 깜빡이다 터진다.
+  static const double bomberTrigger = 60;
+  static const double bomberFuse = 0.9;
+  static const double bomberRadius = 75;
+  static const double bomberDamage = 2;
+
+  /// 분열: 쓰러지면 이만큼 갈라지고, 새끼는 부모 최대 체력과 크기의 이 비율.
+  static const int splitCount = 2;
+  static const double splitHp = 0.35;
+  static const double splitSize = 0.65;
+
+  // 맵 함정
+  /// 가시: 이 주기마다 [spikeUpTime] 초 솟는다. 솟기 [spikeWarning] 초 전부터 끝이 차오른다.
+  static const double spikePeriod = 3.5;
+  static const double spikeUpTime = 1;
+  static const double spikeWarning = 0.6;
+
+  /// 화염 분출구: 이 주기마다 [ventBurstTime] 초 불기둥을 뿜고, 밑동에서 [ventRadius] 안이 탄다.
+  static const double ventPeriod = 4.5;
+  static const double ventBurstTime = 1.2;
+  static const double ventWarning = 0.8;
+  static const double ventRadius = 30;
+
+  /// 함정 피해: 플레이어는 그 스테이지 졸개 접촉 피해의 이 배율, 적은 최대 체력의 이 비율.
+  static const double trapDamage = 1.5;
+  static const double trapEnemyDamage = 0.3;
+
+  // 타격감
+  /// 맞은 졸개가 뒤로 밀리는 속도와 그 속도가 줄어드는 빠르기. 치명타는 [critKnockback] 배.
+  static const double hitKnockback = 110;
+  static const double knockbackDecay = 9;
+  static const double critKnockback = 1.8;
+
+  /// 거구는 밀림이 이 비율로 줄어든다. 보스는 밀리지 않는다.
+  static const double bruteKnockback = 0.25;
+
+  /// 화면 흔들림 최대 폭 (월드 단위, 흔들림 0.5초어치일 때).
+  static const double shakePower = 14;
+
+  /// 맞은 적이 커졌다 돌아오는 정도와 시간.
+  static const double hitPop = 0.18;
+  static const double hitPopTime = 0.12;
+
   // 스테이지: 레벨(1부터)이 오를 때마다 적 체력과 피해가 이 배율로 는다.
   static const double stageHpGrowth = 1.35;
   static const double stageDamageGrowth = 1.2;
@@ -55,7 +137,10 @@ abstract final class Balance {
   static const List<double> earlyStageEase = [0.5, 0.7, 0.85];
 
   /// 스테이지 시작 후 이 시간(초)이 지나면 보스가 나온다.
-  static const double stageDuration = 120;
+  static const double stageDuration = 180;
+
+  /// 지역 졸개 종류(로스터 순서대로)가 나오기 시작하는 스테이지 시간(초).
+  static const List<double> rosterUnlock = [0, 0, 20, 45, 75, 105];
 
   /// 보스를 잡은 뒤 다음 지역 선택이 뜨기까지 전리품을 줍는 시간.
   static const double stageClearDelay = 3;
@@ -70,10 +155,35 @@ abstract final class Balance {
   /// 피하기만으로는 깰 수 없고, 보스를 잡을 화력(장비 · 강화)이 있어야 한다.
   static const double bossTimeLimit = 180;
 
-  /// 보스는 이 간격마다 잠깐 빠르게 돌진한다.
-  static const double bossChargeInterval = 4;
+  /// 보스는 걸어오다 이 간격마다 지역 기술을 하나 쓴다 (BossMove).
+  /// 체력이 [bossEnrageHp] 아래로 떨어지면 격노해 간격이 [bossEnragedInterval] 배가 된다.
+  static const double bossMoveInterval = 3.2;
+  static const double bossEnrageHp = 0.5;
+  static const double bossEnragedInterval = 0.65;
+
+  /// 돌진: 힘 모으는 시간(연속 돌진은 더 짧다), 돌진 시간과 걷기 대비 속도.
+  static const double bossChargeWindup = 0.8;
+  static const double bossRushWindup = 0.45;
   static const double bossChargeDuration = 0.6;
   static const double bossChargeSpeed = 3.5;
+
+  /// 내려찍기: 힘 모으는 시간과 충격파가 퍼지는 거리.
+  static const double bossSlamWindup = 0.8;
+  static const double bossSlamRadius = 340;
+
+  /// 충격파 · 운석은 보스 접촉 피해의 이 배율, 탄은 [bossBulletDamage] 배.
+  static const double bossHazardDamage = 1;
+  static const double bossBulletDamage = 0.5;
+  static const double bossSpiralTime = 2.4;
+
+  /// 운석: 떨어지기까지의 시간, 크기, 플레이어 둘레로 흩어지는 거리, 불타는 숲에서 타오르는 시간.
+  static const double bossMeteorDelay = 1.2;
+  static const double bossMeteorRadius = 70;
+  static const double bossMeteorSpread = 150;
+  static const double bossMeteorLinger = 2.5;
+
+  /// 순간이동: 플레이어에게서 이 거리에 나타난다.
+  static const double bossBlinkDistance = 160;
 
   /// 타락 단계마다 적 이동 속도 증가율과 그 상한 배율.
   static const double corruptionSpeedBonus = 0.04;

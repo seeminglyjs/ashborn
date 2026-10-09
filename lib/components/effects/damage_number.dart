@@ -9,12 +9,27 @@ class DamageNumber extends TextComponent with HasWorldReference<RunWorld> {
     required super.position,
     required double amount,
     required bool crit,
+    Color color = const Color(0xFFFFFFFF),
   }) : super(
-         text: '${amount.round()}',
+         text: crit ? '${amount.round()}!' : '${amount.round()}',
          anchor: Anchor.center,
          priority: 7,
-         textRenderer: crit ? _crit : _normal,
+         textRenderer: crit ? _crit : _paint(color),
        );
+
+  /// 속성 색마다 한 번만 만든다.
+  static final _paints = <Color, TextPaint>{};
+  static TextPaint _paint(Color color) => _paints.putIfAbsent(
+    color,
+    () => TextPaint(
+      style: TextStyle(
+        color: color,
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        shadows: _shadows,
+      ),
+    ),
+  );
 
   static const double duration = 0.6;
 
@@ -25,18 +40,10 @@ class DamageNumber extends TextComponent with HasWorldReference<RunWorld> {
   static const int maxAlive = 60;
 
   static const _shadows = [Shadow(blurRadius: 2)];
-  static final _normal = TextPaint(
-    style: const TextStyle(
-      color: Color(0xFFFFFFFF),
-      fontSize: 13,
-      fontWeight: FontWeight.bold,
-      shadows: _shadows,
-    ),
-  );
   static final _crit = TextPaint(
     style: const TextStyle(
       color: Color(0xFFFFD54F),
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: FontWeight.w900,
       shadows: _shadows,
     ),

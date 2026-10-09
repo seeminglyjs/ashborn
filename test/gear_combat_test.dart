@@ -229,6 +229,8 @@ void main() {
         final enemy = await addEnemy(game, Vector2(400, 0));
 
         game.world.player.strike(enemy, 1, DamageType.physical);
+        // 맞아서 밀려나는 것은 빼고 걷는 속도만 본다.
+        enemy.knockback.setZero();
         final start = enemy.position.x;
         enemy.update(0.5);
 
