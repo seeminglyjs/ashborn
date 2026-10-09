@@ -65,7 +65,7 @@ enum WeaponId {
   ),
   cleave(
     '심판의 일격',
-    '바라보는 쪽을 넓게 베어 가르는 반달 참격',
+    '가장 가까운 적 쪽을 넓게 베어 가르는 반달 참격',
     '참격',
     DamageType.physical,
     owner: CharacterId.knight,
@@ -173,7 +173,7 @@ enum WeaponId {
   ),
   throwingKnives(
     '투척 단검',
-    '달리는 쪽으로 빠르게 연달아 던지는 단검',
+    '가장 가까운 적에게 빠르게 연달아 던지는 단검',
     '단검',
     DamageType.physical,
     owner: CharacterId.hunter,

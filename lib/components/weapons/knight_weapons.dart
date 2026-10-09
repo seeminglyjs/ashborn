@@ -73,7 +73,7 @@ class _Aftershock extends Component with HasWorldReference<RunWorld> {
   }
 }
 
-/// 심판의 일격 (잿불 기사): 바라보는 쪽을 넓은 반달로 벤다. 개수가 늘면 다른 방향도 함께.
+/// 심판의 일격 (잿불 기사): 가장 가까운 적 쪽을 넓은 반달로 벤다. 개수가 늘면 다른 방향도 함께.
 /// 각성(심판의 검)하면 등 뒤도 함께 베고 참격이 더 커진다.
 class Cleave extends Weapon {
   Cleave() : super(baseCooldown: Balance.cleaveCooldown);
@@ -93,7 +93,10 @@ class Cleave extends Weapon {
     final player = world.player;
     final at = player.position;
     if (world.enemiesNear(at, radius).isEmpty) return false;
-    final base = math.atan2(player.facing.y, player.facing.x);
+    // 도망치며 싸워도 헛치지 않게 가장 가까운 적 쪽을 벤다.
+    final target = world.nearestEnemy(at, maxDistance: radius)!;
+    final aim = target.position - at;
+    final base = math.atan2(aim.y, aim.x);
     final count = slashes;
     for (var i = 0; i < count; i++) {
       final angle = base + math.pi * 2 * i / count;

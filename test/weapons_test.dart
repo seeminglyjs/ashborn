@@ -46,7 +46,7 @@ void main() {
             player.gainWeapon(id);
           }
           await game.ready();
-          // 참격 · 단검은 오른쪽(처음 바라보는 쪽)을 노린다. 대검은 궤도 위에 둔다.
+          // 대검은 궤도 위에 둔다.
           final weapon = player.weapon(id);
           final at = Vector2(weapon is FlameBlade ? weapon.orbitRadius : 45, 0);
           final enemy = await addEnemy(game, at, hp: 1e9);

@@ -67,9 +67,6 @@ class Player extends PositionComponent
   final _keyDirection = Vector2.zero();
   final _move = Vector2.zero();
 
-  /// 마지막으로 움직인 방향 (단위 벡터). 참격 · 단검이 이쪽을 노린다.
-  final facing = Vector2(1, 0);
-
   /// 발밑 그림자.
   final _shadowPaint = Paint()..color = const Color(0x66000000);
 
@@ -355,11 +352,6 @@ class Player extends PositionComponent
       ..setFrom(_keyDirection)
       ..add(game.joystick.relativeDelta);
     if (_move.length2 > 1) _move.normalize();
-    if (_move.length2 > 0.01) {
-      facing
-        ..setFrom(_move)
-        ..normalize();
-    }
     position.addScaled(_move, speed * dt);
     world.obstacles.pushOut(position, Balance.playerRadius * 0.7);
     _updateSprite(dt);

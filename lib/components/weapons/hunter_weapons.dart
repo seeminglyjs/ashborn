@@ -118,7 +118,7 @@ class Mine extends PositionComponent with HasWorldReference<RunWorld> {
   }
 }
 
-/// 투척 단검 (불씨 사냥꾼): 달리는 쪽으로 단검을 연달아 던진다.
+/// 투척 단검 (불씨 사냥꾼): 가장 가까운 적에게 단검을 연달아 던진다.
 /// 각성(칼날 폭풍)하면 앞뒤 양옆 네 방향으로 함께 던진다.
 class ThrowingKnives extends Weapon {
   ThrowingKnives() : super(baseCooldown: Balance.knifeCooldown);
@@ -130,8 +130,13 @@ class ThrowingKnives extends Weapon {
 
   @override
   bool fire() {
-    if (world.enemies.isEmpty) return false;
     final player = world.player;
+    final target = world.nearestEnemy(
+      player.position,
+      maxDistance: Balance.knifeSpeed * Balance.knifeLifetime,
+    );
+    if (target == null) return false;
+    final aim = (target.position - player.position)..normalize();
     final directions = awakened ? 4 : 1;
     for (var d = 0; d < directions; d++) {
       for (var i = 0; i < knifeCount; i++) {
@@ -140,7 +145,7 @@ class ThrowingKnives extends Weapon {
         world.add(
           Knife(
             position: player.position.clone(),
-            direction: player.facing.clone()..rotate(offset),
+            direction: aim.clone()..rotate(offset),
             damage: Balance.knifeDamage * damageMultiplier,
             type: id.damageType,
             pierce: bonusPierce,
