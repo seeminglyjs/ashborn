@@ -11,21 +11,25 @@ import '../../components/enemies/death_puff.dart';
 import '../../components/enemies/enemy.dart';
 import '../../components/pickups/ash_shard.dart';
 import '../../components/pickups/item_drop.dart';
+import '../../components/pickups/supply_drop.dart';
 import '../../components/player/player.dart';
+import '../../components/props/crate.dart';
 import '../../data/balance.dart';
 import '../../data/characters.dart';
 import '../../data/damage.dart';
 import '../../data/equipment.dart';
 import '../../data/stages.dart';
+import '../../data/supplies.dart';
 import '../../data/transcend.dart';
 import '../../data/upgrades.dart';
+import '../../systems/crate_system.dart';
 import '../../systems/crowd_system.dart';
 import '../../systems/fate_system.dart';
 import '../../systems/level_system.dart';
 import '../../systems/loot_system.dart';
 import '../../systems/wave_system.dart';
 import '../ashborn_game.dart';
-import 'ground_grid.dart';
+import 'dungeon_floor.dart';
 
 /// 런 하나의 월드. 재시작하면 통째로 새로 만든다.
 ///
@@ -97,7 +101,14 @@ class RunWorld extends World
     _publishStage();
     // 스프라이트는 기다리지 않는다. 다 읽기 전에 나온 적은 원으로 그려진다.
     unawaited(game.monsterSprites.load(game.images));
-    addAll([GroundGrid(), player, WaveSystem(), CrowdSystem()]);
+    unawaited(game.props.load(game.images));
+    addAll([
+      DungeonFloor(),
+      player,
+      WaveSystem(),
+      CrowdSystem(),
+      CrateSystem(),
+    ]);
     game.camera.follow(player);
   }
 
@@ -213,7 +224,8 @@ class RunWorld extends World
       game.notify('초월석 +1', color: TranscendOption.color);
     }
     for (final enemy in enemies.toList()) {
-      if (enemy == defeated) continue;
+      // 상자는 그대로 둔다. 전리품을 주우며 부술 수 있다.
+      if (enemy == defeated || enemy is Crate) continue;
       add(DeathPuff(position: enemy.position.clone()));
       enemy.removeFromParent();
     }
@@ -296,6 +308,77 @@ class RunWorld extends World
     if (player.effects.contains(UniqueEffect.emberBurst) &&
         game.random.nextDouble() < Balance.emberBurstChance) {
       emberBurst(position);
+    }
+  }
+
+  /// 상자가 부서졌을 때. 나무 상자는 보급품 하나, 보물 상자는 레어 이상 장비와 골드 주머니.
+  void breakCrate(Crate crate) {
+    final at = crate.position.clone();
+    final gold = (Balance.crateGold * stage.level * goldMultiplier).round();
+    if (crate.chest) {
+      add(
+        ItemDrop(
+          position: at + Vector2(-14, 0),
+          item: LootSystem.chestItem(game.random, stage),
+        ),
+      );
+      add(
+        SupplyDrop(
+          position: at + Vector2(14, 0),
+          supply: Supply.gold,
+          amount: (gold * Balance.chestGoldScale).round(),
+        ),
+      );
+      return;
+    }
+    final drop = LootSystem.rollCrate(game.random);
+    switch (drop.supply) {
+      case null:
+        add(
+          ItemDrop(
+            position: at,
+            item: LootSystem.generate(
+              game.random,
+              level: stage.level,
+              rarity: LootSystem.rollRarity(
+                game.random,
+                luck: stage.rarityLuck,
+              ),
+            ),
+          ),
+        );
+      case final supply:
+        add(
+          SupplyDrop(
+            position: at,
+            supply: supply,
+            amount: supply == Supply.gold ? gold : 1,
+          ),
+        );
+    }
+  }
+
+  /// 상자에서 나온 소모품을 주웠을 때. 골드 · 강화석은 처치 보상처럼 모아 뒀다가 정산한다.
+  void collectSupply(Supply supply, int amount) {
+    switch (supply) {
+      case Supply.potion:
+        final before = player.hp;
+        player.heal(player.maxHp * Balance.potionHeal);
+        game.notify(
+          '체력 +${(player.hp - before).round()}',
+          color: const Color(0xFF7BD15A),
+        );
+      case Supply.gold:
+        _pendingGold += amount;
+        game.notify('골드 +$amount', color: const Color(0xFFE8C887));
+      case Supply.stone:
+        _pendingStones += amount;
+        game.notify('강화석 +$amount', color: const Color(0xFF6FD8F0));
+      case Supply.magnet:
+        for (final shard in children.whereType<AshShard>()) {
+          shard.attract();
+        }
+        game.notify('자석: 재의 결정을 모두 끌어당긴다', color: const Color(0xFF9FD8E8));
     }
   }
 

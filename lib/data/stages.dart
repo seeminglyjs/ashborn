@@ -12,7 +12,7 @@ enum Region {
     '잿더미 거인',
     DamageType.physical,
     background: Color(0xFF1A1414),
-    grid: Color(0x1FFFFFFF),
+    floor: Color(0xFF8E8682),
     enemy: Color(0xFF8A7F7A),
     enemySprite: MonsterSprite.tinyZombie,
     bossSprite: MonsterSprite.bigZombie,
@@ -22,7 +22,7 @@ enum Region {
     '가라앉은 사제',
     DamageType.cold,
     background: Color(0xFF0F161D),
-    grid: Color(0x1F9FD8E8),
+    floor: Color(0xFF7A8C9E),
     enemy: Color(0xFF6F8FA8),
     enemySprite: MonsterSprite.skelet,
     bossSprite: MonsterSprite.necromancer,
@@ -32,7 +32,7 @@ enum Region {
     '불타는 수호목',
     DamageType.fire,
     background: Color(0xFF1E120C),
-    grid: Color(0x1FFF8A3D),
+    floor: Color(0xFF9A7462),
     enemy: Color(0xFFB5552B),
     enemySprite: MonsterSprite.imp,
     bossSprite: MonsterSprite.ogre,
@@ -43,7 +43,7 @@ enum Region {
     '녹슨 기사단장',
     DamageType.lightning,
     background: Color(0xFF16140E),
-    grid: Color(0x1FFFE45C),
+    floor: Color(0xFF958C70),
     enemy: Color(0xFF8C7A4B),
     enemySprite: MonsterSprite.orcWarrior,
     bossSprite: MonsterSprite.maskedOrc,
@@ -55,7 +55,7 @@ enum Region {
     '꺼지지 않는 심장',
     DamageType.wind,
     background: Color(0xFF1C0A0E),
-    grid: Color(0x1FE8463A),
+    floor: Color(0xFF9A6E76),
     enemy: Color(0xFFA33A4F),
     enemySprite: MonsterSprite.chort,
     bossSprite: MonsterSprite.bigDemon,
@@ -68,7 +68,7 @@ enum Region {
     this.bossName,
     this.damageType, {
     required this.background,
-    required this.grid,
+    required this.floor,
     required this.enemy,
     required this.enemySprite,
     required this.bossSprite,
@@ -82,7 +82,9 @@ enum Region {
   /// 이 지역 적과 보스가 주는 피해 속성.
   final DamageType damageType;
   final Color background;
-  final Color grid;
+
+  /// 전투 맵 바닥 타일에 곱하는 색. 지역마다 바닥 분위기가 다르다.
+  final Color floor;
   final Color enemy;
 
   /// 이 지역 졸개와 보스의 스프라이트.

@@ -5,6 +5,7 @@ import 'package:ashborn/components/enemies/boss.dart';
 import 'package:ashborn/components/pickups/ash_shard.dart';
 import 'package:ashborn/components/pickups/item_drop.dart';
 import 'package:ashborn/components/pickups/pickup.dart';
+import 'package:ashborn/components/pickups/supply_drop.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/fates.dart';
@@ -164,7 +165,7 @@ class Bot {
   final _force = Vector2.zero();
   final _d = Vector2.zero();
 
-  /// 가까운 적에게서 멀어지고, 안전하면 경험치 · 장비 쪽으로 간다.
+  /// 가까운 적에게서 멀어지고, 안전하면 경험치 · 장비 · 보급품 쪽으로 간다.
   void _steer() {
     _sinceSteer += dt;
     if (_sinceSteer < skill.react) return;
@@ -175,7 +176,8 @@ class Bot {
     final melee = game.character.id == CharacterId.knight;
     _force.setZero();
     for (final e in w.enemies) {
-      if (e.isDead) continue;
+      // 상자처럼 닿아도 아프지 않은 것은 피하지 않는다.
+      if (e.isDead || e.contactDamage <= 0) continue;
       _d
         ..setFrom(p)
         ..sub(e.position);
@@ -191,8 +193,9 @@ class Bot {
       _target = null;
       var best = 450.0 * 450;
       for (final c in w.children) {
-        if (c is! AshShard && c is! ItemDrop) continue;
+        if (c is! AshShard && c is! ItemDrop && c is! SupplyDrop) continue;
         final pickup = c as Pickup;
+        if (!pickup.collectable) continue;
         final d2 = pickup.position.distanceToSquared(p);
         if (d2 < best) {
           best = d2;

@@ -4,6 +4,7 @@ import '../data/balance.dart';
 import '../data/equipment.dart';
 import '../data/stages.dart';
 import '../data/stats.dart';
+import '../data/supplies.dart';
 
 /// 장비 드랍과 생성.
 abstract final class LootSystem {
@@ -47,17 +48,34 @@ abstract final class LootSystem {
 
   /// 보스 상자: 최소 [Rarity.rare] 장비 [Balance.bossChestItems] 개.
   static List<Item> bossChest(math.Random random, Stage stage) => [
-    for (var i = 0; i < Balance.bossChestItems; i++)
-      generate(
-        random,
-        level: stage.level,
-        rarity:
-            Rarity.values[math.max(
-              Rarity.rare.index,
-              rollRarity(random, luck: stage.rarityLuck).index,
-            )],
-      ),
+    for (var i = 0; i < Balance.bossChestItems; i++) chestItem(random, stage),
   ];
+
+  /// 나무 상자에서 [drop] 이 나올 확률.
+  static double crateDropChance(CrateDrop drop) =>
+      Balance.crateDropWeights[drop.index] /
+      Balance.crateDropWeights.fold(0, (sum, w) => sum + w);
+
+  /// 나무 상자 하나에서 나오는 것.
+  static CrateDrop rollCrate(math.Random random) {
+    var pick = random.nextDouble();
+    for (final drop in CrateDrop.values) {
+      pick -= crateDropChance(drop);
+      if (pick < 0) return drop;
+    }
+    return CrateDrop.values.last;
+  }
+
+  /// 보물 상자 장비: 보스 상자와 같은 확률 (레어 이상).
+  static Item chestItem(math.Random random, Stage stage) => generate(
+    random,
+    level: stage.level,
+    rarity:
+        Rarity.values[math.max(
+          Rarity.rare.index,
+          rollRarity(random, luck: stage.rarityLuck).index,
+        )],
+  );
 
   /// [luck] 만큼 높은 등급 가중치가 커진다 (타락 보상).
   /// [ratio] 는 한 등급 오를 때마다 줄어드는 가중치 배율.
