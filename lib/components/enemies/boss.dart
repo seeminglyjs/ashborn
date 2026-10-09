@@ -205,7 +205,7 @@ class Boss extends Enemy {
       case BossMove.summon:
         _shake(2);
         if (_t >= 0.6) {
-          _summon(_enraged ? 7 : 5);
+          _summon(_enraged ? Balance.bossEnragedSummon : Balance.bossSummon);
           _end();
         }
       case BossMove.meteor:

@@ -158,8 +158,12 @@ abstract final class Balance {
   static const double bossTimeLimit = 180;
 
   /// 보스는 걸어오다 이 간격마다 지역 기술을 하나 쓴다 (BossMove).
+  /// 소환은 [bossSummon] 마리 (격노하면 [bossEnragedSummon]).
+  static const int bossSummon = 3;
+  static const int bossEnragedSummon = 5;
+
   /// 체력이 [bossEnrageHp] 아래로 떨어지면 격노해 간격이 [bossEnragedInterval] 배가 된다.
-  static const double bossMoveInterval = 3.2;
+  static const double bossMoveInterval = 3.6;
   static const double bossEnrageHp = 0.5;
   static const double bossEnragedInterval = 0.65;
 
@@ -304,7 +308,7 @@ abstract final class Balance {
 
   // 골드와 강화석: 처치와 보스로 얻고, 쓰러지거나 클리어할 때 정산된다. 장비 강화에 쓴다.
   // 졸개가 다양해지며(떼 · 분열) 처치 수가 약 두 배가 되어 처치당 보상을 낮췄다.
-  // 강화석은 절반, 골드 · 잔불 · 장비 드랍은 0.75배 (골드까지 절반이면 강화가 막혀 진행이 멈춘다).
+  // 강화석은 1/3, 골드 · 잔불 · 장비 드랍은 0.75배 (골드까지 절반이면 강화가 막혀 진행이 멈춘다).
   /// 처치당 골드 (스테이지 레벨마다).
   static const double killGold = 0.75;
 
@@ -312,7 +316,7 @@ abstract final class Balance {
   static const double stageClearGold = 50;
 
   /// 처치당 강화석이 나올 확률 (타락 보상 배율이 붙는다).
-  static const double stoneDropChance = 0.015;
+  static const double stoneDropChance = 0.01;
 
   /// 보스가 주는 강화석. 타락 단계마다 하나씩 더.
   static const int bossStones = 3;
