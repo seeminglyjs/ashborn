@@ -588,12 +588,18 @@ class _LockOverlay extends StatelessWidget {
                     size: 16,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    '${formatGold(gold.clamp(0, price))} / ${formatGold(price)}',
-                    style: const TextStyle(
-                      color: AshColors.gold,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${formatGold(gold.clamp(0, price))} / '
+                        '${formatGold(price)}',
+                        style: const TextStyle(
+                          color: AshColors.gold,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],

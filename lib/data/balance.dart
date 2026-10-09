@@ -1,8 +1,8 @@
 /// 전투 밸런스 수치. 튜닝은 이 파일에서만 한다.
 abstract final class Balance {
   // 캐릭터 해금: 골드로 산다. 잿불 기사는 처음부터 쓸 수 있다.
-  static const int witchPrice = 1500;
-  static const int hunterPrice = 3000;
+  static const int witchPrice = 10000;
+  static const int hunterPrice = 30000;
 
   // 플레이어
   static const double playerRadius = 16;
@@ -38,7 +38,7 @@ abstract final class Balance {
 
   // 스테이지: 레벨(1부터)이 오를 때마다 적 체력과 피해가 이 배율로 는다.
   static const double stageHpGrowth = 1.35;
-  static const double stageDamageGrowth = 1.15;
+  static const double stageDamageGrowth = 1.2;
 
   /// 첫 스테이지들의 적 체력 · 피해 배율. 그 뒤는 1.
   static const List<double> earlyStageEase = [0.5, 0.7, 0.85];
@@ -50,8 +50,8 @@ abstract final class Balance {
   static const double stageClearDelay = 3;
 
   // 보스: 그 스테이지 보스 등장 시점의 졸개 대비 배율.
-  static const double bossHpMultiplier = 80;
-  static const double bossDamageMultiplier = 2.5;
+  static const double bossHpMultiplier = 60;
+  static const double bossDamageMultiplier = 2;
   static const double bossSpeedMultiplier = 0.8;
   static const double bossRadius = 40;
 
@@ -70,7 +70,7 @@ abstract final class Balance {
 
   /// 타락 단계마다 장비 드랍 확률 증가율과 높은 등급 가중치 증가율.
   static const double corruptionDropBonus = 0.25;
-  static const double corruptionRarityLuck = 0.2;
+  static const double corruptionRarityLuck = 0.1;
 
   // 웨이브 (스테이지마다 처음부터)
   static const double baseSpawnInterval = 1.2;
@@ -151,7 +151,7 @@ abstract final class Balance {
 
   // 장비 레벨: 장비는 떨어진 스테이지 레벨을 갖는다. 고정치 옵션은 레벨마다 이 배율로 크고,
   // 비율(%) 옵션은 상한이 있어 레벨과 상관없다.
-  static const double itemLevelGrowth = 1.3;
+  static const double itemLevelGrowth = 1.15;
 
   /// 타락으로 높은 등급 가중치가 커져도 한 등급 위 비율이 이 값을 넘지 않는다.
   static const double maxRarityRatio = 0.8;

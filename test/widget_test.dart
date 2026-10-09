@@ -12,6 +12,7 @@ import 'package:ashborn/main.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:ashborn/ui/equipment/equipment_screen.dart';
+import 'package:ashborn/ui/format.dart';
 import 'package:ashborn/ui/hearth/hearth_screen.dart';
 import 'package:ashborn/ui/profile_scope.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
@@ -106,7 +107,11 @@ void main() {
     await settle(tester, 300);
     final unlock = tester.widget<AshButton>(find.byKey(const Key('unlock')));
     expect(unlock.onPressed, isNull);
-    expect(find.text('1,499 / 1,500'), findsOneWidget);
+    final price = Roster.witch.price;
+    expect(
+      find.text('${formatGold(price - 1)} / ${formatGold(price)}'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('스플래시는 탭하면 건너뛴다', (tester) async {
