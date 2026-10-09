@@ -250,6 +250,75 @@ void main() {
       expect(inv.ember, helm.salvageValue);
     });
 
+    group('일괄 분해', () {
+      late Inventory inv;
+      late Item normal, rare, enhanced, transcended, hero, worn;
+      setUp(() {
+        inv = Inventory();
+        normal = item(ItemType.ring);
+        rare = item(ItemType.head, rarity: Rarity.rare);
+        enhanced = item(ItemType.ring)..enhance = 2;
+        transcended = item(ItemType.belt, rarity: Rarity.rare)
+          ..transcends.add(TranscendOption.roll(math.Random(1), {}));
+        hero = item(ItemType.gloves, rarity: Rarity.hero);
+        worn = item(ItemType.boots);
+        final gear = inv.gear(CharacterId.witch);
+        for (final i in [normal, rare, enhanced, transcended, hero]) {
+          gear.add(i);
+        }
+        for (final slot in EquipSlot.values) {
+          gear.unequip(slot);
+        }
+        gear.add(worn);
+      });
+
+      test('고른 등급의 가방 장비만 대상이고, 기본으로 강화 · 초월한 장비는 뺀다', () {
+        final basic = {Rarity.normal, Rarity.rare};
+        expect(inv.salvageTargets(basic), unorderedEquals([normal, rare]));
+        expect(
+          inv.salvageTargets(basic, keepUpgraded: false),
+          unorderedEquals([normal, rare, enhanced, transcended]),
+        );
+        expect(inv.salvageTargets({Rarity.hero}), [hero]);
+        expect(inv.salvageTargets({}), isEmpty);
+        // 장착 중인 장비는 가방에 없으니 어떤 조건에도 들지 않는다.
+        expect(
+          inv.salvageTargets(Rarity.values.toSet(), keepUpgraded: false),
+          isNot(contains(worn)),
+        );
+        expect(Inventory.isUpgraded(enhanced), isTrue);
+        expect(Inventory.isUpgraded(transcended), isTrue);
+        expect(Inventory.isUpgraded(normal), isFalse);
+      });
+
+      test('한 번에 분해하고 잔불 합계를 돌려주며, 알림은 한 번만 보낸다', () {
+        var notified = 0;
+        inv.addListener(() => notified++);
+        final targets = inv.salvageTargets({Rarity.normal, Rarity.rare});
+
+        final ember = inv.salvageAll(targets);
+
+        expect(ember, normal.salvageValue + rare.salvageValue);
+        expect(inv.ember, ember);
+        expect(inv.bag, unorderedEquals([enhanced, transcended, hero]));
+        expect(notified, 1);
+      });
+
+      test('가방에 없는 장비는 건너뛰고, 분해할 것이 없으면 알리지 않는다', () {
+        var notified = 0;
+        inv.addListener(() => notified++);
+
+        expect(inv.salvageAll([worn]), 0);
+        expect(inv.salvageAll([]), 0);
+        expect(notified, 0);
+        expect(inv.gear(CharacterId.witch).equipped.values, [worn]);
+
+        // 같은 장비가 두 번 들어 있어도 한 번만 분해된다.
+        expect(inv.salvageAll([hero, hero]), hero.salvageValue);
+        expect(inv.bag, hasLength(4));
+      });
+    });
+
     test('장착한 장비의 주옵션과 랜덤옵션을 모두 합산한다', () {
       final inv = Inventory();
       final gear = inv.gear(CharacterId.witch);
