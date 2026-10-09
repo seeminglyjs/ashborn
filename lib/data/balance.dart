@@ -55,6 +55,13 @@ abstract final class Balance {
   static const double bossSpeedMultiplier = 0.8;
   static const double bossRadius = 40;
 
+  /// 보스가 나온 뒤 이 시간(초) 안에 잡지 못하면 광폭화한다.
+  /// 광폭화한 보스는 플레이어보다 [bossEnrageChase] 배 빠르고 [bossEnrageDamage] 배 아프다.
+  /// 피하기만으로는 버틸 수 없으니, 보스를 잡을 화력이 있어야 스테이지를 깬다.
+  static const double bossEnrageTime = 90;
+  static const double bossEnrageChase = 1.3;
+  static const double bossEnrageDamage = 5;
+
   /// 보스는 이 간격마다 잠깐 빠르게 돌진한다.
   static const double bossChargeInterval = 4;
   static const double bossChargeDuration = 0.6;

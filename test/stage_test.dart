@@ -156,6 +156,29 @@ void main() {
     });
 
     testWithGame<AshbornGame>(
+      '제한 시간 안에 못 잡으면 보스가 광폭화해 플레이어보다 빠르고 훨씬 아프다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        final boss = await reachBoss(game);
+        expect(boss.isEnraged, isFalse);
+        expect(game.stats.bossEnrage.value, Balance.bossEnrageTime.ceil());
+
+        boss.age = Balance.bossEnrageTime - 0.05;
+        await advance(game, 0.1);
+
+        expect(boss.isEnraged, isTrue);
+        expect(game.stats.bossEnrage.value, 0);
+        expect(game.notices.value.last.text, contains('광폭화'));
+        expect(boss.speed, greaterThan(game.world.player.speed));
+        expect(
+          boss.damage,
+          closeTo(boss.contactDamage * Balance.bossEnrageDamage, 1e-9),
+        );
+      },
+    );
+
+    testWithGame<AshbornGame>(
       '보스를 잡으면 졸개가 사라지고, 잠시 뒤 다음 지역으로 넘어갈 수 있다',
       gameWith(Roster.witch),
       (game) async {

@@ -104,9 +104,8 @@ class Stage {
       math.pow(Balance.stageDamageGrowth, index) * _ease;
 
   /// 처음 몇 스테이지는 적이 약하다. 처음 하는 사람도 바로바로 넘어가도록.
-  double get _ease => index < Balance.earlyStageEase.length
-      ? Balance.earlyStageEase[index]
-      : 1;
+  double get _ease =>
+      index < Balance.earlyStageEase.length ? Balance.earlyStageEase[index] : 1;
 
   double get enemySpeedMultiplier =>
       region.speed *

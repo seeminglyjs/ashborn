@@ -110,7 +110,11 @@ class RunWorld extends World
       0,
       (Balance.stageDuration - stageTime).ceil(),
     );
-    if (boss case final b?) stats.bossHealth.value = b.hp / b.maxHp;
+    if (boss case final b?) {
+      stats
+        ..bossHealth.value = b.hp / b.maxHp
+        ..bossEnrage.value = math.max(0, b.untilEnrage.ceil());
+    }
   }
 
   void _publishStage() {
@@ -159,6 +163,9 @@ class RunWorld extends World
     game.stats.bossHealth.value = 1;
     game.notify('${region.bossName} 등장', color: const Color(0xFFE8463A));
   }
+
+  void onBossEnraged(Boss enraged) =>
+      game.notify('${enraged.name} 광폭화!', color: Boss.enrageColor);
 
   /// 보스를 잡으면 남은 졸개는 재가 되어 흩어지고 웨이브가 멈춘다.
   void onBossDefeated(Boss defeated) {
