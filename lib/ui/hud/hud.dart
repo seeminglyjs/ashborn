@@ -4,7 +4,7 @@ import '../../game/ashborn_game.dart';
 import '../format.dart';
 import '../theme.dart';
 
-/// 경험치, 체력과 보호막, 스테이지, 처치 수, 설정·장비 버튼, 알림.
+/// 경험치, 체력과 보호막, 스테이지, 처치 수, 일시정지 버튼, 알림.
 /// 버튼 밖의 터치는 게임(조이스틱)으로 그대로 통과시킨다.
 class Hud extends StatelessWidget {
   const Hud({super.key, required this.game});
@@ -20,25 +20,20 @@ class Hud extends StatelessWidget {
           child: Align(
             alignment: Alignment.topRight,
             child: Padding(
-              padding: const EdgeInsets.only(top: 52, right: 6),
+              padding: const EdgeInsets.only(top: 48, right: _buttonRight),
               child: Material(
                 type: MaterialType.transparency,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      key: const Key('open-settings'),
-                      tooltip: '설정',
-                      icon: const Icon(Icons.settings, color: Colors.white70),
-                      onPressed: game.openSettings,
-                    ),
-                    IconButton(
-                      key: const Key('open-equipment'),
-                      tooltip: '장비',
-                      icon: const Icon(Icons.backpack, color: Colors.white70),
-                      onPressed: game.openEquipment,
-                    ),
-                  ],
+                child: IconButton(
+                  key: const Key('open-pause'),
+                  tooltip: '일시정지',
+                  // 둥근 반투명 바탕. 보이는 크기와 터치 영역 모두 48dp.
+                  style: IconButton.styleFrom(
+                    fixedSize: const Size.square(_buttonSize),
+                    backgroundColor: const Color(0x59000000),
+                    side: const BorderSide(color: Color(0x33FFFFFF)),
+                  ),
+                  icon: const Icon(Icons.pause_rounded, color: Colors.white),
+                  onPressed: game.openPauseMenu,
                 ),
               ),
             ),
@@ -57,8 +52,13 @@ class Hud extends StatelessWidget {
     );
   }
 
-  /// 오른쪽 위 설정 · 가방 버튼이 차지하는 폭.
-  static const double _buttonsWidth = 104;
+  /// 일시정지 버튼 크기와 화면 오른쪽 여백.
+  static const double _buttonSize = 48;
+  static const double _buttonRight = 12;
+
+  /// 체력 줄 오른쪽에서 일시정지 버튼에 비워 두는 폭.
+  /// 통계 칸의 오른쪽 여백(16)을 빼고, 체력 바와 버튼 사이에 8 을 띄운다.
+  static const double _buttonsWidth = _buttonSize + _buttonRight - 16 + 8;
 
   Widget _notices() => ValueListenableBuilder(
     valueListenable: game.notices,
@@ -100,7 +100,7 @@ class Hud extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // 세로 화면: 왼쪽에 체력과 처치 수, 오른쪽은 설정 · 가방 버튼 자리로 비운다.
+                // 세로 화면: 왼쪽에 체력과 처치 수, 오른쪽은 일시정지 버튼 자리로 비운다.
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

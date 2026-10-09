@@ -106,7 +106,7 @@ void main() {
     expect(profile.settings.lootNoticeMinRarity, Rarity.hero);
   });
 
-  testWidgets('런 중 설정을 열면 게임이 멈추고 닫으면 이어진다', (tester) async {
+  testWidgets('런 중 일시정지 → 설정을 열고 닫으면 일시정지 메뉴로 돌아온다', (tester) async {
     tester.view
       ..physicalSize = const Size(390, 844)
       ..devicePixelRatio = 1;
@@ -122,13 +122,25 @@ void main() {
         .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
         .game!;
 
-    await tester.tap(find.byKey(const Key('open-settings')));
+    await tester.tap(find.byKey(const Key('open-pause')));
+    await tester.pump();
+    expect(game.paused, isTrue);
+
+    await tester.tap(find.byKey(const Key('pause-settings')));
     await tester.pump();
     expect(game.paused, isTrue);
     expect(find.text('설정'), findsOneWidget);
+    expect(find.byKey(const Key('pause-resume')), findsNothing);
 
+    // 닫으면 게임은 멈춘 채 일시정지 메뉴로 돌아온다.
     await tester.tap(find.byKey(const Key('close-settings')));
     await tester.pump();
+    expect(game.paused, isTrue);
+    expect(find.byKey(const Key('pause-resume')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('pause-resume')));
+    await tester.pump();
     expect(game.paused, isFalse);
+    expect(find.byKey(const Key('pause-resume')), findsNothing);
   });
 }
