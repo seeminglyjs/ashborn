@@ -8,6 +8,8 @@ import '../../data/equipment.dart';
 import '../../data/inventory.dart';
 import '../../data/stats.dart';
 import '../../data/transcend.dart';
+import '../odds/odds_screen.dart';
+import '../routes.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
 
@@ -273,11 +275,33 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
           if (!item.isMaxEnhance)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                '강화석 ${item.enhanceStones} · 골드 ${item.enhanceGold} · '
-                '성공 ${(item.enhanceChance * 100).round()}%',
-                key: const Key('enhance-cost'),
-                style: _Text.tag,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      '강화석 ${item.enhanceStones} · 골드 ${item.enhanceGold} · '
+                      '성공 ${(item.enhanceChance * 100).round()}%',
+                      key: const Key('enhance-cost'),
+                      style: _Text.tag,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    key: const Key('enhance-odds'),
+                    onTap: () =>
+                        Navigator.of(context)
+                            .push(fadeRoute(const OddsScreen())),
+                    child: const Text(
+                      '확률표',
+                      style: TextStyle(
+                        color: _Text.ember,
+                        fontSize: 10,
+                        decoration: TextDecoration.underline,
+                        decorationColor: _Text.ember,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           _action(
@@ -335,6 +359,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
               _Comparison(
                 item: item,
                 replaced: _gear.displacedBy(item, target),
+                enhance: _gear.enhanceAfterEquip(item, target),
               ),
               const SizedBox(height: 8),
             ],
@@ -438,12 +463,18 @@ class ItemDetails extends StatelessWidget {
   }
 }
 
-/// [item] 을 끼면 [replaced] 대신 바뀌는 능력치.
+/// [item] 을 끼면 [replaced] 대신 바뀌는 능력치. [item] 은 계승한 강화 단계
+/// [enhance] 로 계산한다.
 class _Comparison extends StatelessWidget {
-  const _Comparison({required this.item, required this.replaced});
+  const _Comparison({
+    required this.item,
+    required this.replaced,
+    required this.enhance,
+  });
 
   final Item item;
   final List<Item> replaced;
+  final int enhance;
 
   static Map<StatType, double> _sum(Iterable<Item> items) {
     final total = <StatType, double>{};
@@ -461,7 +492,10 @@ class _Comparison extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gain = _sum([item]);
+    final gain = <StatType, double>{};
+    for (final roll in item.statsAt(enhance)) {
+      gain.update(roll.stat, (v) => v + roll.value, ifAbsent: () => roll.value);
+    }
     final loss = _sum(replaced);
     final lines = <Widget>[
       Text(
@@ -470,6 +504,12 @@ class _Comparison extends StatelessWidget {
             : '교체: ${replaced.map((i) => i.name).join(', ')}',
         style: _Text.tag,
       ),
+      if (enhance > item.enhance)
+        Text(
+          '강화 계승 +${item.enhance} → +$enhance',
+          key: const Key('enhance-inherit'),
+          style: _Text.body.copyWith(color: _Text.ember),
+        ),
       for (final stat in StatType.values)
         if (((gain[stat] ?? 0) - (loss[stat] ?? 0)) case final d
             when d.abs() > 1e-9)

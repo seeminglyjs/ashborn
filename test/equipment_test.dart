@@ -8,6 +8,7 @@ import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/profile.dart';
 import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
+import 'package:ashborn/data/transcend.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -396,6 +397,96 @@ void main() {
         expect(it.rarity.index, greaterThanOrEqualTo(Rarity.rare.index));
         expect(it.level, 4);
       }
+    });
+  });
+
+  group('강화 계승', () {
+    test('더 높은 강화를 가진 장비를 밀어내면 강화 단계를 맞바꾼다', () {
+      final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
+      final old = item(ItemType.head)..enhance = 12;
+      final better = item(ItemType.head, rarity: Rarity.legend)..enhance = 3;
+      gear
+        ..add(old)
+        ..add(better);
+      expect(gear.enhanceAfterEquip(better, EquipSlot.head), 12);
+
+      gear.equip(better, EquipSlot.head);
+
+      expect(better.enhance, 12);
+      expect(old.enhance, 3);
+      expect(inv.bag, [old]);
+    });
+
+    test('새 장비의 강화가 더 높으면 아무것도 바뀌지 않는다', () {
+      final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
+      final old = item(ItemType.head)..enhance = 2;
+      final better = item(ItemType.head)..enhance = 9;
+      gear
+        ..add(old)
+        ..add(better);
+      expect(gear.enhanceDonor(better, EquipSlot.head), isNull);
+
+      gear.equip(better, EquipSlot.head);
+
+      expect(better.enhance, 9);
+      expect(old.enhance, 2);
+    });
+
+    test('빈 칸에 끼면 계승하지 않는다', () {
+      final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
+      final helm = item(ItemType.head)..enhance = 4;
+      gear
+        ..add(helm)
+        ..unequip(EquipSlot.head);
+
+      gear.equip(helm, EquipSlot.head);
+
+      expect(helm.enhance, 4);
+    });
+
+    test('양손장비는 밀어낸 두 장비 중 더 높은 강화를 받는다', () {
+      final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
+      final a = item(ItemType.oneHand)..enhance = 5;
+      final b = item(ItemType.oneHand)..enhance = 8;
+      final greatsword = item(ItemType.twoHand)..enhance = 1;
+      gear
+        ..add(a)
+        ..add(b)
+        ..add(greatsword);
+
+      gear.equip(greatsword, EquipSlot.hand1);
+
+      expect(greatsword.enhance, 8);
+      expect(b.enhance, 1);
+      expect(a.enhance, 5);
+    });
+
+    test('초월 단계 · 초월 옵션은 장비에 남는다', () {
+      final inv = Inventory();
+      final gear = inv.gear(CharacterId.witch);
+      const roll = (option: TranscendOption.bossDamage, value: 0.25);
+      final old = Item(
+        type: ItemType.belt,
+        rarity: Rarity.legend,
+        stats: [(stat: StatType.armor, value: 1, rarity: Rarity.legend)],
+        enhance: 22,
+        transcends: [roll],
+      );
+      final next = item(ItemType.belt, rarity: Rarity.epic);
+      gear
+        ..add(old)
+        ..add(next);
+
+      gear.equip(next, EquipSlot.belt);
+
+      expect(next.enhance, 22);
+      expect(next.transcends, isEmpty);
+      expect(old.enhance, 0);
+      expect(old.transcends, [roll]);
     });
   });
 

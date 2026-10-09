@@ -332,6 +332,23 @@ void main() {
       expect(find.text('▲ 화염 저항 +10%'), findsOneWidget);
     });
 
+    testWidgets('강화를 계승하면 계승 후 능력치로 비교한다', (tester) async {
+      await openFor(
+        tester,
+        Roster.witch,
+        fill: (inv) => inv.gear(CharacterId.witch)
+          ..add(item(ItemType.head, value: 30)..enhance = 10)
+          ..add(item(ItemType.head, value: 30)),
+      );
+
+      await tester.tap(find.byKey(const Key('bag-0')));
+      await tester.pump();
+
+      // 같은 수치에 강화도 그대로 넘어오니 잃는 능력치가 없다.
+      expect(find.text('강화 계승 +0 → +10'), findsOneWidget);
+      expect(find.textContaining('▼ 최대 체력'), findsNothing);
+    });
+
     testWidgets('강화석과 골드로 강화하고 비용 · 확률 · 결과를 보여 준다', (tester) async {
       final helm = item(ItemType.head);
       final inventory = await openFor(

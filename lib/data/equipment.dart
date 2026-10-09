@@ -197,7 +197,10 @@ class Item {
       .fold(0, (sum, t) => sum + t.value);
 
   /// 강화를 반영한 옵션 수치.
-  List<StatRoll> get effectiveStats {
+  List<StatRoll> get effectiveStats => statsAt(enhance);
+
+  /// 강화 단계가 [enhance] 일 때의 옵션 수치.
+  List<StatRoll> statsAt(int enhance) {
     final scale = math.pow(Balance.enhanceStatGrowth, enhance);
     return [
       for (final s in stats)
