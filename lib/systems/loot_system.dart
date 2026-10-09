@@ -7,9 +7,22 @@ import '../data/stats.dart';
 
 /// 장비 드랍과 생성.
 abstract final class LootSystem {
-  /// 장비가 떨어졌을 때 그 등급이 나올 확률.
-  static double rarityChance(Rarity rarity) =>
-      _chance(rarity, Rarity.unique, Balance.rarityDropRatio);
+  /// 장비가 떨어졌을 때 그 등급이 나올 확률. [luck] · [ratio] 는 [rollRarity] 와 같다.
+  static double rarityChance(
+    Rarity rarity, {
+    double luck = 0,
+    double ratio = Balance.rarityDropRatio,
+  }) => _chance(rarity, Rarity.unique, _luckyRatio(ratio, luck));
+
+  /// 보스 상자 장비 한 개가 [rarity] 등급일 확률. 레어 미만은 레어로 올라간다.
+  static double bossChestChance(Rarity rarity, {double luck = 0}) =>
+      switch (rarity) {
+        Rarity.normal => 0,
+        Rarity.rare =>
+          rarityChance(Rarity.normal, luck: luck) +
+              rarityChance(Rarity.rare, luck: luck),
+        _ => rarityChance(rarity, luck: luck),
+      };
 
   /// [item] 등급 장비의 옵션 한 줄이 [rarity] 등급일 확률.
   static double affixRarityChance(Rarity rarity, Rarity item) =>
@@ -52,11 +65,10 @@ abstract final class LootSystem {
     math.Random random, {
     double luck = 0,
     double ratio = Balance.rarityDropRatio,
-  }) => _roll(
-    random,
-    Rarity.unique,
-    math.min(ratio * (1 + luck), Balance.maxRarityRatio),
-  );
+  }) => _roll(random, Rarity.unique, _luckyRatio(ratio, luck));
+
+  static double _luckyRatio(double ratio, double luck) =>
+      math.min(ratio * (1 + luck), Balance.maxRarityRatio);
 
   /// 옵션 등급. 장비 등급 [cap] 을 넘지 않는다.
   static Rarity rollAffixRarity(math.Random random, Rarity cap) =>
