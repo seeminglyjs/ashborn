@@ -300,6 +300,7 @@ void main() {
         await game.ready();
         final added = player.weapons.firstWhere((w) => w.id != start);
         expect(added.level, 2);
+        expect(WeaponId.poolFor(CharacterId.witch), contains(added.id));
       },
     );
 

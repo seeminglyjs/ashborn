@@ -67,7 +67,9 @@ abstract final class FateSystem {
     FateCard.smithsTouch => player.weapons.any(
       (w) => w.level < WeaponId.maxLevel,
     ),
-    FateCard.newArms => player.weapons.length < WeaponId.values.length,
+    FateCard.newArms => WeaponId.poolFor(
+      player.character.id,
+    ).any((id) => player.weapon(id) == null),
     FateCard(effect: final effect?) => player.effectPower(effect) < fate.power,
     _ => true,
   };
@@ -210,7 +212,7 @@ abstract final class FateSystem {
           if (weapon.level < WeaponId.maxLevel) weapon.levelUp();
         }
       case FateCard.newArms:
-        final missing = WeaponId.values
+        final missing = WeaponId.poolFor(player.character.id)
             .where((id) => player.weapon(id) == null)
             .toList();
         final id = missing[random.nextInt(missing.length)];
