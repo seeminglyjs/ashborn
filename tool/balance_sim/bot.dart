@@ -218,9 +218,10 @@ class Bot {
 }
 
 /// 장비 하나의 대략적인 힘: 옵션 수치를 노말 기준 수치로 나눠 더한다.
-double itemScore(Item item) {
+/// [enhance] 를 주면 그 강화 단계로 계산한다 (강화 계승 후 비교용).
+double itemScore(Item item, [int? enhance]) {
   var s = 0.0;
-  for (final r in item.effectiveStats) {
+  for (final r in item.statsAt(enhance ?? item.enhance)) {
     s += r.value / r.stat.roll;
   }
   if (item.effect != null) s += 10;
@@ -236,6 +237,7 @@ class Meta {
   int enhanceTries = 0, enhanceFails = 0, transcends = 0;
 
   /// 칸마다 점수가 더 높은 장비로 바꾸고, 남은 가방 장비는 분해한다.
+  /// 끼울 장비는 강화를 계승한 뒤의 점수로 비교한다.
   void tidy() {
     final inv = game.inventory;
     final gear = game.gear;
@@ -246,7 +248,8 @@ class Meta {
         for (final slot in Gear.slotsFor(item.type)) {
           final displaced = gear.displacedBy(item, slot);
           final now = displaced.fold(0.0, (s, i) => s + itemScore(i));
-          if (itemScore(item) > now + 0.01) {
+          final next = itemScore(item, gear.enhanceAfterEquip(item, slot));
+          if (next > now + 0.01) {
             gear.equip(item, slot);
             changed = true;
             break;

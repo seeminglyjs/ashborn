@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../data/equipment.dart';
 import '../../data/settings.dart';
+import '../odds/odds_screen.dart';
+import '../routes.dart';
 import '../theme.dart';
 
 /// 알림, 소리, 진동 설정. 타이틀의 설정 화면과 런 중 설정 오버레이가 함께 쓴다.
@@ -42,7 +44,7 @@ class SettingsPanel extends StatelessWidget {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 560),
-                      child: ListView(children: _items()),
+                      child: ListView(children: _items(context)),
                     ),
                   ),
                 ),
@@ -54,7 +56,7 @@ class SettingsPanel extends StatelessWidget {
     );
   }
 
-  List<Widget> _items() => [
+  List<Widget> _items(BuildContext context) => [
     const _Section('알림'),
     _Toggle(
       keyName: 'loot-notices',
@@ -114,6 +116,18 @@ class SettingsPanel extends StatelessWidget {
       label: '피격 시 진동 (모바일)',
       value: settings.vibration,
       onChanged: (v) => settings.vibration = v,
+    ),
+    const _Section('정보'),
+    ListTile(
+      key: const Key('open-odds'),
+      dense: true,
+      title: const Text('확률 정보', style: _style),
+      subtitle: const Text(
+        '강화 · 초월 · 장비 드랍 · 운명 카드 확률표',
+        style: TextStyle(color: AshColors.ash, fontSize: 11),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: AshColors.ash),
+      onTap: () => Navigator.of(context).push(fadeRoute(const OddsScreen())),
     ),
   ];
 }

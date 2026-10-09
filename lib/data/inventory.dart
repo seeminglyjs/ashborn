@@ -223,10 +223,33 @@ class Gear {
     if (slot == EquipSlot.hand2 && offHandBlocked) ?_slots[EquipSlot.hand1],
   ];
 
+  /// [slot] 에 [item] 을 끼면 강화를 넘겨줄 장비. 밀려나는 장비 중 [item] 보다
+  /// 강화가 높은 것 가운데 가장 높은 것이고, 없으면 null.
+  Item? enhanceDonor(Item item, EquipSlot slot) {
+    Item? donor;
+    for (final d in displacedBy(item, slot)) {
+      if (d.enhance > (donor?.enhance ?? item.enhance)) donor = d;
+    }
+    return donor;
+  }
+
+  /// [slot] 에 끼고 나면 [item] 이 갖게 될 강화 단계.
+  int enhanceAfterEquip(Item item, EquipSlot slot) =>
+      enhanceDonor(item, slot)?.enhance ?? item.enhance;
+
   /// 가방의 [item] 을 [slot] 에 낀다. 밀려난 장비는 가방으로 간다.
+  ///
+  /// 강화 계승: 밀려난 장비의 강화가 더 높으면 두 장비의 강화 단계를 맞바꾼다.
+  /// 산 강화석이 장비를 바꿔도 힘으로 남게 하려는 것이다. 초월 단계 · 초월 옵션은
+  /// 장비에 그대로 남는다.
   void equip(Item item, EquipSlot slot) {
     assert(slot.accepts(item.type), '${item.type} 은 ${slot.label} 에 낄 수 없다');
     final displaced = displacedBy(item, slot);
+    if (enhanceDonor(item, slot) case final donor?) {
+      final enhance = donor.enhance;
+      donor.enhance = item.enhance;
+      item.enhance = enhance;
+    }
     _inventory._bag.remove(item);
     _slots.removeWhere((_, equipped) => displaced.contains(equipped));
     _inventory._bag.addAll(displaced);
