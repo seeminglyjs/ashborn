@@ -15,6 +15,8 @@ import 'package:ashborn/data/fates.dart';
 import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/upgrades.dart';
 import 'package:ashborn/game/ashborn_game.dart';
+import 'package:ashborn/game/world/obstacles.dart';
+import 'package:ashborn/game/world/region_theme.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/widgets.dart';
@@ -195,6 +197,21 @@ class Bot {
           _force.addScaled(side, 2 * (120 - dist) / 120);
         case GroundBlast g when !g.exploded || g.linger > 0:
           away(g.position, g.radius + 30, 3);
+      }
+    }
+    // 둘레 타일의 함정: 예고 중이거나 작동 중이면 그 타일 가운데에서 멀어진다.
+    final theme = RegionTheme.of(w.stage.region);
+    final (tx, ty) = TrapSystem.tileOf(p);
+    const tile = 32.0;
+    for (var gy = ty - 1; gy <= ty + 1; gy++) {
+      for (var gx = tx - 1; gx <= tx + 1; gx++) {
+        final trap = TrapSystem.trapAt(gx, gy, theme);
+        if (trap == null) continue;
+        final state = trap == Decor.spikes
+            ? TrapSystem.spikeState(gx, gy, w.elapsed)
+            : TrapSystem.ventState(gx, gy, w.elapsed);
+        if (state == TrapState.down) continue;
+        away(Vector2((gx + 0.5) * tile, (gy + 0.5) * tile), tile * 1.2, 3);
       }
     }
     for (final e in w.enemies) {

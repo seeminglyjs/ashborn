@@ -562,8 +562,8 @@ abstract final class Balance {
   static const int crossbowPierce = 3;
 
   // 무기: 대지 강타 (잿불 기사)
-  static const double earthSlamCooldown = 2.6;
-  static const double earthSlamDamage = 18;
+  static const double earthSlamCooldown = 2.2;
+  static const double earthSlamDamage = 26;
   static const double earthSlamRadius = 95;
   static const double earthSlamKnockback = 280;
 
@@ -573,7 +573,7 @@ abstract final class Balance {
 
   // 무기: 심판의 일격 (잿불 기사)
   static const double cleaveCooldown = 1.5;
-  static const double cleaveDamage = 22;
+  static const double cleaveDamage = 28;
   static const double cleaveRadius = 90;
 
   /// 참격 부채꼴 반각 (라디안).
