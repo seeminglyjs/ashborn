@@ -12,6 +12,7 @@ class SettingsScreen extends StatelessWidget {
     backgroundColor: Colors.black,
     body: SettingsPanel(
       settings: ProfileScope.of(context).settings,
+      cloud: ProfileScope.cloudOf(context),
       onClose: () => Navigator.of(context).pop(),
     ),
   );

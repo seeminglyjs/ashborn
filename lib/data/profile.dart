@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'inventory.dart';
 import 'progress.dart';
+import 'save_snapshot.dart';
 import 'settings.dart';
 import 'upgrades.dart';
 
@@ -16,10 +17,20 @@ class Profile {
     Progress? progress,
     Settings? settings,
     Upgrades? upgrades,
+    DateTime? modifiedAt,
   }) : inventory = inventory ?? Inventory(),
        progress = progress ?? Progress(),
        settings = settings ?? Settings(),
-       upgrades = upgrades ?? Upgrades();
+       upgrades = upgrades ?? Upgrades() {
+    _modifiedAt = modifiedAt;
+    // 저장소에는 밀리초까지만 남으니 처음부터 밀리초로 맞춰 둔다
+    // (안 그러면 같은 기록도 시각이 달라 보여 충돌로 오인한다).
+    changes.addListener(
+      () => _modifiedAt = DateTime.fromMillisecondsSinceEpoch(
+        DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+  }
 
   final Inventory inventory;
   final Progress progress;
@@ -28,16 +39,65 @@ class Profile {
   /// 화톳불 영구 강화.
   final Upgrades upgrades;
 
+  /// 클라우드에 함께 올리는 기록(재화 · 장비 · 진행도 · 화톳불)이 바뀔 때 알린다.
+  /// 설정은 기기마다 다를 수 있어 빠진다.
+  late final Listenable changes = Listenable.merge([
+    inventory,
+    progress,
+    upgrades,
+  ]);
+
+  DateTime? _modifiedAt;
+
+  /// [changes] 의 기록이 마지막으로 바뀐 시각. 한 번도 바뀌지 않았으면 null.
+  DateTime? get modifiedAt => _modifiedAt;
+
+  /// 클라우드에 올릴 세이브 한 벌.
+  SaveSnapshot snapshot() => SaveSnapshot(
+    savedAt: _modifiedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+    records: {
+      inventoryKey: inventory.toJson(),
+      progressKey: progress.toJson(),
+      upgradesKey: upgrades.toJson(),
+    },
+  );
+
+  /// [snapshot] 으로 기기 기록을 덮어쓰고 새로 불러온다. 설정은 그대로 둔다.
+  /// 지금 [Profile] 은 더 쓰지 않고 돌려받은 것으로 바꿔 끼워야 한다.
+  static Future<Profile> restore(SaveSnapshot snapshot) async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in syncedKeys) {
+      final record = snapshot.records[key];
+      if (record == null) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setString(key, jsonEncode(record));
+      }
+    }
+    await prefs.setInt(modifiedAtKey, snapshot.savedAt.millisecondsSinceEpoch);
+    return load();
+  }
+
   /// 형식이 바뀌면 키를 올린다. 예전 형식은 읽지 않는다.
   static const inventoryKey = 'inventory.v4';
   static const progressKey = 'progress.v1';
   static const settingsKey = 'settings.v1';
   static const upgradesKey = 'upgrades.v1';
 
+  /// 클라우드에 함께 올리는 기록의 키.
+  static const syncedKeys = [inventoryKey, progressKey, upgradesKey];
+
+  /// [modifiedAt] 을 남겨 두는 키 (밀리초).
+  static const modifiedAtKey = 'profile.modifiedAt';
+
   /// 저장된 기록을 불러오고, 바뀔 때마다 바로 저장하게 한다.
   static Future<Profile> load() async {
     final prefs = await SharedPreferences.getInstance();
-    return Profile(
+    final modified = prefs.getInt(modifiedAtKey);
+    final profile = Profile(
+      modifiedAt: modified == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(modified),
       inventory: _bind(
         prefs,
         inventoryKey,
@@ -67,6 +127,14 @@ class Profile {
         (v) => v.toJson(),
       ),
     );
+    // 생성자에서 먼저 [modifiedAt] 을 갱신하고, 여기서 그 값을 남긴다.
+    profile.changes.addListener(
+      () => prefs.setInt(
+        modifiedAtKey,
+        profile.modifiedAt!.millisecondsSinceEpoch,
+      ),
+    );
+    return profile;
   }
 
   static T _bind<T extends ChangeNotifier>(
