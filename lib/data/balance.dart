@@ -92,7 +92,7 @@ abstract final class Balance {
   static const double bomberTrigger = 60;
   static const double bomberFuse = 0.9;
   static const double bomberRadius = 75;
-  static const double bomberDamage = 2;
+  static const double bomberDamage = 1.5;
 
   /// 분열: 쓰러지면 이만큼 갈라지고, 새끼는 부모 최대 체력과 크기의 이 비율.
   static const int splitCount = 2;
@@ -136,13 +136,13 @@ abstract final class Balance {
   static const double stageDamageGrowth = 1.2;
 
   /// 첫 스테이지들의 적 체력 · 피해 배율. 그 뒤는 1.
-  static const List<double> earlyStageEase = [0.5, 0.7, 0.85];
+  static const List<double> earlyStageEase = [0.35, 0.55, 0.75, 0.9];
 
   /// 스테이지 시작 후 이 시간(초)이 지나면 보스가 나온다.
   static const double stageDuration = 180;
 
   /// 지역 졸개 종류(로스터 순서대로)가 나오기 시작하는 스테이지 시간(초).
-  static const List<double> rosterUnlock = [0, 0, 20, 45, 75, 105];
+  static const List<double> rosterUnlock = [0, 0, 25, 55, 90, 125];
 
   /// 보스를 잡은 뒤 다음 지역 선택이 뜨기까지 전리품을 줍는 시간.
   static const double stageClearDelay = 3;
