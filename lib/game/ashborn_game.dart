@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../components/effects/hit_vignette.dart';
 import '../components/enemies/monster_sprite_cache.dart';
+import '../components/props/prop_sprites.dart';
 import '../data/characters.dart';
 import '../data/equipment.dart';
 import '../data/fates.dart';
@@ -76,6 +77,9 @@ class AshbornGame extends FlameGame<RunWorld>
 
   /// 적 · 보스 스프라이트 프레임. [RunWorld] 가 읽기 시작한다.
   final monsterSprites = MonsterSpriteCache();
+
+  /// 상자 · 떨어진 장비 · 소모품 그림. [RunWorld] 가 읽기 시작한다.
+  final props = PropSprites();
 
   @override
   Color backgroundColor() => world.stage.region.background;

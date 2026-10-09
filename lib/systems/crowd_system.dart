@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 
 import '../components/enemies/boss.dart';
 import '../components/enemies/enemy.dart';
+import '../components/props/crate.dart';
 import '../data/balance.dart';
 import '../game/world/run_world.dart';
 
@@ -34,8 +35,8 @@ class CrowdSystem extends Component with HasWorldReference<RunWorld> {
 
     for (final enemy in enemies) {
       enemy.separation.setZero();
-      // 보스는 졸개에게 밀리지 않는다.
-      if (enemy is Boss) continue;
+      // 보스는 졸개에게 밀리지 않고, 상자는 제자리에 있다 (졸개를 밀어낼 뿐).
+      if (enemy is Boss || enemy is Crate) continue;
       final cx = (enemy.position.x / _cellSize).floor();
       final cy = (enemy.position.y / _cellSize).floor();
       for (var dx = -1; dx <= 1; dx++) {

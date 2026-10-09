@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/balance.dart';
 import '../../data/equipment.dart';
+import '../../data/supplies.dart';
 import '../../data/transcend.dart';
 import '../../data/upgrades.dart';
 import '../../systems/loot_system.dart';
@@ -80,9 +81,26 @@ class OddsList extends StatelessWidget {
       ..._drops(),
       ..._affixes(),
       ..._currency(),
+      ..._crates(),
       ..._fates(),
     ],
   );
+
+  List<Widget> _crates() => [
+    const _Section('전투 맵 상자'),
+    _Table(
+      header: const ['나무 상자에서 나오는 것', '확률'],
+      rows: [
+        for (final drop in CrateDrop.values)
+          [drop.label, pct(LootSystem.crateDropChance(drop))],
+      ],
+    ),
+    _Note(
+      '상자가 나올 때 ${pct(Balance.chestChance)} 확률로 보물 상자가 됩니다. '
+      '보물 상자에서는 장비 1개(등급 확률은 보스 상자와 같음)와 '
+      '골드 주머니가 확정으로 나옵니다. 나무 상자의 장비는 일반 드랍과 같은 등급 확률입니다.',
+    ),
+  ];
 
   /// 강화: 확률이 같은 단계끼리 묶는다.
   List<Widget> _enhance() {

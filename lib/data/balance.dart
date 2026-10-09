@@ -418,4 +418,35 @@ abstract final class Balance {
 
   /// 첫 적을 맞힌 뒤 추가로 꿰뚫는 수.
   static const int crossbowPierce = 3;
+
+  // 전투 맵: 바닥 타일마다 장식 · 기둥이 놓일 확률.
+  static const double floorDecorChance = 0.06;
+  static const double floorPillarChance = 0.006;
+
+  // 부술 수 있는 상자: 플레이어 둘레에 가끔 생기고, 무기로 부수면 보급품이 나온다.
+  /// 첫 상자가 나오기까지와 그다음부터의 간격(초).
+  static const double crateFirstDelay = 8;
+  static const double crateInterval = 14;
+
+  /// 동시에 있을 수 있는 상자 수. 이보다 멀어진 상자는 치운다.
+  static const int maxCrates = 3;
+  static const double crateDespawnDistance = 1400;
+
+  /// 상자 대신 보물 상자가 나올 확률.
+  static const double chestChance = 0.1;
+
+  /// 상자 체력: 그 시점 졸개 체력의 배수. 보물 상자는 더 단단하다.
+  static const double crateHpScale = 3;
+  static const double chestHpScale = 6;
+  static const double crateRadius = 13;
+
+  /// 나무 상자에서 나오는 것의 가중치. 순서는 CrateDrop (물약 · 골드 · 강화석 · 자석 · 장비).
+  static const List<int> crateDropWeights = [40, 30, 12, 8, 10];
+
+  /// 회복 물약: 최대 체력의 이 비율을 채운다.
+  static const double potionHeal = 0.3;
+
+  /// 골드 주머니 (스테이지 레벨마다). 보물 상자는 [chestGoldScale] 배.
+  static const double crateGold = 15;
+  static const double chestGoldScale = 3;
 }

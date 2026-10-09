@@ -331,7 +331,9 @@ class Player extends PositionComponent
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
+    // 상자처럼 피해가 없는 적은 밟고 지나간다 (무적 시간도 걸리지 않는다).
     if (other is Enemy &&
+        other.contactDamage > 0 &&
         takeDamage(other.contactDamage, type: other.damageType)) {
       // 가시: 부딪힌 적에게 원래 피해의 일부를 돌려준다.
       final thorns = transcend(TranscendOption.thorns);

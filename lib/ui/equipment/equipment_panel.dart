@@ -12,6 +12,7 @@ import '../odds/odds_screen.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
+import '../widgets/item_icon.dart';
 import '../widgets/pixel_sprite.dart';
 
 /// 이 등급 이상은 분해하기 전에 한 번 더 묻는다.
@@ -209,12 +210,14 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                 key: Key('slot-hand2-blocked'),
                 item: null,
                 label: '양손 사용',
+                slotType: ItemType.twoHand,
                 dimmed: true,
               )
             : _ItemTile(
                 key: Key('slot-${slot.name}'),
                 item: _gear.equipped[slot],
                 label: slot.label,
+                slotType: slot.type,
                 selected: _selectedSlot == slot,
                 onTap: () => _select(_gear.equipped[slot], slot),
               ),
@@ -565,7 +568,8 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
   );
 }
 
-/// 장비 이름, 옵션(옵션 등급 색), 고유 효과.
+/// 장비 아이콘 · 이름, 주옵션과 부가 옵션(옵션 등급 색), 고유 효과, 초월 옵션.
+/// 묶음마다 제목을 달아 무엇이 주옵션이고 무엇이 부가 옵션인지 한눈에 보이게 한다.
 class ItemDetails extends StatelessWidget {
   const ItemDetails({super.key, required this.item});
 
@@ -573,61 +577,167 @@ class ItemDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final [main, ...affixes] = item.effectiveStats;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          item.name,
-          style: TextStyle(
-            color: item.rarity.color,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          'Lv ${item.level}'
-          '${item.enhance > 0 ? ' · 강화 +${item.enhance}/${Balance.maxEnhance}' : ''}',
-          style: _Text.tag,
-        ),
-        const SizedBox(height: 6),
-        for (final (i, roll) in item.effectiveStats.indexed)
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: roll.stat.format(roll.value),
-                  style: i == 0
-                      ? _Text.main
-                      : _Text.body.copyWith(color: roll.rarity.color),
-                ),
-                if (i > 0)
-                  TextSpan(text: '  ${roll.rarity.label}', style: _Text.tag),
-              ],
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: item.rarity.color.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: item.rarity.color, width: 1.5),
+              ),
+              child: ItemIcon(item.type, scale: 3),
             ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: TextStyle(
+                      color: item.rarity.color,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${item.type.label} · Lv ${item.level}'
+                    '${item.enhance > 0 ? ' · 강화 +${item.enhance}/${Balance.maxEnhance}' : ''}',
+                    style: _Text.tag,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        const _OptionHeader('주옵션', note: '부위마다 정해진 능력치 · 장비 등급을 따름'),
+        _OptionLine(
+          key: const Key('main-stat'),
+          text: main.stat.format(main.value),
+          color: item.rarity.color,
+          bold: true,
+        ),
+        const SizedBox(height: 8),
+        _OptionHeader(
+          '부가 옵션 ${affixes.length}/${Balance.maxAffixes}',
+          note: '무작위 · 줄마다 등급이 따로 붙음',
+        ),
+        if (affixes.isEmpty)
+          const _OptionLine(text: '없음', color: AshColors.ash, bullet: false),
+        for (final (i, roll) in affixes.indexed)
+          _OptionLine(
+            key: Key('affix-$i'),
+            text: roll.stat.format(roll.value),
+            color: roll.rarity.color,
+            grade: roll.rarity.label,
           ),
         if (item.effect case final effect?) ...[
-          const SizedBox(height: 6),
-          Text(
-            effect.label,
-            style: _Text.main.copyWith(color: Rarity.unique.color),
+          const SizedBox(height: 8),
+          const _OptionHeader('고유 효과'),
+          _OptionLine(
+            text: effect.label,
+            color: Rarity.unique.color,
+            bold: true,
           ),
-          Text(effect.description, style: _Text.dim),
+          Padding(
+            padding: const EdgeInsets.only(left: 14),
+            child: Text(effect.description, style: _Text.dim),
+          ),
         ],
         if (item.transcends.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(
-            '초월 ★${item.transcends.length}',
-            style: _Text.main.copyWith(color: TranscendOption.color),
-          ),
+          const SizedBox(height: 8),
+          _OptionHeader('초월 ★${item.transcends.length}'),
           for (final t in item.transcends)
-            Text(
-              t.option.format(t.value),
-              style: _Text.body.copyWith(color: TranscendOption.color),
+            _OptionLine(
+              text: t.option.format(t.value),
+              color: TranscendOption.color,
             ),
         ],
       ],
     );
   }
+}
+
+/// 옵션 묶음 제목과 밑줄. [note] 는 그 묶음이 무엇인지 한 줄 설명.
+class _OptionHeader extends StatelessWidget {
+  const _OptionHeader(this.title, {this.note});
+
+  final String title;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 3),
+    padding: const EdgeInsets.only(bottom: 2),
+    decoration: const BoxDecoration(
+      border: Border(bottom: BorderSide(color: Colors.white12)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(title, style: _Text.heading.copyWith(fontSize: 12)),
+        if (note case final note?) ...[
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              note,
+              style: _Text.tag,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+/// 옵션 한 줄. 앞에 [color] 마름모, 뒤에 옵션 등급 [grade].
+class _OptionLine extends StatelessWidget {
+  const _OptionLine({
+    super.key,
+    required this.text,
+    required this.color,
+    this.grade,
+    this.bold = false,
+    this.bullet = true,
+  });
+
+  final String text;
+  final Color color;
+  final String? grade;
+  final bool bold;
+  final bool bullet;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 2, bottom: 2),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 12,
+          child: bullet
+              ? Text('◆', style: TextStyle(color: color, fontSize: 8))
+              : null,
+        ),
+        Expanded(
+          child: Text(
+            text,
+            style: bold
+                ? _Text.main.copyWith(color: color, fontSize: 14)
+                : _Text.body.copyWith(color: color),
+          ),
+        ),
+        if (grade case final grade?)
+          Text(grade, style: _Text.tag.copyWith(color: color)),
+      ],
+    ),
+  );
 }
 
 /// [item] 을 끼면 [replaced] 대신 바뀌는 능력치. [item] 은 계승한 강화 단계
@@ -729,6 +839,7 @@ class _ItemTile extends StatelessWidget {
     super.key,
     required this.item,
     required this.label,
+    this.slotType,
     this.selected = false,
     this.dimmed = false,
     this.onTap,
@@ -736,6 +847,9 @@ class _ItemTile extends StatelessWidget {
 
   final Item? item;
   final String label;
+
+  /// 빈 장착 칸이면 끼울 수 있는 부위. 흐린 실루엣 아이콘으로 그린다.
+  final ItemType? slotType;
   final bool selected;
   final bool dimmed;
   final VoidCallback? onTap;
@@ -765,16 +879,36 @@ class _ItemTile extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Text(
-              item?.type.label ?? label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: item != null
-                    ? AshColors.parchment
-                    : AshColors.ash.withValues(alpha: dimmed ? 0.5 : 1),
-                fontSize: 10,
+            if (item case final item?)
+              ItemIcon(item.type)
+            else
+              // 빈 칸: 무엇을 끼는 칸인지 흐린 실루엣과 이름으로 보여 준다.
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (slotType case final type?)
+                    ItemIcon(
+                      type,
+                      scale: 1.5,
+                      silhouette: Colors.white.withValues(
+                        alpha: dimmed ? 0.06 : 0.14,
+                      ),
+                    ),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: AshColors.ash.withValues(
+                          alpha: dimmed ? 0.5 : 1,
+                        ),
+                        fontSize: slotType == null ? 10 : 9,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
             if (dimmed)
               const Positioned(
                 top: 2,

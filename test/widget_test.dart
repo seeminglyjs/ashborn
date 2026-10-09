@@ -513,6 +513,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('bag-0')));
       await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('salvage')));
       await tester.tap(find.byKey(const Key('salvage')));
       await tester.pump();
       expect(find.byKey(const Key('confirm-salvage')), findsOneWidget);
@@ -528,6 +529,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('bag-0')));
       await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('salvage')));
       await tester.tap(find.byKey(const Key('salvage')));
       await tester.pump();
       expect(find.byKey(const Key('confirm-salvage')), findsNothing);

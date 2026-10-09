@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/foundation.dart' show protected;
 
 import '../../data/balance.dart';
 import '../../data/damage.dart';
@@ -59,6 +60,10 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   static final _shadowPaint = Paint()..color = const Color(0x55000000);
 
   bool get isDead => _dead;
+
+  /// 맞았을 때 깜빡이는 색을 입힌 스프라이트용 붓. 따로 그리는 하위 클래스가 쓴다.
+  @protected
+  Paint get spritePaint => _spritePaint;
 
   @override
   Future<void> onLoad() async {
@@ -170,12 +175,14 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
 
   void _die() {
     _dead = true;
-    world
-      ..add(DeathPuff(position: position.clone()))
-      ..onEnemyKilled(position.clone());
+    world.add(DeathPuff(position: position.clone()));
+    onKilled();
     onDeath();
     removeFromParent();
   }
+
+  /// 처치 보상 (처치 수 · 경험치 · 잔불 · 장비). 상자는 자기 보상을 따로 준다.
+  void onKilled() => world.onEnemyKilled(position.clone());
 
   /// 쓰러질 때 추가로 할 일.
   void onDeath() {}

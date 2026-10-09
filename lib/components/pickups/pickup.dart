@@ -15,6 +15,9 @@ abstract class Pickup extends PositionComponent
   /// false 면 끌려오지 않고 바닥에 남는다.
   bool get collectable => true;
 
+  /// 자석 범위와 상관없이 플레이어에게 끌려가기 시작한다.
+  void attract() => _attracted = true;
+
   /// 플레이어에게 닿았을 때.
   void collect();
 
