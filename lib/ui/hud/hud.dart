@@ -48,7 +48,7 @@ class Hud extends StatelessWidget {
           child: Align(
             alignment: Alignment.topRight,
             child: Padding(
-              padding: const EdgeInsets.only(top: 100, right: 16),
+              padding: const EdgeInsets.only(top: 170, right: 16),
               child: IgnorePointer(child: _notices()),
             ),
           ),
@@ -56,6 +56,9 @@ class Hud extends StatelessWidget {
       ],
     );
   }
+
+  /// 오른쪽 위 설정 · 가방 버튼이 차지하는 폭.
+  static const double _buttonsWidth = 104;
 
   Widget _notices() => ValueListenableBuilder(
     valueListenable: game.notices,
@@ -97,59 +100,58 @@ class Hud extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
+                // 세로 화면: 왼쪽에 체력과 처치 수, 오른쪽은 설정 · 가방 버튼 자리로 비운다.
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: ListenableBuilder(
-                        listenable: Listenable.merge([
-                          stats.hp,
-                          stats.maxHp,
-                          stats.energyShield,
-                          stats.maxEnergyShield,
-                        ]),
-                        builder: (context, _) => _HpBar(
-                          hp: stats.hp.value,
-                          maxHp: stats.maxHp.value,
-                          shield: stats.energyShield.value,
-                          maxShield: stats.maxEnergyShield.value,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: ListenableBuilder(
-                          listenable: Listenable.merge([
-                            stats.stage,
-                            stats.bossCountdown,
-                            stats.bossHealth,
-                            stats.bossTimeLeft,
-                            stats.stageCleared,
-                          ]),
-                          builder: (context, _) => _StageInfo(
-                            name: stats.stage.value.name,
-                            level: stats.stage.value.level,
-                            bossName: stats.stage.value.region.bossName,
-                            countdown: stats.bossCountdown.value,
-                            bossHealth: stats.bossHealth.value,
-                            timeLeft: stats.bossTimeLeft.value,
-                            cleared: stats.stageCleared.value,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ListenableBuilder(
+                            listenable: Listenable.merge([
+                              stats.hp,
+                              stats.maxHp,
+                              stats.energyShield,
+                              stats.maxEnergyShield,
+                            ]),
+                            builder: (context, _) => _HpBar(
+                              hp: stats.hp.value,
+                              maxHp: stats.maxHp.value,
+                              shield: stats.energyShield.value,
+                              maxShield: stats.maxEnergyShield.value,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          ValueListenableBuilder(
+                            valueListenable: stats.kills,
+                            builder: (context, kills, _) =>
+                                Text('💀 $kills', style: _textStyle(15)),
+                          ),
+                        ],
                       ),
                     ),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.topRight,
-                        child: ValueListenableBuilder(
-                          valueListenable: stats.kills,
-                          builder: (context, kills, _) =>
-                              Text('💀 $kills', style: _textStyle(18)),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(width: _buttonsWidth),
                   ],
+                ),
+                const SizedBox(height: 6),
+                ListenableBuilder(
+                  listenable: Listenable.merge([
+                    stats.stage,
+                    stats.bossCountdown,
+                    stats.bossHealth,
+                    stats.bossTimeLeft,
+                    stats.stageCleared,
+                  ]),
+                  builder: (context, _) => _StageInfo(
+                    name: stats.stage.value.name,
+                    level: stats.stage.value.level,
+                    bossName: stats.stage.value.region.bossName,
+                    countdown: stats.bossCountdown.value,
+                    bossHealth: stats.bossHealth.value,
+                    timeLeft: stats.bossTimeLeft.value,
+                    cleared: stats.stageCleared.value,
+                  ),
                 ),
               ],
             ),

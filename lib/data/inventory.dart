@@ -243,7 +243,7 @@ class Gear {
   /// 산 강화석이 장비를 바꿔도 힘으로 남게 하려는 것이다. 초월 단계 · 초월 옵션은
   /// 장비에 그대로 남는다.
   void equip(Item item, EquipSlot slot) {
-    assert(slot.accepts(item.type), '${item.type} 은 ${slot.label} 에 낄 수 없다');
+    assert(slot.accepts(item.type), '${item.type} 은 ${slot.place} 에 낄 수 없다');
     final displaced = displacedBy(item, slot);
     if (enhanceDonor(item, slot) case final donor?) {
       final enhance = donor.enhance;

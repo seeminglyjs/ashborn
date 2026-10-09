@@ -9,7 +9,8 @@ import '../routes.dart';
 import '../format.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
-import '../widgets/title_art.dart';
+import '../widgets/dungeon_backdrop.dart';
+import '../widgets/pixel_sprite.dart';
 import 'game_screen.dart';
 
 class CharacterSelectScreen extends StatefulWidget {
@@ -85,75 +86,101 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   Widget build(BuildContext context) {
     final profile = ProfileScope.of(context);
     return Scaffold(
+      backgroundColor: AshColors.night,
       body: Stack(
         children: [
-          const Positioned.fill(child: BlurredArt(dim: 0.65)),
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final size = constraints.biggest;
+                return DungeonBackdrop(
+                  pixel: PixelScene.pixelFor(size),
+                  light: Offset(size.width / 2, size.height * 0.4),
+                  lightRadius: size.longestSide * 0.55,
+                  darkness: 0.85,
+                  walls: false,
+                );
+              },
+            ),
+          ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               child: ListenableBuilder(
                 listenable: Listenable.merge([
                   profile.inventory,
                   profile.progress,
                 ]),
                 builder: (context, _) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _Header(
                       gold: profile.inventory.gold,
                       onBack: () => Navigator.of(context).maybePop(),
                     ),
                     const SizedBox(height: 8),
-                    Expanded(child: _cards(profile.inventory.gold)),
-                    const SizedBox(height: 8),
+                    Expanded(
+                      child: _Showcase(
+                        character: _selected,
+                        locked: !_owned,
+                        gold: profile.inventory.gold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _picks(),
+                    const SizedBox(height: 6),
                     _StagePicker(
                       stage: _currentStage,
                       unlocked: profile.progress.unlocked,
                       onChanged: (stage) => setState(() => _stage = stage),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.center,
+                    const SizedBox(height: 6),
+                    Row(
                       children: [
-                        AshButton(
-                          key: const Key('open-hearth'),
-                          label: '화톳불',
-                          icon: Icons.upgrade,
-                          fontSize: 17,
-                          onPressed: _openHearth,
-                        ),
-                        AshButton(
-                          key: const Key('open-equipment'),
-                          label: '장비',
-                          icon: Icons.backpack,
-                          fontSize: 17,
-                          onPressed: _openEquipment,
-                        ),
-                        if (_owned)
-                          AshButton(
-                            key: const Key('depart'),
-                            label: '출정하기',
-                            icon: Icons.local_fire_department,
-                            fontSize: 17,
-                            onPressed: _depart,
-                          )
-                        else
-                          AshButton(
-                            key: const Key('unlock'),
-                            label: '해금 · 골드 ${formatGold(_selected.price)}',
-                            icon: Icons.lock_open,
-                            fontSize: 17,
-                            onPressed:
-                                profile.progress.canUnlock(
-                                  _selected,
-                                  profile.inventory,
-                                )
-                                ? _unlock
-                                : null,
+                        Expanded(
+                          child: AshButton(
+                            key: const Key('open-hearth'),
+                            label: '화톳불',
+                            icon: Icons.upgrade,
+                            fontSize: 15,
+                            onPressed: _openHearth,
                           ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: AshButton(
+                            key: const Key('open-equipment'),
+                            label: '장비',
+                            icon: Icons.backpack,
+                            fontSize: 15,
+                            onPressed: _openEquipment,
+                          ),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 10),
+                    if (_owned)
+                      AshButton(
+                        key: const Key('depart'),
+                        label: '출정하기',
+                        icon: Icons.local_fire_department,
+                        fontSize: 20,
+                        onPressed: _depart,
+                      )
+                    else
+                      AshButton(
+                        key: const Key('unlock'),
+                        label: '해금 · 골드 ${formatGold(_selected.price)}',
+                        icon: Icons.lock_open,
+                        fontSize: 20,
+                        onPressed:
+                            profile.progress.canUnlock(
+                              _selected,
+                              profile.inventory,
+                            )
+                            ? _unlock
+                            : null,
+                      ),
                   ],
                 ),
               ),
@@ -164,39 +191,30 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
     );
   }
 
-  /// 캐릭터 카드와 그 뒤의 공개 예정 카드. 넓으면 한 화면에 다 보이고,
-  /// 좁으면 옆으로 넘겨 본다. 다음 카드가 살짝 보이도록 폭을 잡는다.
-  Widget _cards(int gold) => LayoutBuilder(
-    builder: (context, constraints) {
-      final width = (constraints.maxWidth / 3.4).clamp(170.0, 260.0);
-      final progress = ProfileScope.of(context).progress;
-      return ListView(
+  /// 캐릭터 고르기 줄. 그 뒤로 공개 예정 캐릭터 자리가 이어져 옆으로 넘겨 본다.
+  Widget _picks() {
+    final progress = ProfileScope.of(context).progress;
+    return SizedBox(
+      height: _Pick.height,
+      child: ListView(
         key: const Key('character-list'),
         scrollDirection: Axis.horizontal,
         children: [
           for (final c in Roster.all)
-            Container(
-              width: width,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: _CharacterCard(
-                character: c,
-                selected: c == _selected,
-                locked: !progress.owns(c),
-                gold: gold,
-                onTap: () =>
-                    c == _selected ? _depart() : setState(() => _selected = c),
-              ),
+            _Pick(
+              character: c,
+              selected: c == _selected,
+              locked: !progress.owns(c),
+              onTap: () => setState(() => _selected = c),
             ),
           for (var i = 0; i < upcoming; i++)
-            Container(
-              width: width,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: const _UpcomingCard(),
+            _UpcomingPick(
+              sprite: _UpcomingPick.sprites[i % _UpcomingPick.sprites.length],
             ),
         ],
-      );
-    },
-  );
+      ),
+    );
+  }
 }
 
 /// 출정할 스테이지 고르기. 클리어한 다음 스테이지까지 고를 수 있다.
@@ -268,22 +286,17 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 50,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
+    return Column(
+      children: [
+        Row(
+          children: [
+            IconButton(
               tooltip: '뒤로',
               onPressed: onBack,
               icon: const Icon(Icons.arrow_back, color: AshColors.gold),
             ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
+            const Spacer(),
+            Text(
               '골드 ${formatGold(gold)}',
               key: const Key('select-gold'),
               style: const TextStyle(
@@ -292,16 +305,133 @@ class _Header extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
+          ],
+        ),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('누구로 다시 일어설 것인가', style: ashTitleStyle(22)),
+        ),
+        const SizedBox(height: 2),
+        const Text(
+          '재 속에서 깨어날 애쉬본을 선택하세요',
+          style: TextStyle(color: AshColors.ash, fontSize: 11),
+        ),
+      ],
+    );
+  }
+}
+
+/// 카드 바탕. 뒤의 바닥 무늬가 비치지 않도록 불투명하다.
+const _cardColor = Color(0xFF1A1411);
+
+/// 칸에 맞는 정수 배율. 정수 배로 키워야 픽셀이 고르게 보인다.
+double _spriteScale(BoxConstraints c, {double fill = 0.95}) => [
+  c.maxHeight * fill / 28,
+  c.maxWidth * 0.7 / 16,
+].reduce((a, b) => a < b ? a : b).floorToDouble().clamp(2.0, 14.0);
+
+/// 고른 캐릭터를 크게 보여 주는 자리. 캐릭터 색으로 밝힌 바닥 위에 픽셀 캐릭터가
+/// 숨 쉬고, 아래에 이름 · 무기 · 특성 · 능력 막대가 온다. 잠긴 캐릭터는 실루엣.
+class _Showcase extends StatelessWidget {
+  const _Showcase({
+    required this.character,
+    required this.locked,
+    required this.gold,
+  });
+
+  final CharacterDef character;
+  final bool locked;
+  final int gold;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = character.color;
+    return Container(
+      decoration: BoxDecoration(
+        color: _cardColor,
+        border: Border.all(color: AshColors.gold, width: 2),
+        boxShadow: [
+          BoxShadow(color: accent.withValues(alpha: 0.35), blurRadius: 24),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(0, 0.5),
+                      radius: 0.8,
+                      colors: [
+                        // 잠긴 캐릭터는 검은 실루엣이라 뒤를 조금 더 밝혀 윤곽이 보이게 한다.
+                        accent.withValues(alpha: locked ? 0.4 : 0.3),
+                        _cardColor,
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Align(
+                      alignment: Alignment.bottomCenter,
+                      child: PixelSprite(
+                        key: Key('portrait-${character.id.name}'),
+                        asset: 'assets/images/${character.sprite}',
+                        frameSize: const Size(16, 28),
+                        count: 4,
+                        fps: 6,
+                        scale: _spriteScale(constraints, fill: 0.9),
+                        silhouette: locked ? Colors.black : null,
+                      ),
+                    ),
+                  ),
+                ),
+                if (locked) _LockOverlay(price: character.price, gold: gold),
+              ],
+            ),
           ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('누구로 다시 일어설 것인가', style: ashTitleStyle(20)),
-              const Text(
-                '재 속에서 깨어날 애쉬본을 선택하세요',
-                style: TextStyle(color: AshColors.ash, fontSize: 11),
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  character.role,
+                  style: TextStyle(
+                    color: accent,
+                    fontFamily: pixelFont,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  character.name,
+                  key: const Key('showcase-name'),
+                  style: ashTitleStyle(24),
+                ),
+                const SizedBox(height: 6),
+                _InfoLine(
+                  icon: Icons.whatshot,
+                  color: accent,
+                  text:
+                      '${character.weaponName} · '
+                      '${character.weaponDescription}',
+                ),
+                const SizedBox(height: 2),
+                _InfoLine(
+                  icon: Icons.auto_awesome,
+                  color: AshColors.gold,
+                  text: character.trait,
+                ),
+                const SizedBox(height: 8),
+                _Ratings(character: character),
+              ],
+            ),
           ),
         ],
       ),
@@ -309,160 +439,100 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _CharacterCard extends StatelessWidget {
-  const _CharacterCard({
+/// 캐릭터 고르기 칸. 작은 픽셀 캐릭터와 이름.
+class _Pick extends StatelessWidget {
+  const _Pick({
     required this.character,
     required this.selected,
     required this.locked,
-    required this.gold,
     required this.onTap,
   });
 
+  static const double width = 76;
+  static const double height = 96;
+
   final CharacterDef character;
   final bool selected;
-
-  /// 아직 해금하지 않았다. 해금 골드까지 얼마나 모았는지 보여 준다.
   final bool locked;
-  final int gold;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final accent = character.color;
     return Semantics(
       button: true,
       selected: selected,
       label: character.name,
       child: GestureDetector(
+        key: Key('pick-${character.id.name}'),
         onTap: onTap,
-        child: AnimatedScale(
-          scale: selected ? 1 : 0.94,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-          child: AnimatedOpacity(
-            opacity: selected ? 1 : 0.62,
-            duration: const Duration(milliseconds: 220),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              decoration: BoxDecoration(
-                color: AshColors.panel,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: selected ? AshColors.gold : const Color(0x33E8C887),
-                  width: selected ? 2 : 1,
-                ),
-                boxShadow: [
-                  if (selected)
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.45),
-                      blurRadius: 24,
-                    ),
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: _Portrait(
-                      character: character,
-                      lock: locked
-                          ? _LockOverlay(price: character.price, gold: gold)
-                          : null,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _InfoLine(
-                          icon: Icons.whatshot,
-                          color: accent,
-                          text:
-                              '${character.weaponName} · '
-                              '${character.weaponDescription}',
-                        ),
-                        const SizedBox(height: 2),
-                        _InfoLine(
-                          icon: Icons.auto_awesome,
-                          color: AshColors.gold,
-                          text: character.trait,
-                        ),
-                        const SizedBox(height: 6),
-                        _Ratings(character: character),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Portrait extends StatelessWidget {
-  const _Portrait({required this.character, this.lock});
-
-  final CharacterDef character;
-
-  /// 해금 전이면 그림 위, 이름 아래에 덮는다.
-  final Widget? lock;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          character.portrait,
-          fit: BoxFit.cover,
-          alignment: const Alignment(0, -0.3),
-        ),
-        const DecoratedBox(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: width,
+          margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+            color: _cardColor,
+            border: Border.all(
+              color: selected ? AshColors.gold : const Color(0x33E8C887),
+              width: selected ? 2 : 1,
+            ),
+            gradient: RadialGradient(
+              center: const Alignment(0, 0.3),
               colors: [
-                Color(0xAA000000),
-                Colors.transparent,
-                Colors.transparent,
-                AshColors.panel,
+                character.color.withValues(alpha: selected ? 0.35 : 0.15),
+                _cardColor,
               ],
-              stops: [0, 0.18, 0.55, 1],
             ),
           ),
-        ),
-        ?lock,
-        Positioned(
-          left: 10,
-          right: 10,
-          bottom: 2,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                character.role,
-                style: TextStyle(
-                  color: character.color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Align(
+                      alignment: Alignment.bottomCenter,
+                      child: PixelSprite(
+                        asset: 'assets/images/${character.sprite}',
+                        frameSize: const Size(16, 28),
+                        count: selected ? 4 : 1,
+                        fps: 6,
+                        scale: _spriteScale(constraints),
+                        silhouette: locked ? Colors.black : null,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              Text(
-                character.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: ashTitleStyle(18).copyWith(letterSpacing: 2),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (locked)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 2),
+                        child: Icon(Icons.lock, size: 10, color: AshColors.ash),
+                      ),
+                    Flexible(
+                      child: Text(
+                        character.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected ? AshColors.parchment : AshColors.ash,
+                          fontFamily: pixelFont,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -570,8 +640,16 @@ class _LockOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ready = gold >= price;
-    return ColoredBox(
-      color: const Color(0x99000000),
+    // 위쪽만 어둡게 덮어 실루엣은 그대로 보이게 한다.
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xCC000000), Colors.transparent],
+          stops: [0.12, 0.4],
+        ),
+      ),
       child: Align(
         alignment: Alignment.topCenter,
         child: Padding(
@@ -622,53 +700,60 @@ class _LockOverlay extends StatelessWidget {
   }
 }
 
-/// 아직 공개하지 않은 캐릭터 자리. 실루엣만 보인다.
-class _UpcomingCard extends StatelessWidget {
-  const _UpcomingCard();
+/// 아직 공개하지 않은 캐릭터 자리. 다음에 나올 영웅이 실루엣으로만 보인다.
+class _UpcomingPick extends StatelessWidget {
+  const _UpcomingPick({required this.sprite});
+
+  /// 0x72 팩에서 아직 쓰지 않은 영웅 (`assets/images/sprites/upcoming/`).
+  static const sprites = ['lizard_m', 'dwarf_m', 'knight_f'];
+
+  final String sprite;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.55,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AshColors.panel,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0x22E8C887)),
-          gradient: const RadialGradient(
-            center: Alignment(0, -0.2),
-            radius: 0.8,
-            colors: [Color(0x40FF6B35), AshColors.panel],
-          ),
+    return Container(
+      width: _Pick.width,
+      margin: const EdgeInsets.only(right: 8),
+      // 흐리게 보이도록 어둡게 덮는다. 투명하게 하면 바닥 무늬가 비친다.
+      foregroundDecoration: const BoxDecoration(color: Color(0x66000000)),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0x22E8C887)),
+        gradient: const RadialGradient(
+          center: Alignment(0, 0.3),
+          colors: [Color(0x66FF6B35), _cardColor],
         ),
-        child: const Column(
-          children: [
-            Expanded(
-              child: FittedBox(
-                child: Icon(
-                  Icons.person,
-                  color: Color(0xFF050404),
-                  shadows: [Shadow(color: Color(0x88FF6B35), blurRadius: 12)],
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: LayoutBuilder(
+                builder: (context, constraints) => Align(
+                  alignment: Alignment.bottomCenter,
+                  child: PixelSprite(
+                    asset: 'assets/images/sprites/upcoming/$sprite.png',
+                    frameSize: const Size(16, 28),
+                    scale: _spriteScale(constraints),
+                    silhouette: Colors.black,
+                  ),
                 ),
               ),
             ),
-            Text(
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(4, 2, 4, 6),
+            child: Text(
               '???',
               style: TextStyle(
-                color: AshColors.parchment,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 4,
+                color: AshColors.ash,
+                fontFamily: pixelFont,
+                fontWeight: FontWeight.w700,
+                fontSize: 10,
               ),
             ),
-            SizedBox(height: 2),
-            Text(
-              '아직 재 속에 잠들어 있다',
-              style: TextStyle(color: AshColors.ash, fontSize: 11),
-            ),
-            SizedBox(height: 12),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

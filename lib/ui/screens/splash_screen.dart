@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../data/characters.dart';
 import '../routes.dart';
+import '../widgets/dungeon_backdrop.dart';
 import '../widgets/ember_field.dart';
-import '../widgets/title_art.dart';
+import '../widgets/pixel_sprite.dart';
 import 'title_screen.dart';
 
 /// 검은 화면에서 불씨가 고동치듯 솟다가 화톳불이 피어오른다.
@@ -13,7 +14,6 @@ class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   static const duration = Duration(milliseconds: 4600);
-  static const campfireAsset = 'assets/images/campfire.webp';
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -51,15 +51,15 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    for (final asset in [
-      TitleArt.asset,
-      SplashScreen.campfireAsset,
-      for (final c in Roster.all) c.portrait,
-    ]) {
-      precacheImage(AssetImage(asset), context);
-    }
+  void initState() {
+    super.initState();
+    // 타이틀과 캐릭터 선택에 쓸 픽셀 시트를 미리 읽어 둔다.
+    PixelImages.preload([
+      PixelScene.tilesAsset,
+      PixelScene.columnAsset,
+      PixelScene.campfireAsset,
+      for (final c in Roster.all) 'assets/images/${c.sprite}',
+    ]);
   }
 
   @override
@@ -117,7 +117,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                       ),
                     ),
-                    // 피어오르는 화톳불
+                    // 피어오르는 픽셀 화톳불
                     Positioned(
                       left: center.dx - fireSize / 2,
                       top:
@@ -128,19 +128,13 @@ class _SplashScreenState extends State<SplashScreen>
                       height: fireSize,
                       child: Opacity(
                         opacity: rise,
-                        child: Transform.scale(
-                          scale: 0.86 + 0.14 * rise,
-                          child: ShaderMask(
-                            blendMode: BlendMode.dstIn,
-                            shaderCallback: (rect) => const RadialGradient(
-                              radius: 0.5,
-                              colors: [Colors.white, Colors.transparent],
-                              stops: [0.3, 1],
-                            ).createShader(rect),
-                            child: Image.asset(
-                              SplashScreen.campfireAsset,
-                              fit: BoxFit.cover,
-                            ),
+                        child: Center(
+                          child: PixelSprite(
+                            asset: PixelScene.campfireAsset,
+                            frameSize: const Size(16, 24),
+                            count: 6,
+                            fps: 10,
+                            scale: (fireSize / 24).floorToDouble(),
                           ),
                         ),
                       ),

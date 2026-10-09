@@ -64,24 +64,31 @@ const _weaponStats = [
 ];
 
 /// 장비를 끼는 칸. 반지, 귀걸이, 한손장비는 두 칸에 낄 수 있다.
-/// 양손장비는 [hand1] 에 끼고 [hand2] 를 비운다.
+/// [hand1] 은 오른손(주로 쓰는 손), [hand2] 는 왼손. 양손장비는 오른손에 끼고 왼손을 비운다.
 enum EquipSlot {
   head('머리', ItemType.head),
   necklace('목걸이', ItemType.necklace),
-  earring1('귀걸이 1', ItemType.earring),
-  earring2('귀걸이 2', ItemType.earring),
-  hand1('주 손', ItemType.oneHand),
-  hand2('보조 손', ItemType.oneHand),
+  earring1('귀걸이', ItemType.earring),
+  earring2('귀걸이', ItemType.earring),
+  hand1('오른손', ItemType.oneHand),
+  hand2('왼손', ItemType.oneHand),
   gloves('장갑', ItemType.gloves),
   belt('허리띠', ItemType.belt),
-  ring1('반지 1', ItemType.ring),
-  ring2('반지 2', ItemType.ring),
+  ring1('반지', ItemType.ring),
+  ring2('반지', ItemType.ring),
   boots('장화', ItemType.boots);
 
   const EquipSlot(this.label, this.type);
 
   final String label;
   final ItemType type;
+
+  /// 같은 이름의 칸이 둘일 때 어느 쪽인지 붙인 이름 (장비 화면에서 왼쪽 · 오른쪽 줄).
+  String get place => switch (this) {
+    earring1 || ring1 => '왼쪽 $label',
+    earring2 || ring2 => '오른쪽 $label',
+    _ => label,
+  };
 
   bool accepts(ItemType item) =>
       item == type || (this == hand1 && item == ItemType.twoHand);

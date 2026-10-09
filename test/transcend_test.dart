@@ -314,7 +314,7 @@ void main() {
 
   testWidgets('장비 화면: +20 영웅 장비에 초월 비용과 버튼이 보이고 시도하면 재료를 쓴다', (tester) async {
     tester.view
-      ..physicalSize = const Size(844, 390)
+      ..physicalSize = const Size(390, 844)
       ..devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final belt = maxed(Rarity.hero);

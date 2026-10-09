@@ -12,6 +12,7 @@ import '../odds/odds_screen.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
+import '../widgets/pixel_sprite.dart';
 
 /// 이 등급 이상은 분해하기 전에 한 번 더 묻는다.
 const confirmSalvageFrom = Rarity.hero;
@@ -42,6 +43,10 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
 
   /// 선택한 장비가 장착 중이면 그 칸.
   EquipSlot? _selectedSlot;
+
+  /// 가방 필터. null 이면 전체.
+  Rarity? _rarityFilter;
+  _TypeFilter? _typeFilter;
 
   /// 마지막 강화 · 초월 시도 결과. 다른 장비를 고르면 지운다.
   bool? _enhanced;
@@ -109,82 +114,154 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
           padding: const EdgeInsets.all(12),
           child: ListenableBuilder(
             listenable: _inventory,
-            builder: (context, _) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Text('장비', style: ashTitleStyle(22)),
-                    const SizedBox(width: 10),
-                    Text(widget.character.name, style: _Text.heading),
-                    const Spacer(),
-                    Text(
-                      '골드 ${_inventory.gold} · 강화석 ${_inventory.stones}'
-                      ' · 초월석 ${_inventory.transcendStones}',
-                      key: const Key('materials'),
-                      style: _Text.heading.copyWith(color: AshColors.gold),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      '잔불 ${_inventory.ember}',
-                      key: const Key('ember'),
-                      style: _Text.heading.copyWith(color: _Text.ember),
-                    ),
-                    IconButton(
-                      key: const Key('close-equipment'),
-                      icon: const Icon(Icons.close, color: AshColors.parchment),
-                      onPressed: widget.onClose,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        width: _tile * 4 + _gap * 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _equippedGrid(),
-                            const SizedBox(height: 10),
-                            Expanded(child: _statSummary()),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: _bag()),
-                      const SizedBox(width: 12),
-                      SizedBox(width: 220, child: _detail()),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            builder: (context, _) => _layout(),
           ),
         ),
       ),
     );
   }
 
-  Widget _equippedGrid() => Wrap(
-    spacing: _gap,
-    runSpacing: _gap,
+  Widget get _materials => Text(
+    '골드 ${_inventory.gold} · 강화석 ${_inventory.stones}'
+    ' · 초월석 ${_inventory.transcendStones}',
+    key: const Key('materials'),
+    style: _Text.heading.copyWith(color: AshColors.gold),
+  );
+
+  Widget get _ember => Text(
+    '잔불 ${_inventory.ember}',
+    key: const Key('ember'),
+    style: _Text.heading.copyWith(color: _Text.ember),
+  );
+
+  Widget get _close => IconButton(
+    key: const Key('close-equipment'),
+    icon: const Icon(Icons.close, color: AshColors.parchment),
+    onPressed: widget.onClose,
+  );
+
+  /// 세로 화면: 위에서부터 장착 칸 · 가방 · 상세. 아무것도 고르지 않았으면
+  /// 상세 자리에 장비 능력치 합계를 보여 준다.
+  Widget _layout() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      for (final slot in EquipSlot.values)
-        if (slot == EquipSlot.hand2 && _gear.offHandBlocked)
-          const _ItemTile(item: null, label: '양손 사용', dimmed: true)
-        else
-          _ItemTile(
-            key: Key('slot-${slot.name}'),
-            item: _gear.equipped[slot],
-            label: slot.label,
-            selected: _selectedSlot == slot,
-            onTap: () => _select(_gear.equipped[slot], slot),
+      Row(
+        children: [
+          Text('장비', style: ashTitleStyle(22)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(widget.character.name, style: _Text.heading)),
+          _close,
+        ],
+      ),
+      Wrap(spacing: 10, children: [_materials, _ember]),
+      const SizedBox(height: 8),
+      _equippedGrid(),
+      const SizedBox(height: 10),
+      // 장비를 고르면 가방 · 능력치 자리를 상세가 넓게 쓴다.
+      if (_selected == null) ...[
+        Expanded(flex: 3, child: _bag()),
+        const Divider(color: Color(0x33E8C887), height: 16),
+        Expanded(flex: 2, child: _statSummary()),
+      ] else ...[
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const Key('close-detail'),
+            onPressed: () => _select(null),
+            icon: const Icon(Icons.arrow_back, size: 16),
+            label: const Text('가방으로'),
+            style: TextButton.styleFrom(foregroundColor: AshColors.gold),
           ),
+        ),
+        Expanded(child: _detail()),
+      ],
     ],
   );
+
+  /// 장착 칸. 가운데에 이 캐릭터의 픽셀 스프라이트를 크게 세우고, 칸을 양옆에
+  /// 위에서부터 늘어놓는다 (귀걸이 · 손 · 반지는 양쪽 같은 줄). 오른손은
+  /// 오른쪽, 왼손은 왼쪽 줄이고, 양손장비를 끼면 왼손 칸은 막힌다.
+  Widget _equippedGrid() => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = math.min(constraints.maxWidth, 380.0);
+      const side = _tile * 5 + _dollGap * 4;
+      const height = side + _dollGap + _tile;
+      // 스프라이트의 몸은 16x28 프레임의 8~28 줄. 정수 배로 키워 칸 사이에 맞춘다.
+      final scale = math
+          .min(side * 0.8 / 20, (width - _tile * 2 - 40) / 16)
+          .floorToDouble();
+      final sprite = Rect.fromLTWH(
+        (width - 16 * scale) / 2,
+        (side - 20 * scale) / 2 - 8 * scale,
+        16 * scale,
+        28 * scale,
+      );
+      Offset tileAt(_DollSide where, int row) => switch (where) {
+        _DollSide.left => Offset(0, (_tile + _dollGap) * row),
+        _DollSide.right => Offset(width - _tile, (_tile + _dollGap) * row),
+        _DollSide.bottom => Offset((width - _tile) / 2, side + _dollGap),
+      };
+      Widget slot(EquipSlot slot, Offset pos) => Positioned(
+        left: pos.dx,
+        top: pos.dy,
+        child: slot == EquipSlot.hand2 && _gear.offHandBlocked
+            ? const _ItemTile(
+                key: Key('slot-hand2-blocked'),
+                item: null,
+                label: '양손 사용',
+                dimmed: true,
+              )
+            : _ItemTile(
+                key: Key('slot-${slot.name}'),
+                item: _gear.equipped[slot],
+                label: slot.label,
+                selected: _selectedSlot == slot,
+                onTap: () => _select(_gear.equipped[slot], slot),
+              ),
+      );
+      return Center(
+        child: SizedBox(
+          key: const Key('paper-doll'),
+          width: width,
+          height: height,
+          child: Stack(
+            children: [
+              Positioned.fromRect(
+                rect: sprite,
+                child: PixelSprite(
+                  asset: 'assets/images/${widget.character.sprite}',
+                  frameSize: const Size(16, 28),
+                  count: 4,
+                  fps: 4,
+                  scale: scale,
+                ),
+              ),
+              for (final (s, where, row) in _dollLayout)
+                slot(s, tileAt(where, row)),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  static const double _dollGap = 8;
+
+  /// 칸 자리: (칸, 줄 쪽, 위에서부터 몇 번째). 짝이 있는 귀걸이 · 손 · 반지는
+  /// 양쪽 같은 줄에 둔다.
+  static const _dollLayout = [
+    (EquipSlot.head, _DollSide.left, 0),
+    (EquipSlot.earring1, _DollSide.left, 1),
+    (EquipSlot.hand2, _DollSide.left, 2),
+    (EquipSlot.ring1, _DollSide.left, 3),
+    (EquipSlot.gloves, _DollSide.left, 4),
+    (EquipSlot.necklace, _DollSide.right, 0),
+    (EquipSlot.earring2, _DollSide.right, 1),
+    (EquipSlot.hand1, _DollSide.right, 2),
+    (EquipSlot.ring2, _DollSide.right, 3),
+    (EquipSlot.belt, _DollSide.right, 4),
+    (EquipSlot.boots, _DollSide.bottom, 0),
+  ];
 
   Widget _statSummary() {
     final effects = _gear.effects;
@@ -224,27 +301,76 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
     );
   }
 
+  bool _passes(Item item) =>
+      (_rarityFilter == null || item.rarity == _rarityFilter) &&
+      (_typeFilter == null || _typeFilter!.types.contains(item.type));
+
   Widget _bag() {
     final bag = _inventory.bag;
+    final shown = [
+      for (final (i, item) in bag.indexed)
+        if (_passes(item)) (i, item),
+    ];
+    final filtered = _rarityFilter != null || _typeFilter != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '가방 ${bag.length} / ${Balance.bagCapacity}',
+          '가방 ${bag.length} / ${Balance.bagCapacity}'
+          '${filtered ? ' · ${shown.length}개 표시' : ''}',
           style: _inventory.bagFull
               ? _Text.heading.copyWith(color: AshColors.ember)
               : _Text.heading,
         ),
+        const SizedBox(height: 4),
+        _filterRow([
+          _chip(
+            'filter-rarity-all',
+            '전체 등급',
+            null,
+            _rarityFilter == null,
+            () => setState(() => _rarityFilter = null),
+          ),
+          for (final r in Rarity.values)
+            _chip(
+              'filter-rarity-${r.name}',
+              r.label,
+              r.color,
+              _rarityFilter == r,
+              () => setState(() => _rarityFilter = r),
+            ),
+        ]),
+        const SizedBox(height: 4),
+        _filterRow([
+          _chip(
+            'filter-type-all',
+            '전체 부위',
+            null,
+            _typeFilter == null,
+            () => setState(() => _typeFilter = null),
+          ),
+          for (final t in _TypeFilter.values)
+            _chip(
+              'filter-type-${t.name}',
+              t.label,
+              null,
+              _typeFilter == t,
+              () => setState(() => _typeFilter = t),
+            ),
+        ]),
         const SizedBox(height: 6),
         Expanded(
           child: bag.isEmpty
               ? const Text('비어 있음', style: _Text.dim)
+              : shown.isEmpty
+              ? const Text('조건에 맞는 장비가 없습니다', style: _Text.dim)
               : GridView.extent(
+                  key: const Key('bag-grid'),
                   maxCrossAxisExtent: _tile + _gap,
                   mainAxisSpacing: _gap,
                   crossAxisSpacing: _gap,
                   children: [
-                    for (final (i, item) in bag.indexed)
+                    for (final (i, item) in shown)
                       _ItemTile(
                         key: Key('bag-$i'),
                         item: item,
@@ -258,6 +384,47 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
       ],
     );
   }
+
+  Widget _filterRow(List<Widget> chips) => SizedBox(
+    height: 28,
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: chips),
+    ),
+  );
+
+  /// 필터 칩 하나. 등급 칩은 그 등급 색으로 쓴다.
+  Widget _chip(
+    String key,
+    String label,
+    Color? color,
+    bool selected,
+    VoidCallback onTap,
+  ) => Padding(
+    padding: const EdgeInsets.only(right: 6),
+    child: GestureDetector(
+      key: Key(key),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? const Color(0x33E8C887) : Colors.transparent,
+          border: Border.all(
+            color: selected ? AshColors.gold : (color ?? Colors.white24),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color ?? (selected ? AshColors.gold : AshColors.parchment),
+            fontSize: 11,
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _detail() {
     final item = _selected;
@@ -350,7 +517,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
             for (final target in targets) ...[
               _action(
                 'equip-${target.name}',
-                targets.length == 1 ? '장착' : '${target.label}에 장착',
+                targets.length == 1 ? '장착' : '${target.place}에 장착',
                 () {
                   _gear.equip(item, target);
                   _select(null);
@@ -595,17 +762,59 @@ class _ItemTile extends StatelessWidget {
               BoxShadow(color: color!.withValues(alpha: 0.6), blurRadius: 8),
           ],
         ),
-        child: Text(
-          item?.type.label ?? label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: item != null
-                ? AshColors.parchment
-                : AshColors.ash.withValues(alpha: dimmed ? 0.5 : 1),
-            fontSize: 10,
-          ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(
+              item?.type.label ?? label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: item != null
+                    ? AshColors.parchment
+                    : AshColors.ash.withValues(alpha: dimmed ? 0.5 : 1),
+                fontSize: 10,
+              ),
+            ),
+            if (dimmed)
+              const Positioned(
+                top: 2,
+                child: Icon(Icons.block, size: 12, color: Colors.white24),
+              ),
+            if (item case final item? when item.enhance > 0)
+              Positioned(
+                right: 2,
+                bottom: 1,
+                child: Text(
+                  '+${item.enhance}',
+                  style: const TextStyle(
+                    color: AshColors.gold,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 }
+
+/// 가방 부위 필터. 무기는 한손 · 양손을 함께 본다.
+enum _TypeFilter {
+  head('머리', {ItemType.head}),
+  necklace('목걸이', {ItemType.necklace}),
+  earring('귀걸이', {ItemType.earring}),
+  weapon('무기', {ItemType.oneHand, ItemType.twoHand}),
+  gloves('장갑', {ItemType.gloves}),
+  belt('허리띠', {ItemType.belt}),
+  ring('반지', {ItemType.ring}),
+  boots('장화', {ItemType.boots});
+
+  const _TypeFilter(this.label, this.types);
+
+  final String label;
+  final Set<ItemType> types;
+}
+
+enum _DollSide { left, right, bottom }
