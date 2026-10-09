@@ -23,7 +23,9 @@ abstract final class Balance {
 
   // 레벨: 다음 레벨까지 xpBase + xpGrowth * (레벨 - 1) 경험치.
   static const double xpBase = 5;
-  static const double xpGrowth = 5;
+
+  /// 졸개가 다양해지며 (떼 · 거구) 경험치가 늘어난 만큼 레벨 곡선을 가파르게 했다.
+  static const double xpGrowth = 9;
 
   /// 레벨업 때 제시되는 선택지 수.
   static const int levelUpChoices = 3;

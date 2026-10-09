@@ -543,6 +543,13 @@ class Splitter extends Enemy {
 
   final bool child;
 
+  /// 새끼는 재의 결정을 떨어뜨리지 않는다 (한 마리 값을 셋이 나눠 받지 않도록).
+  @override
+  void onKilled() {
+    if (!child) return super.onKilled();
+    world.onEnemyKilled(position.clone(), xp: 0);
+  }
+
   @override
   void onDeath() {
     if (child) return;
