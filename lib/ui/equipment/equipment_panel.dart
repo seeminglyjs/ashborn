@@ -590,7 +590,7 @@ class ItemDetails extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: item.rarity.color, width: 1.5),
               ),
-              child: ItemIcon(item.type, scale: 3),
+              child: ItemIcon(item.type, rarity: item.rarity, scale: 3),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -865,22 +865,32 @@ class _ItemTile extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: color?.withValues(alpha: 0.18) ?? Colors.white10,
+          // 바탕을 불투명하게 칠해 빛이 칸 안으로 비쳐 들지 않고 둘레에만 번지게 한다.
+          color: Color.alphaBlend(
+            color?.withValues(alpha: 0.18) ?? Colors.white10,
+            const Color(0xFF15110F),
+          ),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: selected ? AshColors.gold : color ?? Colors.white24,
             width: selected ? 2.5 : 1.5,
           ),
+          // 영웅 이상은 칸 둘레도 등급 색으로 빛난다. 높은 등급일수록 넓고 진하게.
           boxShadow: [
-            if (item?.effect != null)
-              BoxShadow(color: color!.withValues(alpha: 0.6), blurRadius: 8),
+            if (item case final item? when ItemIcon.glows(item.rarity))
+              BoxShadow(
+                color: item.rarity.color.withValues(
+                  alpha: 0.35 + 0.1 * ItemIcon.glowLevel(item.rarity),
+                ),
+                blurRadius: 6 + 3.0 * ItemIcon.glowLevel(item.rarity),
+              ),
           ],
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
             if (item case final item?)
-              ItemIcon(item.type)
+              ItemIcon(item.type, rarity: item.rarity)
             else
               // 빈 칸: 무엇을 끼는 칸인지 흐린 실루엣과 이름으로 보여 준다.
               Column(

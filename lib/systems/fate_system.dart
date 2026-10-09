@@ -116,6 +116,7 @@ abstract final class FateSystem {
       random,
       luck: luck,
       ratio: Balance.fateRarityRatio,
+      highScale: 1,
     );
     final floor = cards
         .map((c) => c.minRarity)
