@@ -11,10 +11,14 @@ class GameOverOverlay extends StatelessWidget {
     super.key,
     required this.game,
     required this.onChooseCharacter,
+    required this.onMainMenu,
   });
 
   final AshbornGame game;
   final VoidCallback onChooseCharacter;
+
+  /// 타이틀로 돌아간다. 모은 재화는 쓰러질 때 이미 정산했다.
+  final VoidCallback onMainMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +84,13 @@ class GameOverOverlay extends StatelessWidget {
                     label: '캐릭터 선택',
                     fontSize: 17,
                     onPressed: onChooseCharacter,
+                  ),
+                  AshButton(
+                    key: const Key('game-over-main-menu'),
+                    label: '메인 화면',
+                    icon: Icons.home_rounded,
+                    fontSize: 17,
+                    onPressed: onMainMenu,
                   ),
                 ],
               ),

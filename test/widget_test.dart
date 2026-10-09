@@ -159,11 +159,17 @@ void main() {
         .game!;
     final start = game.world.player.position.clone();
 
+    final joystick = game.joystick;
     final gesture = await tester.startGesture(const Offset(200, 500));
     await gesture.moveBy(const Offset(20, 0));
+    expect(joystick.isHeld, isTrue);
+    expect(joystick.origin.x, closeTo(200, 1));
+    expect(joystick.delta.x, closeTo(20, 1));
+
+    // 바탕 밖으로 끌면 바탕이 손가락을 따라온다.
     await gesture.moveBy(const Offset(80, 0));
-    expect(game.joystick.isHeld, isTrue);
-    expect(game.joystick.origin.x, closeTo(200, 1));
+    expect(joystick.origin.x, closeTo(300 - joystick.knobRadius, 1));
+    expect(joystick.relativeDelta.x, closeTo(1, 1e-4));
 
     await settle(tester, 200);
     expect(game.world.player.position.x, greaterThan(start.x));
@@ -228,7 +234,9 @@ void main() {
           .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
           .game!;
 
-      await tester.tap(find.byKey(const Key('open-equipment')));
+      await tester.tap(find.byKey(const Key('open-pause')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('pause-equipment')));
       await tester.pump();
       expect(game.paused, isTrue);
       expect(find.text('장비'), findsOneWidget);
@@ -260,9 +268,15 @@ void main() {
       expect(gear.equipped[EquipSlot.ring1], ring);
       expect(inventory.bag, contains(oldRing));
 
+      // 닫으면 멈춘 채 일시정지 메뉴로 돌아오고, 계속하기로 이어 간다.
       await tester.tap(find.byKey(const Key('close-equipment')));
       await tester.pump();
-      expect(find.text('장비'), findsNothing);
+      expect(find.byKey(const Key('close-equipment')), findsNothing);
+      expect(find.byKey(const Key('pause-resume')), findsOneWidget);
+      expect(game.paused, isTrue);
+
+      await tester.tap(find.byKey(const Key('pause-resume')));
+      await tester.pump();
       expect(game.paused, isFalse);
     });
   }
