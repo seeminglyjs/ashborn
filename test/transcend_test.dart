@@ -37,12 +37,12 @@ class _Roll implements math.Random {
   int nextInt(int max) => (value * max).floor();
 }
 
-/// 최대 강화한 [rarity] 허리띠. [transcends] 를 미리 붙인다.
+/// 초월할 수 있게 강화한 [rarity] 허리띠. [transcends] 를 미리 붙인다.
 Item maxed(Rarity rarity, [List<TranscendRoll> transcends = const []]) => Item(
   type: ItemType.belt,
   rarity: rarity,
   stats: [(stat: StatType.armor, value: 0, rarity: rarity)],
-  enhance: Balance.maxEnhance,
+  enhance: Balance.transcendEnhance,
   transcends: [...transcends],
 );
 
@@ -92,7 +92,7 @@ void main() {
       expect(belt.name, endsWith('★3'));
       expect(inv.transcendStones, lessThan(stones - needStones));
       expect(inv.gold, lessThan(gold - needGold));
-      expect(belt.enhance, Balance.maxEnhance, reason: '강화 단계는 그대로');
+      expect(belt.enhance, Balance.transcendEnhance, reason: '강화 단계는 그대로');
     });
 
     test('실패하면 재료만 사라진다', () {
