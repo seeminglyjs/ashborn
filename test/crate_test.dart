@@ -10,6 +10,7 @@ import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/supplies.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/game/world/dungeon_floor.dart';
+import 'package:ashborn/game/world/region_theme.dart';
 import 'package:ashborn/systems/crate_system.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:flame/components.dart';
@@ -220,41 +221,80 @@ void main() {
 
   group('전투 맵 바닥', () {
     test('같은 타일은 언제나 같은 무늬와 장식이다', () {
-      for (var i = 0; i < 200; i++) {
-        final x = i * 37 - 3000;
-        final y = i * -91 + 1234;
-        expect(DungeonFloor.floorAt(x, y), DungeonFloor.floorAt(x, y));
-        expect(DungeonFloor.floorAt(x, y), inInclusiveRange(0, 7));
+      for (final region in Region.values) {
+        final theme = RegionTheme.of(region);
+        for (var i = 0; i < 200; i++) {
+          final x = i * 37 - 3000;
+          final y = i * -91 + 1234;
+          expect(
+            DungeonFloor.floorAt(x, y, theme),
+            DungeonFloor.floorAt(x, y, theme),
+          );
+          expect(DungeonFloor.floorAt(x, y, theme), inInclusiveRange(0, 7));
+          expect(
+            DungeonFloor.propAt(x, y, theme),
+            DungeonFloor.propAt(x, y, theme),
+          );
+        }
+      }
+    });
+
+    test('지역마다 장식 · 구조물이 있고, 밀도는 테마 값을 따른다', () {
+      for (final region in Region.values) {
+        final theme = RegionTheme.of(region);
+        expect(theme.decor, isNotEmpty);
+        expect(theme.structures, isNotEmpty);
+        expect(theme.floorWeights, hasLength(8));
+        var decor = 0;
+        var structures = 0;
+        var dry = 0;
+        const side = 200;
+        for (var x = 0; x < side; x++) {
+          for (var y = 0; y < side; y++) {
+            if (DungeonFloor.flooded(x, y, theme)) continue;
+            dry++;
+            switch (DungeonFloor.propAt(x, y, theme)) {
+              case Decor():
+                decor++;
+              case Structure():
+                structures++;
+            }
+          }
+        }
         expect(
-          DungeonFloor.propAt(x, y, Region.ashPlains),
-          DungeonFloor.propAt(x, y, Region.ashPlains),
+          decor / dry,
+          closeTo(theme.decorChance, 0.01),
+          reason: '$region',
+        );
+        expect(
+          structures / dry,
+          closeTo(theme.structureChance, 0.004),
+          reason: '$region',
         );
       }
     });
 
-    test('지역마다 장식이 있고, 장식 · 기둥 밀도는 밸런스 값을 따른다', () {
+    test('가라앉은 성당만 물에 잠긴 곳이 있고, 물 위에는 기둥만 선다', () {
       for (final region in Region.values) {
-        expect(DungeonFloor.decorSet(region), isNotEmpty);
-        var decor = 0;
-        var pillars = 0;
-        const side = 200;
-        for (var x = 0; x < side; x++) {
-          for (var y = 0; y < side; y++) {
-            switch (DungeonFloor.propAt(x, y, region)) {
-              case null:
-                break;
-              case Decor():
-                decor++;
-              default:
-                pillars++;
-            }
+        final theme = RegionTheme.of(region);
+        var wet = 0;
+        for (var x = 0; x < 200; x++) {
+          for (var y = 0; y < 200; y++) {
+            if (!DungeonFloor.flooded(x, y, theme)) continue;
+            wet++;
+            final prop = DungeonFloor.propAt(x, y, theme);
+            expect(
+              prop == null || (prop is Structure && prop.standsInWater),
+              isTrue,
+            );
           }
         }
-        expect(decor / (side * side), closeTo(Balance.floorDecorChance, 0.01));
-        expect(
-          pillars / (side * side),
-          closeTo(Balance.floorPillarChance, 0.003),
-        );
+        final share = wet / (200 * 200);
+        if (region == Region.sunkenCathedral) {
+          expect(share, inInclusiveRange(0.08, 0.4));
+        } else {
+          expect(share, 0);
+        }
       }
     });
   });

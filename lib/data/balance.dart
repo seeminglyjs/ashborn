@@ -419,10 +419,6 @@ abstract final class Balance {
   /// 첫 적을 맞힌 뒤 추가로 꿰뚫는 수.
   static const int crossbowPierce = 3;
 
-  // 전투 맵: 바닥 타일마다 장식 · 기둥이 놓일 확률.
-  static const double floorDecorChance = 0.06;
-  static const double floorPillarChance = 0.006;
-
   // 부술 수 있는 상자: 플레이어 둘레에 가끔 생기고, 무기로 부수면 보급품이 나온다.
   /// 첫 상자가 나오기까지와 그다음부터의 간격(초).
   static const double crateFirstDelay = 8;
