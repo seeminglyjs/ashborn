@@ -53,6 +53,7 @@ class WaveSystem extends Component
           damageType: region.damageType,
           speed: Balance.enemySpeed * stage.enemySpeedMultiplier,
           color: region.enemy,
+          sprite: region.enemySprite,
         ),
       );
     }

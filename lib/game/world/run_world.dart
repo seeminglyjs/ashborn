@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -94,6 +95,8 @@ class RunWorld extends World
     fate.rerolls += game.upgrades.value(Upgrade.fateRerolls).round();
     game.stats.reset(xpToNext: LevelSystem.xpToNext(1));
     _publishStage();
+    // 스프라이트는 기다리지 않는다. 다 읽기 전에 나온 적은 원으로 그려진다.
+    unawaited(game.monsterSprites.load(game.images));
     addAll([GroundGrid(), player, WaveSystem(), CrowdSystem()]);
     game.camera.follow(player);
   }
@@ -170,6 +173,7 @@ class RunWorld extends World
           stage.enemySpeedMultiplier *
           Balance.bossSpeedMultiplier,
       color: region.enemy,
+      sprite: region.bossSprite,
       name: region.bossName,
     );
     boss = b;

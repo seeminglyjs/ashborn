@@ -63,6 +63,8 @@ flutter:
   assets:
     - assets/images/
     - assets/images/characters/
+    - assets/images/sprites/
+    - assets/images/sprites/enemies/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

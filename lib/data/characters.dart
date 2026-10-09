@@ -14,6 +14,7 @@ class CharacterDef {
     required this.startWeapon,
     required this.trait,
     required this.portrait,
+    required this.sprite,
     required this.color,
     required this.maxHp,
     required this.speed,
@@ -29,6 +30,10 @@ class CharacterDef {
   final WeaponId startWeapon;
   final String trait;
   final String portrait;
+
+  /// 게임 안 스프라이트 시트 (`assets/images/` 기준). 16x28 프레임 9장:
+  /// 대기 4 · 달리기 4 · 피격 1. 0x72 DungeonTileset II (CC-0) 를 다시 칠한 것.
+  final String sprite;
   final Color color;
 
   final double maxHp;
@@ -54,6 +59,7 @@ abstract final class Roster {
     startWeapon: WeaponId.flameBlade,
     trait: '받는 피해 20% 감소',
     portrait: 'assets/images/characters/knight.webp',
+    sprite: 'sprites/knight.png',
     color: Color(0xFFD64545),
     maxHp: 150,
     speed: Balance.playerSpeed * 0.875,
@@ -68,6 +74,7 @@ abstract final class Roster {
     startWeapon: WeaponId.emberOrb,
     trait: '공격 쿨다운 20% 감소',
     portrait: 'assets/images/characters/witch.webp',
+    sprite: 'sprites/witch.png',
     color: Color(0xFFFFB347),
     maxHp: 90,
     speed: Balance.playerSpeed,
@@ -83,6 +90,7 @@ abstract final class Roster {
     startWeapon: WeaponId.fireCrossbow,
     trait: '이동 속도 20% 증가',
     portrait: 'assets/images/characters/hunter.webp',
+    sprite: 'sprites/hunter.png',
     color: Color(0xFF7FB069),
     maxHp: 100,
     speed: Balance.playerSpeed * 1.2,

@@ -10,6 +10,7 @@ class Boss extends Enemy {
     required super.damageType,
     required super.speed,
     required super.color,
+    super.sprite,
     required this.name,
   }) : _walkSpeed = speed,
        super(radius: Balance.bossRadius, priority: 8);

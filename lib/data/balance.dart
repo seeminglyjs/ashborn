@@ -9,6 +9,10 @@ abstract final class Balance {
   static const double playerSpeed = 160;
   static const double playerInvulnerableTime = 0.5;
 
+  /// 16x28 캐릭터 스프라이트를 몇 배로 그릴지와, 맞았을 때 피격 프레임을 보여 주는 시간.
+  static const double playerSpriteScale = 2;
+  static const double playerHitPoseTime = 0.15;
+
   /// 바닥 아이템이 끌려오기 시작하는 거리.
   static const double magnetRange = 70;
 
@@ -26,6 +30,13 @@ abstract final class Balance {
 
   // 적 (재의 무리)
   static const double enemyRadius = 14;
+
+  /// 적 · 보스 스프라이트의 큰 변이 충돌 지름의 몇 배인지. 키 큰 스프라이트는 높이를
+  /// 0.75 배로 쳐서 너무 작아지지 않게 한다.
+  static const double enemySpriteSize = 1.15;
+
+  /// 적 걷기 애니메이션 한 프레임의 시간.
+  static const double enemyWalkFrameTime = 0.12;
   static const double enemySpeed = 70;
   static const double enemyBaseHp = 20;
   static const double enemyContactDamage = 10;
