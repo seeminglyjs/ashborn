@@ -94,6 +94,9 @@ class Boss extends Enemy {
   @override
   double get knockbackScale => 0;
 
+  @override
+  double get spriteSize => Balance.bossSpriteSize;
+
   /// 보스는 체력이 졸개의 수십 배라 문턱을 따로 낮춘다. 얼어도 짧게 언다.
   @override
   double get ailmentThreshold => maxHp * Balance.bossAilmentThreshold;

@@ -6,7 +6,8 @@
 //
 // 찍는 것: 무기 픽셀 그림 (art_*.png), 대검 기술 프레임 (sword_*.png),
 // 상태이상 진열 (ailments.png), 사냥꾼 전투 (hunter_fight.png), 숙련 화면 (mastery.png),
-// 플레이어 움직임 프레임 (motion/f_*.png → tool/preview/motion.py 로 묶는다).
+// 플레이어 움직임 프레임 (motion/f_*.png → tool/preview/motion.py 로 묶는다),
+// 지역 보스 다섯과 정예 크기 비교 (boss_lineup_*.png).
 // Windows 빌드가 막혀 있어 게임을 띄우지 않고 그림을 확인하는 방법이다.
 import 'dart:io';
 import 'dart:math' as math;
@@ -14,6 +15,7 @@ import 'dart:ui' as ui;
 
 import 'package:ashborn/components/effects/burst.dart';
 import 'package:ashborn/components/effects/ground_fx.dart';
+import 'package:ashborn/components/enemies/boss.dart';
 import 'package:ashborn/components/enemies/minions.dart';
 import 'package:ashborn/components/weapons/witch_weapons.dart';
 import 'package:ashborn/data/balance.dart';
@@ -26,6 +28,7 @@ import 'package:ashborn/data/enemies.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/fates.dart';
 import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/data/monster_sprites.dart';
 import 'package:ashborn/data/passives.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:ashborn/systems/loot_system.dart';
@@ -113,6 +116,20 @@ Future<(AshbornGame, GlobalKey)> _arena(
   }
   await tester.pump(const Duration(milliseconds: 16));
   return (game, key);
+}
+
+/// 적 스프라이트를 다 읽을 때까지 기다린다 (읽기 전에는 원으로 그린다).
+/// 읽기는 가짜 시계 안에서 시작돼, 실제 시간(그림 풀기)과 펌프(이어지는 일)를 번갈아 줘야 끝난다.
+Future<void> _sprites(WidgetTester tester, AshbornGame game) async {
+  for (var i = 0; i < 300; i++) {
+    if (MonsterSprite.values.every((s) => game.monsterSprites[s] != null)) {
+      return;
+    }
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+  }
 }
 
 dynamic _dummy(EnemyKind kind, Vector2 at, {double speed = 0}) => spawnMinion(
@@ -325,10 +342,54 @@ void main() {
       if (elite) e.makeElite();
       world.add(e);
     }
+    await _sprites(tester, game);
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
     await _shot(tester, key, 'elite');
+    game.pauseEngine();
+  });
+
+  testWidgets('보스', (tester) async {
+    // 지역 보스 다섯을 실제 크기로 늘어놓고, 크기 비교용으로 정예 거구 하나를 둔다.
+    // 걷기 프레임이 바뀐 두 순간을 찍는다 (boss_lineup_0 · _1).
+    final (game, key) = await _arena(tester, Roster.knight, ratio: 2);
+    final world = game.world;
+    final at = world.player.position.clone();
+    final spots = [
+      Vector2(-125, -150),
+      Vector2(0, -150),
+      Vector2(125, -150),
+      Vector2(-125, 110),
+      Vector2(0, 110),
+    ];
+    for (final (i, region) in Region.values.indexed) {
+      world.add(
+        Boss(
+          position: at + spots[i],
+          maxHp: 1e12,
+          contactDamage: 0,
+          damageType: region.damageType,
+          speed: 0,
+          color: region.enemy,
+          sprite: region.bossSprite,
+          name: region.bossName,
+          region: region,
+        ),
+      );
+    }
+    final hulk = _dummy(EnemyKind.charredHulk, at + Vector2(125, 110))
+      ..makeElite();
+    world.add(hulk);
+    await _sprites(tester, game);
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await _shot(tester, key, 'boss_lineup_0');
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await _shot(tester, key, 'boss_lineup_1');
     game.pauseEngine();
   });
 

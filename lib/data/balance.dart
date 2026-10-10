@@ -215,6 +215,11 @@ abstract final class Balance {
   static const double bossSpeedMultiplier = 0.8;
   static const double bossRadius = 40;
 
+  /// 보스 스프라이트의 큰 변이 충돌 지름의 몇 배인지 ([enemySpriteSize] 의 보스판).
+  /// 보스 그림(48x48 판)은 날개 · 뿔 · 무기 둘레에 여백이 있어, 몸통이 충돌 원만 하게 보이도록 키운다.
+  /// 정예 거구(지름 약 60)보다 한눈에 크고, 그림 한 칸이 화면에서 정예와 비슷한 크기가 된다.
+  static const double bossSpriteSize = 1.4;
+
   /// 보스가 나온 뒤 이 시간(초) 안에 잡지 못하면 런이 끝난다.
   /// 피하기만으로는 깰 수 없고, 보스를 잡을 화력(장비 · 강화)이 있어야 한다.
   static const double bossTimeLimit = 180;
