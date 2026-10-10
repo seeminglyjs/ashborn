@@ -36,13 +36,17 @@ function Test-Port {
 # 1. 최신 main 받기
 Write-Host '최신 버전 확인 중...' -ForegroundColor Cyan
 $branch = git rev-parse --abbrev-ref HEAD
+# 빌드할 때 flutter pub get 이 플러그인 등록 파일을 다시 쓴다. 손댄 것이 아니니 되돌려 두고 본다.
+# (예전에는 이 파일들의 줄바꿈 차이 때문에 "바뀐 파일" 로 잡혀 업데이트가 계속 막혔다.)
+git checkout --quiet -- windows/flutter 2>$null
 git fetch origin main --quiet
 if ($LASTEXITCODE -ne 0) {
     Write-Host '  인터넷 연결이 없어 지금 받아 둔 버전으로 실행합니다.' -ForegroundColor Yellow
 } elseif ($branch -ne 'main') {
     Write-Host "  지금 브랜치가 main 이 아니라 ($branch) 업데이트를 건너뜁니다." -ForegroundColor Yellow
-} elseif (git status --porcelain) {
-    Write-Host '  플레이용 복제본에 바뀐 파일이 있어 업데이트를 건너뜁니다. (git status 로 확인)' -ForegroundColor Yellow
+} elseif ($dirty = git status --porcelain) {
+    Write-Host '  플레이용 복제본에 바뀐 파일이 있어 업데이트를 건너뜁니다:' -ForegroundColor Yellow
+    $dirty | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
 } else {
     git merge --ff-only --quiet origin/main
     if ($LASTEXITCODE -ne 0) {
