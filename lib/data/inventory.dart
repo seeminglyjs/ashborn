@@ -211,9 +211,13 @@ class Gear {
   static List<EquipSlot> slotsFor(ItemType type) =>
       EquipSlot.values.where((s) => s.accepts(type)).toList();
 
-  /// 아무것도 밀어내지 않고 [item] 을 낄 수 있는 칸.
-  EquipSlot? freeSlotFor(Item item) =>
-      slotsFor(item.type).where((s) => _fits(item, s)).firstOrNull;
+  /// 이 캐릭터가 [item] 을 낄 수 있는가 (다른 직업의 무기는 못 낀다).
+  bool canWear(Item item) => item.wearableBy(character);
+
+  /// 아무것도 밀어내지 않고 [item] 을 낄 수 있는 칸. 못 끼는 장비면 null.
+  EquipSlot? freeSlotFor(Item item) => canWear(item)
+      ? slotsFor(item.type).where((s) => _fits(item, s)).firstOrNull
+      : null;
 
   bool _fits(Item item, EquipSlot slot) {
     if (_slots.containsKey(slot)) return false;
@@ -267,6 +271,7 @@ class Gear {
   /// 장비에 그대로 남는다.
   void equip(Item item, EquipSlot slot) {
     assert(slot.accepts(item.type), '${item.type} 은 ${slot.place} 에 낄 수 없다');
+    assert(canWear(item), '${item.kind?.label} 은 $character 가 낄 수 없다');
     final displaced = displacedBy(item, slot);
     if (enhanceDonor(item, slot) case final donor?) {
       final enhance = donor.enhance;

@@ -6,7 +6,6 @@ import 'package:flame/components.dart';
 import '../../data/balance.dart';
 import '../../data/damage.dart';
 import '../../data/enemies.dart';
-import '../effects/burst.dart';
 import '../effects/sparks.dart';
 import 'enemy.dart';
 import 'hazards.dart';
@@ -249,10 +248,7 @@ class Charger extends Enemy {
   bool get isWindingUp => _state == _ChargeState.windup;
   bool get isDashing => _state == _ChargeState.dash;
 
-  static final _line = Paint()
-    ..color = const Color(0x66FF3A2E)
-    ..strokeWidth = 6
-    ..strokeCap = StrokeCap.round;
+  static const _lane = Color(0x40FF3A2E);
 
   @override
   void steer(double dt, Vector2 out) {
@@ -301,7 +297,14 @@ class Charger extends Enemy {
     final c = Offset(radius, radius);
     final reach = speed * Balance.chargeSpeed * Balance.chargeDash;
     final t = 1 - _timer / Balance.chargeWindup;
-    canvas.drawLine(c, c + Offset(_aim.x, _aim.y) * reach * t, _line);
+    // 돌진할 길: 빨간 테두리 띠가 힘을 모으는 만큼 늘어난다.
+    drawDangerLane(
+      canvas,
+      c,
+      c + Offset(_aim.x, _aim.y) * reach * math.max(t, 0.15),
+      radius * 1.2,
+      _lane,
+    );
   }
 }
 
@@ -324,6 +327,7 @@ class Shooter extends Enemy {
 
   late final _aimPaint = Paint()
     ..color = hazardColor(damageType).withValues(alpha: 0.7);
+  static final _aimEdge = dangerStroke(1.5);
 
   @override
   void onMount() {
@@ -383,7 +387,9 @@ class Shooter extends Enemy {
     if (_windup <= 0) return;
     // 조준하는 동안 머리 위 빛이 커진다.
     final t = 1 - _windup / Balance.shooterWindup;
-    canvas.drawCircle(Offset(radius, -2), 2 + 4 * t, _aimPaint);
+    canvas
+      ..drawCircle(Offset(radius, -2), 2 + 4 * t, _aimPaint)
+      ..drawCircle(Offset(radius, -2), 3 + 4 * t, _aimEdge);
   }
 }
 
@@ -440,7 +446,9 @@ class Caster extends Shooter {
   @override
   void renderOver(Canvas canvas) {
     if (_cast <= 0) return;
-    canvas.drawCircle(Offset(radius, -2), 5, _aimPaint);
+    canvas
+      ..drawCircle(Offset(radius, -2), 5, _aimPaint)
+      ..drawCircle(Offset(radius, -2), 6, Shooter._aimEdge);
   }
 }
 
@@ -464,10 +472,7 @@ class Bomber extends Enemy {
 
   late final _range = Paint()
     ..color = hazardColor(damageType).withValues(alpha: 0.18);
-  late final _rangeEdge = Paint()
-    ..color = hazardColor(damageType).withValues(alpha: 0.7)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.5;
+  static final _rangeEdge = dangerStroke(2.5);
 
   @override
   void steer(double dt, Vector2 out) {
@@ -491,7 +496,9 @@ class Bomber extends Enemy {
     final at = position.clone();
     final color = hazardColor(damageType);
     world
-      ..add(Burst(position: at, radius: Balance.bomberRadius, color: color))
+      ..add(
+        HostileBurst(position: at, radius: Balance.bomberRadius, color: color),
+      )
       ..add(Sparks(position: at.clone(), color: color, count: 12, speed: 220))
       ..shake(0.2);
     final reach = Balance.bomberRadius + Balance.playerRadius;

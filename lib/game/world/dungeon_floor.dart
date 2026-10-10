@@ -7,6 +7,8 @@ import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
 import '../../data/stages.dart';
+import '../../data/characters.dart';
+import '../../components/enemies/hazards.dart';
 import '../ashborn_game.dart';
 import 'obstacles.dart';
 import 'region_theme.dart';
@@ -138,7 +140,33 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
     }
     _renderSpikes(canvas, visible);
     _renderFlames(canvas, visible);
+    _renderVentWarnings(canvas, visible);
   }
+
+  /// 화염 분출구: 예고 · 분출 중에는 불이 닿는 범위를 빨간 테두리 원으로 보여 준다.
+  void _renderVentWarnings(Canvas canvas, List<_Chunk> chunks) {
+    final time = game.world.elapsed;
+    for (final chunk in chunks) {
+      for (final f in chunk.flames) {
+        final (gx, gy) = f.vent ?? (0, 0);
+        if (f.vent == null) continue;
+        final state = TrapSystem.ventState(gx, gy, time);
+        if (state == TrapState.down) continue;
+        final c = Obstacles.footOf(gx, gy);
+        final r = Balance.ventRadius;
+        if (state == TrapState.up) {
+          canvas.drawCircle(Offset(c.x, c.y), r, _ventFill);
+        }
+        canvas.drawCircle(
+          Offset(c.x, c.y),
+          r,
+          dangerStroke(state == TrapState.up ? 2.5 : 1.5),
+        );
+      }
+    }
+  }
+
+  static final _ventFill = Paint()..color = const Color(0x33FF3A2E);
 
   /// 가시 함정. 들어가 있을 땐 구멍만, 예고 동안 끝이 차오르고, 솟으면 다 보인다.
   void _renderSpikes(Canvas canvas, List<_Chunk> chunks) {
@@ -162,6 +190,14 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
           );
         }
         if (rise <= 0) continue;
+        // 솟는 가시는 적의 공격처럼 빨간 테두리로 감싼다 (예고 때는 깜빡인다).
+        final state = TrapSystem.spikeState(gx, gy, time);
+        if (state == TrapState.up || (_time * 8).floor().isEven) {
+          canvas.drawRect(
+            Rect.fromLTWH(x + pixel, y + 3 * pixel, 14 * pixel, 12 * pixel),
+            dangerStroke(state == TrapState.up ? 2.5 : 1.5),
+          );
+        }
         final h = 16 * rise;
         canvas.drawImageRect(
           decor,
@@ -224,6 +260,62 @@ class DungeonFloor extends Component with HasGameReference<AshbornGame> {
       }
     }
   }
+
+  /// 플레이어 앞쪽(아래)에 서서 플레이어 그림과 겹치는 구조물을 플레이어 위에 한 번 더 그린다.
+  /// 바닥 그림은 늘 캐릭터 아래라, 이것이 없으면 기둥 뒤로 걸어가도 기둥 위에 그려져
+  /// 기둥을 뚫고 지나가는 것처럼 보인다. 조금 비치게 그려 가려진 캐릭터도 보이게 한다.
+  void renderFront(Canvas canvas) {
+    if (!_loaded) return;
+    final world = game.world;
+    final theme = RegionTheme.of(world.stage.region);
+    final player = world.player;
+    final feetY = player.position.y + Balance.playerRadius;
+    final halfW = heroFrame.width * Balance.playerSpriteScale / 2;
+    final body = Rect.fromLTRB(
+      player.position.x - halfW,
+      feetY - heroFrame.height * Balance.playerSpriteScale - player.leapLift,
+      player.position.x + halfW,
+      feetY,
+    );
+    const span = tile * pixel;
+    final x0 = ((body.left - span) / span).floor();
+    final x1 = ((body.right + span) / span).floor();
+    final y0 = (feetY / span).floor() - 1;
+    final y1 = ((feetY + 48 * pixel) / span).floor() + 1;
+    _frontPaint.colorFilter = ColorFilter.mode(
+      Color.lerp(
+        theme.floorTint,
+        const Color(0xFFFFFFFF),
+        0.45,
+      )!.withValues(alpha: 0.8),
+      BlendMode.modulate,
+    );
+    for (var gy = y0; gy <= y1; gy++) {
+      for (var gx = x0; gx <= x1; gx++) {
+        final s = world.obstacles.structureAt(gx, gy);
+        if (s == null) continue;
+        if (Obstacles.footOf(gx, gy).y <= feetY) continue;
+        final image = _images[s.path]!;
+        final w = image.width.toDouble();
+        final h = image.height.toDouble();
+        final rect = Rect.fromLTWH(
+          (gx * tile + 8 - w / 2) * pixel,
+          ((gy + 1) * tile + s.bottomPad - h) * pixel,
+          w * pixel,
+          h * pixel,
+        );
+        if (!rect.overlaps(body)) continue;
+        canvas.drawImageRect(
+          image,
+          Rect.fromLTWH(0, 0, w, h),
+          rect,
+          _frontPaint,
+        );
+      }
+    }
+  }
+
+  final _frontPaint = Paint()..filterQuality = FilterQuality.none;
 
   _Chunk _chunk(int cx, int cy, RegionTheme theme) {
     final key = ((cx & 0xFFFF) << 16) | (cy & 0xFFFF);
@@ -475,4 +567,14 @@ class _Flame {
 
   /// 0~1. 불꽃마다 다른 박자.
   final double phase;
+}
+
+/// 플레이어 위에 그리는 앞쪽 구조물 ([DungeonFloor.renderFront]).
+class StructureFront extends Component {
+  StructureFront(this.floor) : super(priority: 11);
+
+  final DungeonFloor floor;
+
+  @override
+  void render(Canvas canvas) => floor.renderFront(canvas);
 }

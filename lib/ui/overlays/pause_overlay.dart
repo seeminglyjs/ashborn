@@ -46,38 +46,17 @@ class PauseOverlay extends StatelessWidget {
                   style: statStyle,
                 ),
                 const SizedBox(height: 28),
-                for (final (key, label, icon, onPressed) in [
-                  (
-                    'pause-resume',
-                    '계속하기',
-                    Icons.play_arrow_rounded,
-                    game.resumeFromPause,
-                  ),
-                  (
-                    'pause-equipment',
-                    '장비',
-                    Icons.shield_outlined,
-                    game.openEquipment,
-                  ),
-                  (
-                    'pause-settings',
-                    '설정',
-                    Icons.tune_rounded,
-                    game.openSettings,
-                  ),
-                  (
-                    'pause-main-menu',
-                    '메인 화면으로',
-                    Icons.home_rounded,
-                    () => _confirmQuit(context),
-                  ),
+                for (final (key, label, onPressed) in [
+                  ('pause-resume', '계속하기', game.resumeFromPause),
+                  ('pause-equipment', '장비', game.openEquipment),
+                  ('pause-settings', '설정', game.openSettings),
+                  ('pause-quit', '캐릭터 선택으로', () => _confirmQuit(context)),
                 ]) ...[
                   SizedBox(
                     width: _buttonWidth,
                     child: AshButton(
                       key: Key(key),
                       label: label,
-                      icon: icon,
                       fontSize: 17,
                       onPressed: onPressed,
                     ),

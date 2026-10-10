@@ -156,3 +156,36 @@ final chakramArt = PixelArt(const [
   '.....Yyy.........',
   '.......Y.........',
 ], _steelPalette);
+
+/// 불씨 덫: 쇠 이빨이 둘린 둥근 덫과 가운데 불씨 심지. 심지 자리 (5, 4) 는 따로 깜빡인다.
+final mineArt = PixelArt(
+  const [
+    '..o.o.o.o..',
+    '.oIoIoIoIo.',
+    'oIsssssssIo',
+    'oiMMbbbMMio',
+    'oiMb...bMio',
+    'oiMMbbbMMio',
+    '.oiiiiiiio.',
+    '..ooooooo..',
+  ],
+  {..._steelPalette, 's': Pal.steelLight, 'i': Pal.steelDeep},
+);
+
+/// 얼음 파편: 오른쪽이 뾰족한 결정, 왼쪽은 흩어지는 서리 가루.
+final iceShardArt = PixelArt(
+  const [
+    '.....c.oooo....',
+    '..c...oCWWCoo..',
+    'c.c.ccoCWWWCCo.',
+    '..c...obCCCbbo.',
+    '.....c.oooo....',
+  ],
+  const {
+    'o': Color(0xFF124E89),
+    'c': Color(0xFF2CE8F5),
+    'C': Color(0xFF2CE8F5),
+    'W': Pal.white,
+    'b': Color(0xFF0099DB),
+  },
+);

@@ -5,8 +5,36 @@ import 'package:flutter/foundation.dart';
 import 'balance.dart';
 import 'characters.dart';
 import 'inventory.dart';
+import 'weapons.dart';
 
-/// 직업마다 셋씩 있는 고유 패시브. 직업 숙련 포인트로 올리고 런이 끝나도 남는다 ([Mastery]).
+/// 고유 스킬 특성이 그 스킬에 더해 주는 것.
+enum SkillBonus {
+  /// 피해 배율 (+0.1 = 10%).
+  damage,
+
+  /// 범위 배율.
+  area,
+
+  /// 쿨다운 감소율.
+  cooldown,
+
+  /// 지속 시간 배율 (묶는 시간 · 회오리가 버티는 시간).
+  duration,
+
+  /// 속도 배율 (날아가는 · 도는 속도).
+  speed,
+
+  /// 전투 함성 뒤 받는 피해 감소 추가 (%p).
+  guard,
+
+  /// 그물 감속 추가 (%p).
+  slow,
+}
+
+/// 직업마다 여섯씩 있는 특성. 특성 포인트(숙련 레벨)로 올리고 런이 끝나도 남는다 ([Mastery]).
+///
+/// 앞의 셋은 직업 전체를 강하게 하는 공통 특성, 뒤의 셋은 고유 스킬 하나([skill])만
+/// 강하게 하는 스킬 특성이다 ([bonus] · [bonus2] 를 그 스킬에 더한다).
 ///
 /// 수치는 1레벨 값 [_base] 에 레벨마다 [_perLevel] 이 더해진다. 둘째 수치가 있는 패시브는
 /// [_base2] · [_perLevel2] 를 쓴다.
@@ -83,6 +111,116 @@ enum ClassPassive {
     Balance.weakSpotChancePerLevel,
     Balance.weakSpotDamage,
     Balance.weakSpotDamagePerLevel,
+  ),
+
+  // 고유 스킬 특성.
+  quake.skill(
+    CharacterId.knight,
+    '대지의 울림',
+    '대지 강타가 더 세고 넓게 퍼진다',
+    Balance.quakeDamage,
+    Balance.quakeDamagePerLevel,
+    Balance.quakeArea,
+    Balance.quakeAreaPerLevel,
+    skill: WeaponId.earthSlam,
+    bonus: SkillBonus.damage,
+    bonus2: SkillBonus.area,
+  ),
+  judge.skill(
+    CharacterId.knight,
+    '심판관',
+    '심판의 일격이 더 세고 넓게 벤다',
+    Balance.judgeDamage,
+    Balance.judgeDamagePerLevel,
+    Balance.judgeArea,
+    Balance.judgeAreaPerLevel,
+    skill: WeaponId.cleave,
+    bonus: SkillBonus.damage,
+    bonus2: SkillBonus.area,
+  ),
+  rally.skill(
+    CharacterId.knight,
+    '불굴의 함성',
+    '전투 함성을 더 자주 외치고, 외친 뒤 받는 피해가 더 준다',
+    Balance.rallyCooldown,
+    Balance.rallyCooldownPerLevel,
+    Balance.rallyGuard,
+    Balance.rallyGuardPerLevel,
+    skill: WeaponId.warCry,
+    bonus: SkillBonus.cooldown,
+    bonus2: SkillBonus.guard,
+  ),
+  starfall.skill(
+    CharacterId.witch,
+    '별똥 부르기',
+    '운석 낙하가 더 세고 넓게 터진다',
+    Balance.starfallDamage,
+    Balance.starfallDamagePerLevel,
+    Balance.starfallArea,
+    Balance.starfallAreaPerLevel,
+    skill: WeaponId.meteor,
+    bonus: SkillBonus.damage,
+    bonus2: SkillBonus.area,
+  ),
+  firestorm.skill(
+    CharacterId.witch,
+    '불바람',
+    '화염 회오리가 더 세고 오래 버틴다',
+    Balance.firestormDamage,
+    Balance.firestormDamagePerLevel,
+    Balance.firestormDuration,
+    Balance.firestormDurationPerLevel,
+    skill: WeaponId.fireTornado,
+    bonus: SkillBonus.damage,
+    bonus2: SkillBonus.duration,
+  ),
+  pact.skill(
+    CharacterId.witch,
+    '정령 계약',
+    '잔불 정령이 더 세고 빠르게 돈다',
+    Balance.pactDamage,
+    Balance.pactDamagePerLevel,
+    Balance.pactSpeed,
+    Balance.pactSpeedPerLevel,
+    skill: WeaponId.emberSpirits,
+    bonus: SkillBonus.damage,
+    bonus2: SkillBonus.speed,
+  ),
+  trapper.skill(
+    CharacterId.hunter,
+    '덫 장인',
+    '불씨 덫이 더 세고 넓게 터진다',
+    Balance.trapperDamage,
+    Balance.trapperDamagePerLevel,
+    Balance.trapperArea,
+    Balance.trapperAreaPerLevel,
+    skill: WeaponId.emberMine,
+    bonus: SkillBonus.damage,
+    bonus2: SkillBonus.area,
+  ),
+  bladeRain.skill(
+    CharacterId.hunter,
+    '칼날 비',
+    '투척 단검이 더 세고 빠르게 날아간다',
+    Balance.bladeDamage,
+    Balance.bladeDamagePerLevel,
+    Balance.bladeSpeed,
+    Balance.bladeSpeedPerLevel,
+    skill: WeaponId.throwingKnives,
+    bonus: SkillBonus.damage,
+    bonus2: SkillBonus.speed,
+  ),
+  netter.skill(
+    CharacterId.hunter,
+    '사냥 그물',
+    '올가미 그물이 더 오래, 더 단단히 묶는다',
+    Balance.netterDuration,
+    Balance.netterDurationPerLevel,
+    Balance.netterSlow,
+    Balance.netterSlowPerLevel,
+    skill: WeaponId.snareNet,
+    bonus: SkillBonus.duration,
+    bonus2: SkillBonus.slow,
   );
 
   const ClassPassive(
@@ -93,11 +231,41 @@ enum ClassPassive {
     this._perLevel, [
     this._base2 = 0,
     this._perLevel2 = 0,
-  ]);
+  ]) : skill = null,
+       bonus = null,
+       bonus2 = null;
+
+  const ClassPassive.skill(
+    this.owner,
+    this.label,
+    this.description,
+    this._base,
+    this._perLevel,
+    this._base2,
+    this._perLevel2, {
+    required WeaponId this.skill,
+    required SkillBonus this.bonus,
+    required SkillBonus this.bonus2,
+  });
 
   final CharacterId owner;
   final String label;
   final String description;
+
+  /// 고유 스킬 특성이 강하게 하는 스킬. 공통 특성은 null.
+  final WeaponId? skill;
+  final SkillBonus? bonus;
+  final SkillBonus? bonus2;
+
+  bool get isSkillTrait => skill != null;
+
+  /// [skill] 에 [kind] 로 더해 주는 수치 ([level] 기준). 해당 없으면 0.
+  double skillBonus(WeaponId weapon, SkillBonus kind, int level) {
+    if (skill != weapon) return 0;
+    return (bonus == kind ? value(level) : 0) +
+        (bonus2 == kind ? value2(level) : 0);
+  }
+
   final double _base;
   final double _perLevel;
   final double _base2;
@@ -130,6 +298,12 @@ enum ClassPassive {
       envenom => '중독 확률 +${_p(a)} · 중독 피해 +${_p(b)}',
       momentum => '움직이는 동안 공격 속도 +${_p(a)}',
       weakSpot => '치명타 확률 +${_p(a)} · 치명타 피해 +${_p(b)}',
+      quake || judge || starfall || trapper => '피해 +${_p(a)} · 범위 +${_p(b)}',
+      rally => '쿨다운 -${_p(a)} · 함성 뒤 받는 피해 -${_p(b)} 추가',
+      firestorm => '피해 +${_p(a)} · 지속 시간 +${_p(b)}',
+      pact => '피해 +${_p(a)} · 회전 속도 +${_p(b)}',
+      bladeRain => '피해 +${_p(a)} · 단검 속도 +${_p(b)}',
+      netter => '묶는 시간 +${_p(a)} · 감속 +${_p(b)} 추가',
     };
   }
 
@@ -163,8 +337,9 @@ class Mastery extends ChangeNotifier {
   final _xp = <CharacterId, double>{};
   final _levels = <ClassPassive, int>{};
 
-  /// 숙련 레벨 상한: 직업 패시브를 모두 최대로 올릴 만큼.
-  static int get maxLevel => ClassPassive.maxLevel * 3;
+  /// 숙련 레벨 상한: 한 직업의 특성을 모두 최대로 올릴 만큼.
+  static int get maxLevel =>
+      ClassPassive.maxLevel * ClassPassive.of(CharacterId.knight).length;
 
   /// 숙련 레벨 [level] 에서 다음 레벨까지 필요한 경험치.
   static double xpToNext(int level) =>

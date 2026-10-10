@@ -14,6 +14,10 @@ import '../theme.dart';
 import '../widgets/item_icon.dart';
 import '../widgets/pixel_sprite.dart';
 
+/// 직업 무기의 주인 이름 (장비 화면 표시용).
+String _ownerName(CharacterId id) =>
+    Roster.all.firstWhere((c) => c.id == id).name;
+
 /// 이 등급 이상은 분해하기 전에 한 번 더 묻는다. 일괄 분해에 섞여 있으면 경고한다.
 const confirmSalvageFrom = Rarity.hero;
 
@@ -197,10 +201,13 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
     style: _Text.heading.copyWith(color: _Text.ember),
   );
 
+  /// 닫기. 장비 상세를 보고 있으면 패널을 닫지 않고 가방으로 돌아간다
+  /// (런 중에 닫으면 일시정지 메뉴로 튀어나가 버리지 않도록).
   Widget get _close => IconButton(
     key: const Key('close-equipment'),
+    tooltip: _selected == null ? '닫기' : '가방으로',
     icon: const Icon(Icons.close, color: AshColors.parchment),
-    onPressed: widget.onClose,
+    onPressed: _selected == null ? widget.onClose : () => _select(null),
   );
 
   /// 세로 화면. 위에 제목과 재화를 두고, 아무것도 고르지 않았으면 장착 칸 · 가방 ·
@@ -241,20 +248,24 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
       final width = math.min(constraints.maxWidth, 380.0);
       const side = _tile * 5 + _dollGap * 4;
       const height = side + _dollGap + _tile;
-      // 스프라이트의 몸은 16x28 프레임의 8~28 줄. 정수 배로 키워 칸 사이에 맞춘다.
+      // 스프라이트의 몸은 프레임의 8~28 줄. 정수 배로 키워 칸 사이에 맞춘다.
       final scale = math
-          .min(side * 0.8 / 20, (width - _tile * 2 - 40) / 16)
+          .min(side * 0.8 / 20, (width - _tile * 2 - 40) / heroFrame.width)
           .floorToDouble();
       final sprite = Rect.fromLTWH(
-        (width - 16 * scale) / 2,
+        (width - heroFrame.width * scale) / 2,
         (side - 20 * scale) / 2 - 8 * scale,
-        16 * scale,
-        28 * scale,
+        heroFrame.width * scale,
+        heroFrame.height * scale,
       );
       Offset tileAt(_DollSide where, int row) => switch (where) {
         _DollSide.left => Offset(0, (_tile + _dollGap) * row),
         _DollSide.right => Offset(width - _tile, (_tile + _dollGap) * row),
-        _DollSide.bottom => Offset((width - _tile) / 2, side + _dollGap),
+        // 아래 줄은 두 칸 (갑옷 · 장화) 을 가운데에 나란히.
+        _DollSide.bottom => Offset(
+          width / 2 - _tile - _dollGap / 2 + (_tile + _dollGap) * row,
+          side + _dollGap,
+        ),
       };
       Widget slot(EquipSlot slot, Offset pos) => Positioned(
         left: pos.dx,
@@ -287,7 +298,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                 rect: sprite,
                 child: PixelSprite(
                   asset: 'assets/images/${widget.character.sprite}',
-                  frameSize: const Size(16, 28),
+                  frameSize: heroFrame,
                   count: 4,
                   fps: 4,
                   scale: scale,
@@ -320,7 +331,8 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
     (EquipSlot.hand1, _DollSide.right, 2),
     (EquipSlot.ring2, _DollSide.right, 3),
     (EquipSlot.belt, _DollSide.right, 4),
-    (EquipSlot.boots, _DollSide.bottom, 0),
+    (EquipSlot.armor, _DollSide.bottom, 0),
+    (EquipSlot.boots, _DollSide.bottom, 1),
   ];
 
   Widget _statSummary() {
@@ -406,7 +418,6 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
               width: 100,
               child: _ActionButton(
                 key: const Key('bulk-salvage'),
-                icon: Icons.local_fire_department,
                 label: '일괄 분해',
                 tone: full ? _Tone.danger : _Tone.normal,
                 height: 32,
@@ -576,7 +587,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ItemDetails(item: item),
-                if (slot == null)
+                if (slot == null && _gear.canWear(item))
                   for (final target in targets) ...[
                     const SizedBox(height: 10),
                     _OptionHeader(
@@ -668,7 +679,6 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
               Expanded(
                 child: _ActionButton(
                   key: const Key('enhance'),
-                  icon: Icons.keyboard_double_arrow_up,
                   label: item.isMaxEnhance ? '최대 강화' : '강화',
                   caption: item.isMaxEnhance
                       ? null
@@ -680,7 +690,6 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                 Expanded(
                   child: _ActionButton(
                     key: const Key('transcend'),
-                    icon: Icons.auto_awesome,
                     label: '초월',
                     caption:
                         '★${item.transcends.length + 1}'
@@ -692,7 +701,6 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                 Expanded(
                   child: _ActionButton(
                     key: const Key('salvage'),
-                    icon: Icons.local_fire_department,
                     label: '분해',
                     caption: '잔불 +${item.salvageValue}',
                     tone: _Tone.danger,
@@ -708,7 +716,6 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                 Expanded(
                   child: _ActionButton(
                     key: const Key('unequip'),
-                    icon: Icons.move_to_inbox,
                     label: '해제',
                     caption: '가방으로',
                     tone: _Tone.primary,
@@ -719,12 +726,21 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                     },
                   ),
                 )
+              else if (!_gear.canWear(item))
+                Expanded(
+                  child: _ActionButton(
+                    key: const Key('equip-locked'),
+                    label: '${_ownerName(item.kind!.owner)} 전용',
+                    caption: '${widget.character.name}은(는) 낄 수 없음',
+                    height: 48,
+                    onPressed: null,
+                  ),
+                )
               else
                 for (final target in targets)
                   Expanded(
                     child: _ActionButton(
                       key: Key('equip-${target.name}'),
-                      icon: Icons.shield,
                       label: targets.length == 1
                           ? '장착'
                           : '${_shortPlace(target)}에 장착',
@@ -802,7 +818,12 @@ class ItemDetails extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: item.rarity.color, width: 1.5),
               ),
-              child: ItemIcon(item.type, rarity: item.rarity, scale: 3),
+              child: ItemIcon(
+                item.type,
+                rarity: item.rarity,
+                kind: item.kind,
+                scale: 3,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -818,7 +839,8 @@ class ItemDetails extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${item.type.label} · Lv ${item.level}'
+                    '${item.kind == null ? item.type.label : '${item.type.label} · ${_ownerName(item.kind!.owner)} 전용'}'
+                    ' · Lv ${item.level}'
                     '${item.enhance > 0 ? ' · 강화 +${item.enhance}/${Balance.maxEnhance}' : ''}',
                     style: _Text.tag,
                   ),
@@ -1102,7 +1124,7 @@ class _ItemTile extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             if (item case final item?)
-              ItemIcon(item.type, rarity: item.rarity)
+              ItemIcon(item.type, rarity: item.rarity, kind: item.kind)
             else
               // 빈 칸: 무엇을 끼는 칸인지 흐린 실루엣과 이름으로 보여 준다.
               Column(
@@ -1162,6 +1184,7 @@ enum _TypeFilter {
   necklace('목걸이', {ItemType.necklace}),
   earring('귀걸이', {ItemType.earring}),
   weapon('무기', {ItemType.oneHand, ItemType.twoHand}),
+  armor('갑옷', {ItemType.armor}),
   gloves('장갑', {ItemType.gloves}),
   belt('허리띠', {ItemType.belt}),
   ring('반지', {ItemType.ring}),
@@ -1394,7 +1417,6 @@ enum _Tone { primary, normal, danger }
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
     super.key,
-    required this.icon,
     required this.label,
     required this.onPressed,
     this.caption,
@@ -1402,7 +1424,6 @@ class _ActionButton extends StatelessWidget {
     this.height = 44,
   });
 
-  final IconData icon;
   final String label;
   final String? caption;
   final VoidCallback? onPressed;
@@ -1412,31 +1433,27 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
-    final (List<Color> fill, Color border, Color fg, Color iconColor) = !enabled
+    final (List<Color> fill, Color border, Color fg) = !enabled
         ? (
             const [Color(0xFF2A2522), Color(0xFF1A1714)],
             Colors.white12,
             AshColors.ash.withValues(alpha: 0.7),
-            AshColors.ash.withValues(alpha: 0.5),
           )
         : switch (tone) {
             _Tone.primary => (
               const [Color(0xFF7A3418), Color(0xFF3E1A0C)],
               AshColors.gold,
               AshColors.parchment,
-              AshColors.gold,
             ),
             _Tone.normal => (
               const [Color(0xFF3A2E22), Color(0xFF201811)],
               const Color(0x99E8C887),
               AshColors.parchment,
-              AshColors.gold,
             ),
             _Tone.danger => (
               const [Color(0xFF3E1616), Color(0xFF1E0B0B)],
               const Color(0xFFB33A3A),
               const Color(0xFFFFB0A8),
-              const Color(0xFFFF6B5A),
             ),
           };
     final radius = BorderRadius.circular(4);
@@ -1470,14 +1487,12 @@ class _ActionButton extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: height >= 44 ? 18 : 15, color: iconColor),
-                  const SizedBox(width: 5),
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
                             label,
@@ -1660,7 +1675,6 @@ class _BulkSalvageDialogState extends State<_BulkSalvageDialog> {
                   Expanded(
                     child: _ActionButton(
                       key: const Key('cancel-bulk-salvage'),
-                      icon: Icons.close,
                       label: '취소',
                       onPressed: () => Navigator.of(context).pop(),
                     ),
@@ -1669,7 +1683,6 @@ class _BulkSalvageDialogState extends State<_BulkSalvageDialog> {
                   Expanded(
                     child: _ActionButton(
                       key: const Key('confirm-bulk-salvage'),
-                      icon: Icons.local_fire_department,
                       label: '${targets.length}개 분해',
                       tone: _Tone.danger,
                       onPressed: targets.isEmpty

@@ -7,6 +7,9 @@ import '../../data/balance.dart';
 import '../../data/weapons.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
+import '../effects/ground_fx.dart';
+import '../effects/pixel_fx.dart';
+import 'weapon_art.dart';
 import '../effects/sparks.dart';
 import 'weapon.dart';
 
@@ -43,6 +46,14 @@ class EarthSlam extends Weapon {
   void slam(RunWorld world, Vector2 at, double radius, Color color) {
     world
       ..add(Ring(position: at, radius: radius, color: color, strokeWidth: 10))
+      ..add(
+        EarthSpikes(
+          position: at.clone(),
+          radius: radius * 0.85,
+          count: 12,
+          ember: color == _quakeColor,
+        ),
+      )
       ..add(Sparks(position: at.clone(), color: color, count: 10, speed: 200))
       ..shake(0.12);
     for (final enemy in world.enemiesNear(at, radius)) {
@@ -138,37 +149,33 @@ class SlashArc extends PositionComponent {
   static const double duration = 0.18;
   double _life = 0;
 
-  late final _paint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeCap = StrokeCap.round;
-
   @override
   void update(double dt) {
     _life += dt;
     if (_life >= duration) removeFromParent();
   }
 
+  /// 도트 반달 참격: 휘두른 만큼 초승달이 그려지고, 바깥 날은 하얗게, 안쪽은 칼자국 색.
   @override
   void render(Canvas canvas) {
     final t = (_life / duration).clamp(0.0, 1.0);
     const arc = Balance.cleaveArc;
-    final rect = Rect.fromCircle(center: Offset.zero, radius: radius * 0.75);
-    // 바깥 넓은 빛 · 안쪽 밝은 날을 휘두른 만큼만 그린다.
     final sweep = arc * 2 * math.min(1, t * 2.5);
-    _paint
-      ..color = (awakened ? const Color(0xFF8FE3FF) : const Color(0xFFFFB347))
-          .withValues(alpha: 0.5 * (1 - t))
-      ..strokeWidth = radius * 0.4;
-    canvas.drawArc(rect, -arc, sweep, false, _paint);
-    _paint
-      ..color = const Color(0xFFFFFFFF).withValues(alpha: 1 - t)
-      ..strokeWidth = 4;
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset.zero, radius: radius * 0.9),
-      -arc,
-      sweep,
-      false,
-      _paint,
+    final base = awakened ? const Color(0xFF8FE3FF) : Pal.gold;
+    PixelFx.glow(
+      canvas,
+      Offset(radius * 0.6, 0),
+      radius * 0.7,
+      base,
+      strength: 0.35 * (1 - t),
     );
+    final pc = PixelCanvas.fine;
+    PixelFx.arc(pc, radius * 0.45, radius * 0.95, -arc, sweep, [
+      Pal.white,
+      Color.lerp(base, Pal.white, 0.45)!,
+      base,
+      awakened ? const Color(0xFF124E89) : const Color(0xFFF77622),
+    ], thin: PixelFx.fade(t, from: 0.45));
+    pc.flush(canvas);
   }
 }

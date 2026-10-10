@@ -6,6 +6,9 @@ description: Ashborn 의 도트(픽셀) 그림을 새로 그리거나 고칠 때
 # 도트 작업
 
 목표: 따로 그린 그림끼리도 한 게임처럼 보이고, 작은 크기에서도 무엇인지 읽히게 한다.
+
+**먼저 `art_refs/README.md` 를 읽는다.** 사용자가 보낸 참고 그림 목록과, 거기서 정한 영웅 · 몬스터 ·
+이펙트 · 아이콘 규격이 있다. 새 참고 그림을 받으면 그 폴더에 넣고 목록 · 규격을 고친다 (그림은 커밋하지 않는다).
 **그린 것을 직접 보지 않고 "좋아졌다"고 말하지 않는다.** 모든 작업은 아래 확인 루프를 거친다.
 
 ## 1. 시작 전: 비교 기준 남기기
@@ -49,7 +52,11 @@ cp -r assets/images/sprites <스크래치>/before
 
 | 그림 | 위치 |
 |:---|:---|
-| 캐릭터 · 몬스터 스프라이트 | `tool/assets/sprites.py` → `monsters.py` → `polish.py` 순서로 원본에서 만든다 (README 의 에셋 절) |
+| 캐릭터 스프라이트 | `tool/assets/heroes.py` 가 0x72 없이 처음부터 그린다 (24x28 프레임, `heroFrame`) |
+| 몬스터 스프라이트 | `tool/assets/sprites.py` → `monsters.py` → `polish.py` 순서로 원본에서 만든다 (README 의 에셋 절) |
+| 장비 아이콘 | `tool/assets/gear_icons.py` (부위 `gear.png`, 직업 무기 `weapons.png`, 각 고유판) |
+| 내 공격 도트 이펙트 | `lib/components/effects/pixel_fx.dart` (`PixelFx` · `PixelCanvas` · `FxTones`), 땅 이펙트 `ground_fx.dart` |
+| 적 공격 빨간 테두리 | `lib/components/enemies/hazards.dart` (`enemyOutline` · `dangerStroke` · `HostileBurst`) |
 | 0x72 원본 | 저장소에 없다. 0x72.itch.io 에서 DungeonTilesetII (CC-0) 를 받아 압축을 푼다 |
 | 무기 · 투사체 픽셀 아트 | `lib/components/weapons/weapon_art.dart` (`PixelArt` 글자 격자 + `Pal`) |
 | 대검 기술 연출 | `lib/components/weapons/greatsword.dart` 의 `SwordStrike` |

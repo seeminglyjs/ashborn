@@ -8,6 +8,8 @@ import '../../data/weapons.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
 import '../effects/damage_number.dart';
+import '../effects/ground_fx.dart';
+import '../effects/pixel_fx.dart';
 import '../effects/sparks.dart';
 import '../enemies/enemy.dart';
 import 'weapon.dart';
@@ -175,16 +177,19 @@ class Greatsword extends Weapon {
         ),
       );
     }
-    world.add(
-      SwordStrike(
-        move: move,
-        angle: math.atan2(_aim.y, _aim.x),
-        sizeScale: size,
-        fury: inOnslaught,
-        awakened: awakened,
-        onImpact: (strike) => _impact(move, strike.aimAngle),
-      ),
+    final strike = SwordStrike(
+      move: move,
+      angle: math.atan2(_aim.y, _aim.x),
+      sizeScale: size,
+      fury: inOnslaught,
+      awakened: awakened,
+      onImpact: (strike) => _impact(move, strike.aimAngle),
     );
+    // 내려찍기는 뛰어올랐다가 칼과 함께 떨어진다. 착지하는 순간이 타격이다.
+    if (move == SwordMove.slam) {
+      player.leap(strike.duration * strike.impactAt, Balance.slamLeap);
+    }
+    world.add(strike);
   }
 
   /// 칼이 닿는 순간: 기술마다 정해진 모양 안의 적을 벤다.
@@ -220,9 +225,16 @@ class Greatsword extends Weapon {
       world
         ..add(GroundCrack(position: center, radius: Balance.slamRadius * size))
         ..add(
-          Ring(
+          EarthSpikes(
             position: center.clone(),
             radius: Balance.slamRadius * size,
+            ember: inOnslaught || awakened,
+          ),
+        )
+        ..add(
+          Ring(
+            position: center.clone(),
+            radius: Balance.slamRadius * size * 1.15,
             color: const Color(0xFFE8D2A8),
             strokeWidth: 8,
           ),
@@ -236,7 +248,7 @@ class Greatsword extends Weapon {
             sparkSize: 4,
           ),
         )
-        ..shake(0.18);
+        ..shake(0.22);
     } else if (hits.isNotEmpty) {
       world.shake(0.05);
     }
@@ -322,14 +334,14 @@ class SwordStrike extends PositionComponent with HasWorldReference<RunWorld> {
   double get duration => switch (move) {
     SwordMove.thrust => 0.26,
     SwordMove.swing => 0.3,
-    SwordMove.slam => 0.42,
+    SwordMove.slam => 0.62,
   };
 
   /// 전체 시간 중 칼이 닿는 비율.
   double get impactAt => switch (move) {
     SwordMove.thrust => 0.4,
     SwordMove.swing => 0.45,
-    SwordMove.slam => 0.55,
+    SwordMove.slam => 0.65,
   };
 
   double get _progress => (_t / duration).clamp(0.0, 1.0);
@@ -357,6 +369,14 @@ class SwordStrike extends PositionComponent with HasWorldReference<RunWorld> {
       ? const Color(0xFFFFE08A)
       : const Color(0xFFE6EEFF);
 
+  /// 칼자국 색 단계: 바깥 날 → 안쪽.
+  List<Color> get _trailTones => [
+    Pal.white,
+    Color.lerp(_trailColor, Pal.white, 0.4)!,
+    _trailColor,
+    Color.lerp(_trailColor, Pal.steelDeep, 0.5)!,
+  ];
+
   static double _easeOut(double t) => 1 - math.pow(1 - t, 3).toDouble();
   static double _easeIn(double t) => t * t * t;
 
@@ -364,8 +384,8 @@ class SwordStrike extends PositionComponent with HasWorldReference<RunWorld> {
   void render(Canvas canvas) {
     final t = _progress;
     final fade = t > 0.75 ? 1 - (t - 0.75) / 0.25 : 1.0;
-    // 칼을 가슴 높이에서 쥔다.
-    canvas.translate(0, -8);
+    // 칼을 가슴 높이에서 쥔다. 뛰어올라 있으면 몸을 따라 올라간다.
+    canvas.translate(0, -8 - world.player.leapLift);
     switch (move) {
       case SwordMove.thrust:
         _thrust(canvas, t, fade);
@@ -411,22 +431,29 @@ class SwordStrike extends PositionComponent with HasWorldReference<RunWorld> {
         ? -8 + (far + 8) * _easeOut((t - 0.3) / 0.2)
         : far;
     if (t > 0.32) {
+      // 칼끝을 따라 뻗는 도트 쐐기: 칼날 쪽은 하얗고 뒤로 갈수록 칼자국 색.
       final streak = (t - 0.32) / 0.68;
-      final paint = Paint()
-        ..color = _trailColor.withValues(alpha: 0.7 * (1 - streak));
       final w = Balance.thrustWidth * sizeScale * 0.5 * (1 - streak * 0.6);
+      final tip = grip + _blade + 10;
+      final pc = PixelCanvas.fine;
+      final px = pc.px;
+      final tones = _trailTones;
+      final thin = PixelFx.fade(streak, from: 0.3);
+      for (var x = (10 / px).floor(); x <= (tip / px).ceil(); x++) {
+        final k = ((x + 0.5) * px - 10) / (tip - 10);
+        final half = w / 2 * (1 - k);
+        final rows = (half / px).ceil();
+        for (var y = -rows; y < rows; y++) {
+          if (PixelFx.thinned(x, y, thin)) continue;
+          final edge = (y + 0.5).abs() * px / math.max(half, 1);
+          pc.dot(x, y, tones[edge > 0.7 ? 2 : (k > 0.6 ? 0 : 1)]);
+        }
+      }
       canvas
         ..save()
-        ..rotate(aimAngle)
-        ..drawPath(
-          Path()
-            ..moveTo(10, -w / 2)
-            ..lineTo(grip + _blade + 10, 0)
-            ..lineTo(10, w / 2)
-            ..close(),
-          paint,
-        )
-        ..restore();
+        ..rotate(aimAngle);
+      pc.flush(canvas);
+      canvas.restore();
     }
     _sword(canvas, aimAngle, grip, fade);
   }
@@ -439,37 +466,25 @@ class SwordStrike extends PositionComponent with HasWorldReference<RunWorld> {
     final angle = from + arc * 2 * sweep;
     final radius = Balance.swingRadius * sizeScale;
     if (sweep > 0.05) {
-      // 꼬리는 가늘고 칼날 쪽은 두꺼운 초승달 칼자국.
-      final outer = radius * 0.98;
-      final path = Path();
-      const steps = 16;
-      for (var i = 0; i <= steps; i++) {
-        final a = from + (angle - from) * i / steps;
-        final p = Offset(math.cos(a) * outer, math.sin(a) * outer);
-        i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
-      }
-      for (var i = steps; i >= 0; i--) {
-        final k = i / steps;
-        final a = from + (angle - from) * k;
-        final inner = outer - radius * 0.5 * k * k;
-        path.lineTo(math.cos(a) * inner, math.sin(a) * inner);
-      }
-      path.close();
-      canvas.drawPath(
-        path,
-        Paint()..color = _trailColor.withValues(alpha: 0.45 * fade),
+      // 꼬리는 가늘고 칼날 쪽은 두꺼운 도트 초승달 칼자국. 바깥 날은 하얗게 빛난다.
+      final pc = PixelCanvas.fine;
+      PixelFx.glow(
+        canvas,
+        Offset(math.cos(angle), math.sin(angle)) * radius * 0.7,
+        radius * 0.6,
+        _trailColor,
+        strength: 0.35 * fade,
       );
-      canvas.drawArc(
-        Rect.fromCircle(center: Offset.zero, radius: outer),
-        from + (angle - from) * 0.35,
-        (angle - from) * 0.65,
-        false,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..strokeCap = StrokeCap.round
-          ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.95 * fade),
+      PixelFx.arc(
+        pc,
+        radius * 0.5,
+        radius * 0.98,
+        from,
+        angle - from,
+        _trailTones,
+        thin: PixelFx.fade(t, from: 0.6),
       );
+      pc.flush(canvas);
     }
     _sword(canvas, angle, 6, fade);
   }
@@ -482,69 +497,5 @@ class SwordStrike extends PositionComponent with HasWorldReference<RunWorld> {
     final lift = down < 1 ? 1 + 0.25 * math.sin(down * math.pi) : 1.0;
     final grip = Balance.slamOffset * sizeScale - _blade * 0.55;
     _sword(canvas, angle, math.max(4, grip * down), fade, scale: lift);
-  }
-}
-
-/// 내려찍은 자리에 갈라지는 땅. 금이 사방으로 뻗었다가 흐려진다.
-class GroundCrack extends PositionComponent {
-  GroundCrack({required super.position, required this.radius})
-    : super(priority: 1);
-
-  final double radius;
-  static const double duration = 0.7;
-  double _life = 0;
-  late final List<List<Offset>> _cracks;
-  static final _random = math.Random();
-
-  static final _dark = Paint()
-    ..color = const Color(0xFF2A1E18)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 3
-    ..strokeJoin = StrokeJoin.round;
-  static final _light = Paint()
-    ..color = const Color(0xFFFFC27A)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1;
-
-  @override
-  Future<void> onLoad() async {
-    _cracks = [
-      for (var i = 0; i < 7; i++)
-        _crack(math.pi * 2 * i / 7 + _random.nextDouble() * 0.5),
-    ];
-  }
-
-  List<Offset> _crack(double angle) {
-    final points = [Offset.zero];
-    var a = angle;
-    var r = 0.0;
-    final end = radius * (0.6 + _random.nextDouble() * 0.4);
-    while (r < end) {
-      r += radius * 0.18;
-      a += (_random.nextDouble() - 0.5) * 0.7;
-      points.add(Offset(math.cos(a) * r, math.sin(a) * r));
-    }
-    return points;
-  }
-
-  @override
-  void update(double dt) {
-    _life += dt;
-    if (_life >= duration) removeFromParent();
-  }
-
-  @override
-  void render(Canvas canvas) {
-    final t = _life / duration;
-    final grow = math.min(1.0, t / 0.15);
-    _dark.color = const Color(0xFF2A1E18).withValues(alpha: 0.85 * (1 - t));
-    _light.color = const Color(0xFFFFC27A).withValues(alpha: 0.8 * (1 - t));
-    for (final crack in _cracks) {
-      final n = math.max(2, (crack.length * grow).ceil());
-      final path = Path()..addPolygon(crack.take(n).toList(), false);
-      canvas
-        ..drawPath(path, _dark)
-        ..drawPath(path, _light);
-    }
   }
 }

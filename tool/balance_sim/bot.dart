@@ -339,15 +339,18 @@ class Meta {
     }
   }
 
-  /// 직업 숙련 포인트를 가장 낮은 패시브부터 고르게 올린다.
+  /// 특성 포인트를 공통 특성부터, 그중 가장 낮은 것부터 고르게 올린다.
+  /// 스킬 특성은 그 스킬을 얻은 런에서만 힘을 내므로 공통 특성을 다 올린 뒤에 쓴다.
   void mastery() {
     final mastery = game.mastery;
     final passives = ClassPassive.of(game.world.character.id);
     while (true) {
       final can = passives.where(mastery.canRaise).toList()
-        ..sort(
-          (a, b) => mastery.passiveLevel(a).compareTo(mastery.passiveLevel(b)),
-        );
+        ..sort((a, b) {
+          final skill = (a.isSkillTrait ? 1 : 0) - (b.isSkillTrait ? 1 : 0);
+          if (skill != 0) return skill;
+          return mastery.passiveLevel(a).compareTo(mastery.passiveLevel(b));
+        });
       if (can.isEmpty) return;
       mastery.raise(can.first);
     }

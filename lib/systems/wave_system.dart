@@ -16,14 +16,24 @@ class WaveSystem extends Component
     with HasGameReference<AshbornGame>, HasWorldReference<RunWorld> {
   double _timer = 0;
 
-  static double spawnInterval(double elapsed) => math.max(
-    Balance.minSpawnInterval,
-    Balance.baseSpawnInterval *
-        math.pow(0.5, elapsed / Balance.spawnIntervalHalfLife),
-  );
+  /// 스폰 간격. [Balance.spawnGrowthCap] 까지 줄어들고 그 뒤로는 그대로이며,
+  /// 보스가 나온 뒤([Balance.stageDuration] 이후)에는 [Balance.bossSpawnSlow] 배로 길어진다.
+  static double spawnInterval(double elapsed) =>
+      math.max(
+        Balance.minSpawnInterval,
+        Balance.baseSpawnInterval *
+            math.pow(
+              0.5,
+              math.min(elapsed, Balance.spawnGrowthCap) /
+                  Balance.spawnIntervalHalfLife,
+            ),
+      ) *
+      (elapsed >= Balance.stageDuration ? Balance.bossSpawnSlow : 1);
 
   static int batchSize(double elapsed) =>
-      1 + (elapsed / Balance.batchGrowthPeriod).floor();
+      1 +
+      (math.min(elapsed, Balance.spawnGrowthCap) / Balance.batchGrowthPeriod)
+          .floor();
 
   static double enemyHp(double elapsed) =>
       Balance.enemyBaseHp * (1 + elapsed / Balance.enemyHpGrowthPeriod);
@@ -74,7 +84,9 @@ class WaveSystem extends Component
   /// [time] 에 나올 수 있는 [region] 졸개 종류 (로스터 앞에서부터 차례로 풀린다).
   static List<EnemyKind> unlocked(Region region, double time) => [
     for (final (i, kind) in region.roster.indexed)
-      if (time >= Balance.rosterUnlock[i]) kind,
+      if (time >=
+          Balance.rosterUnlock[math.min(i, Balance.rosterUnlock.length - 1)])
+        kind,
   ];
 
   /// 가중치대로 하나 고른다.

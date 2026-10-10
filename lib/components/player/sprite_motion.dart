@@ -51,6 +51,28 @@ class SpriteMotion {
   /// 지금 떠 있는 높이 (그림자를 줄이는 데 쓴다).
   double hop = 0;
 
+  // 도약 (대검 내려찍기): 남은 시간 · 전체 시간 · 최고 높이.
+  double _leapLeft = 0;
+  double _leapTime = 0;
+  double _leapHeight = 0;
+
+  /// 도약해 있는 높이 (월드). 내려찍기 칼이 몸을 따라 올라가는 데 쓴다.
+  double get leapLift => _leapLeft > 0 ? _leapCurve * _leapHeight : 0;
+
+  /// 뛰어올라 [time] 초 뒤에 착지한다. 빨리 솟았다가 정점에서 잠깐 머물고 세게 떨어진다.
+  void leap(double time, double height) {
+    _leapLeft = _leapTime = time;
+    _leapHeight = height;
+    _squash.velocity += startKick * 1.6;
+  }
+
+  double get _leapCurve {
+    final p = 1 - _leapLeft / _leapTime;
+    if (p < 0.55) return 1 - math.pow(1 - p / 0.55, 2).toDouble();
+    final fall = (p - 0.55) / 0.45;
+    return 1 - fall * fall * fall;
+  }
+
   /// 한 프레임 연출을 계산해 [sprite] 에 입힌다.
   /// [move] 는 입력 방향 (길이 0..1), [facingLeft] 는 바라보는 쪽, [hit] 은 피격 자세 중인지.
   /// 발을 디딘 순간이면 true 를 돌려준다 (먼지를 일으키는 데 쓴다).
@@ -105,6 +127,19 @@ class SpriteMotion {
     } else {
       _lastStep = -1;
       stretch = breathAmount * math.sin(_time * math.pi * 2 / breathPeriod);
+    }
+
+    if (_leapLeft > 0) {
+      _leapLeft -= dt;
+      if (_leapLeft <= 0) {
+        // 착지: 세게 눌렸다가 튀어 오른다.
+        _squash.velocity += hitKick * 1.4;
+      } else {
+        final lift = (_leapCurve * _leapHeight / pixel).roundToDouble() * pixel;
+        hop = math.max(hop, lift);
+        // 오를 때는 길게 늘고, 떨어질 때는 웅크린다.
+        stretch += (1 - _leapLeft / _leapTime) < 0.55 ? 0.1 : -0.06;
+      }
     }
 
     final sy = 1 + stretch + _squash.value * 0.08;

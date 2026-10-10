@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/equipment.dart';
 import 'pixel_sprite.dart';
 
-/// 장비 부위 픽셀 아이콘 (16x16 을 [scale] 배).
+/// 장비 부위 픽셀 아이콘 (16x16 을 [scale] 배). 직업 무기면 [kind] 의 무기 아이콘을 쓴다.
 ///
 /// [rarity] 가 고유면 고유 전용 아이콘을 쓰고, 영웅 이상이면 아이콘 둘레가 등급 색으로
 /// 빛난다 (등급이 높을수록 넓게). [silhouette] 를 주면 빈 칸 표시처럼 그 색 한 가지로 칠한다.
@@ -14,14 +14,19 @@ class ItemIcon extends StatelessWidget {
     this.type, {
     super.key,
     this.rarity,
+    this.kind,
     this.scale = 2,
     this.silhouette,
   });
 
   static const asset = 'assets/images/sprites/items/gear.png';
   static const uniqueAsset = 'assets/images/sprites/items/gear_unique.png';
+  static const weaponAsset = 'assets/images/sprites/items/weapons.png';
+  static const uniqueWeaponAsset =
+      'assets/images/sprites/items/weapons_unique.png';
 
   final ItemType type;
+  final WeaponKind? kind;
   final Rarity? rarity;
   final double scale;
   final Color? silhouette;
@@ -35,10 +40,14 @@ class ItemIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rarity = this.rarity;
+    final unique = rarity == Rarity.unique;
+    final kind = this.kind;
     PixelSprite sprite({Color? silhouette}) => PixelSprite(
-      asset: rarity == Rarity.unique ? uniqueAsset : asset,
+      asset: kind != null
+          ? (unique ? uniqueWeaponAsset : weaponAsset)
+          : (unique ? uniqueAsset : asset),
       frameSize: const Size(16, 16),
-      start: type.index,
+      start: kind?.index ?? type.index,
       scale: scale,
       silhouette: silhouette,
     );

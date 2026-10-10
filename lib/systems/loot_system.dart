@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../data/balance.dart';
+import '../data/characters.dart';
 import '../data/equipment.dart';
 import '../data/stages.dart';
 import '../data/stats.dart';
@@ -33,10 +34,12 @@ abstract final class LootSystem {
   /// [stage] 에서 적 하나를 처치했을 때. 대부분은 null.
   /// 장비 레벨은 스테이지 레벨이고, 타락 단계가 높을수록 자주, 좋게 떨어진다.
   /// [chanceMultiplier] 는 저주처럼 드랍 확률만 키우는 배율.
+  /// [owner] 는 이 런의 캐릭터. 무기가 나오면 그 직업의 무기 종류가 된다.
   static Item? rollDrop(
     math.Random random, [
     Stage stage = Stage.first,
     double chanceMultiplier = 1,
+    CharacterId? owner,
   ]) =>
       random.nextDouble() <
           Balance.itemDropChance * stage.dropChanceMultiplier * chanceMultiplier
@@ -44,12 +47,18 @@ abstract final class LootSystem {
           random,
           level: stage.level,
           rarity: rollRarity(random, luck: stage.rarityLuck),
+          owner: owner,
         )
       : null;
 
   /// 보스 상자: 최소 [Rarity.rare] 장비 [Balance.bossChestItems] 개.
-  static List<Item> bossChest(math.Random random, Stage stage) => [
-    for (var i = 0; i < Balance.bossChestItems; i++) chestItem(random, stage),
+  static List<Item> bossChest(
+    math.Random random,
+    Stage stage, [
+    CharacterId? owner,
+  ]) => [
+    for (var i = 0; i < Balance.bossChestItems; i++)
+      chestItem(random, stage, owner),
   ];
 
   /// 나무 상자에서 [drop] 이 나올 확률.
@@ -68,8 +77,13 @@ abstract final class LootSystem {
   }
 
   /// 보물 상자 장비: 보스 상자와 같은 확률 (레어 이상).
-  static Item chestItem(math.Random random, Stage stage) => generate(
+  static Item chestItem(
+    math.Random random,
+    Stage stage, [
+    CharacterId? owner,
+  ]) => generate(
     random,
+    owner: owner,
     level: stage.level,
     rarity:
         Rarity.values[math.max(
@@ -106,6 +120,7 @@ abstract final class LootSystem {
     ItemType? type,
     Rarity? rarity,
     int level = 1,
+    CharacterId? owner,
   }) {
     final itemType =
         type ?? ItemType.values[random.nextInt(ItemType.values.length)];
@@ -129,7 +144,13 @@ abstract final class LootSystem {
       );
     }
 
-    final main = itemType.mainStats[random.nextInt(itemType.mainStats.length)];
+    // 무기는 [owner] 직업의 무기 종류 하나로, 주옵션도 그 직업 결에서 고른다.
+    final kinds = owner != null && itemType.isWeapon
+        ? WeaponKind.of(owner, itemType)
+        : const <WeaponKind>[];
+    final kind = kinds.isEmpty ? null : kinds[random.nextInt(kinds.length)];
+    final mains = kind?.mainStats ?? itemType.mainStats;
+    final main = mains[random.nextInt(mains.length)];
     final affixes = StatType.values.where((s) => s != main).toList()
       ..shuffle(random);
     return Item(
@@ -147,6 +168,7 @@ abstract final class LootSystem {
       effect: itemRarity == Rarity.unique
           ? UniqueEffect.values[random.nextInt(UniqueEffect.values.length)]
           : null,
+      kind: kind,
       level: level,
     );
   }

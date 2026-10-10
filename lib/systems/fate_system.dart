@@ -78,8 +78,10 @@ abstract final class FateSystem {
   /// 상한 안에서 고르게 뽑고, 그 종류에서 등급과 카드를 뽑는다. 한 번에 같은 카드는 없다.
   static List<Fate> roll(Player player, math.Random random) {
     final upgrades = player.game.upgrades;
-    final count =
-        Balance.fateChoices + upgrades.value(Upgrade.fateChoices).round();
+    final count = math.min(
+      Balance.fateChoices + upgrades.value(Upgrade.fateChoices).round(),
+      Balance.maxCardChoices,
+    );
     final luck =
         player.world.stage.rarityLuck + upgrades.value(Upgrade.fateLuck);
     final hand = <Fate>[];

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'balance.dart';
+import 'characters.dart';
 import 'stats.dart';
 import 'transcend.dart';
 
@@ -46,7 +47,13 @@ enum ItemType {
     StatType.windResist,
   ]),
   belt('허리띠', [StatType.armor, StatType.maxHp]),
-  earring('귀걸이', [StatType.magnetRange, StatType.xpGain, StatType.hpRegen]);
+  earring('귀걸이', [StatType.magnetRange, StatType.xpGain, StatType.hpRegen]),
+
+  /// 몸통 갑옷. 아이콘 시트 순서 때문에 맨 끝에 둔다.
+  armor('갑옷', [StatType.armor, StatType.maxHp, StatType.energyShield]);
+
+  /// 무기 부위 (한손 · 양손). 직업마다 다른 [WeaponKind] 로 떨어진다.
+  bool get isWeapon => this == oneHand || this == twoHand;
 
   const ItemType(this.label, this.mainStats, {this.mainScale = 1});
 
@@ -76,7 +83,8 @@ enum EquipSlot {
   belt('허리띠', ItemType.belt),
   ring1('반지', ItemType.ring),
   ring2('반지', ItemType.ring),
-  boots('장화', ItemType.boots);
+  boots('장화', ItemType.boots),
+  armor('갑옷', ItemType.armor);
 
   const EquipSlot(this.label, this.type);
 
@@ -92,6 +100,53 @@ enum EquipSlot {
 
   bool accepts(ItemType item) =>
       item == type || (this == hand1 && item == ItemType.twoHand);
+}
+
+/// 직업마다 쓰는 무기 종류. 무기 부위 장비는 떨어질 때 그 런 캐릭터의 종류 하나가 되고,
+/// 그 직업만 낄 수 있다. 주옵션도 직업 결에 맞는 것에서 고른다.
+/// 순서는 아이콘 시트 `items/weapons.png` 와 같다 (tool/assets/sprites.py 의 WEAPONS).
+enum WeaponKind {
+  longsword('장검', CharacterId.knight, ItemType.oneHand),
+  mace('철퇴', CharacterId.knight, ItemType.oneHand),
+  greatsword('대검', CharacterId.knight, ItemType.twoHand),
+  battleAxe('전투 도끼', CharacterId.knight, ItemType.twoHand),
+  wand('완드', CharacterId.witch, ItemType.oneHand),
+  orb('보주', CharacterId.witch, ItemType.oneHand),
+  tome('마법서', CharacterId.witch, ItemType.oneHand),
+  staff('지팡이', CharacterId.witch, ItemType.twoHand),
+  handCrossbow('보우건', CharacterId.hunter, ItemType.oneHand),
+  dagger('단검', CharacterId.hunter, ItemType.oneHand),
+  bow('활', CharacterId.hunter, ItemType.twoHand),
+  longbow('장궁', CharacterId.hunter, ItemType.twoHand);
+
+  const WeaponKind(this.label, this.owner, this.type);
+
+  final String label;
+
+  /// 이 무기를 낄 수 있는 직업.
+  final CharacterId owner;
+  final ItemType type;
+
+  /// 주옵션으로 나올 수 있는 속성 피해. 기사는 물리 · 화염, 마녀는 원소, 사냥꾼은 물리 · 바람 · 화염.
+  List<StatType> get mainStats => switch (owner) {
+    CharacterId.knight => const [StatType.physicalDamage, StatType.fireDamage],
+    CharacterId.witch => const [
+      StatType.fireDamage,
+      StatType.coldDamage,
+      StatType.lightningDamage,
+    ],
+    CharacterId.hunter => const [
+      StatType.physicalDamage,
+      StatType.windDamage,
+      StatType.fireDamage,
+    ],
+  };
+
+  /// [character] 가 [type] 부위로 쓰는 무기 종류.
+  static List<WeaponKind> of(CharacterId character, ItemType type) => [
+    for (final k in values)
+      if (k.owner == character && k.type == type) k,
+  ];
 }
 
 /// 고유 등급 장비에만 붙는 특수 효과. 같은 효과는 겹치지 않는다.
@@ -134,6 +189,7 @@ class Item {
     required this.rarity,
     required this.stats,
     this.effect,
+    this.kind,
     this.level = 1,
     this.enhance = 0,
     List<TranscendRoll>? transcends,
@@ -154,6 +210,11 @@ class Item {
       final String name => UniqueEffect.values.byName(name),
       _ => null,
     },
+    // 예전 세이브의 무기에는 종류가 없다: 누구나 끼는 옛 무기로 읽는다.
+    kind: switch (json['kind']) {
+      final String name => WeaponKind.values.asNameMap()[name],
+      _ => null,
+    },
     level: json['level'] as int,
     enhance: json['enhance'] as int,
     transcends: [
@@ -172,12 +233,19 @@ class Item {
   /// 고유 등급만 갖는다.
   final UniqueEffect? effect;
 
+  /// 무기 종류. 무기가 아니거나 종류가 생기기 전 세이브의 무기면 null (누구나 낀다).
+  final WeaponKind? kind;
+
+  /// [character] 가 낄 수 있는가. 직업 무기는 그 직업만.
+  bool wearableBy(CharacterId character) =>
+      kind == null || kind!.owner == character;
+
   final int level;
   int enhance;
   final List<TranscendRoll> transcends;
 
   String get name =>
-      '${rarity.label} ${type.label}${enhance > 0 ? ' +$enhance' : ''}'
+      '${rarity.label} ${kind?.label ?? type.label}${enhance > 0 ? ' +$enhance' : ''}'
       '${transcends.isNotEmpty ? ' ★${transcends.length}' : ''}';
 
   bool get isMaxEnhance => enhance >= Balance.maxEnhance;
@@ -249,6 +317,7 @@ class Item {
         {'stat': s.stat.name, 'value': s.value, 'rarity': s.rarity.name},
     ],
     if (effect != null) 'effect': effect!.name,
+    if (kind != null) 'kind': kind!.name,
     'level': level,
     'enhance': enhance,
     if (transcends.isNotEmpty)

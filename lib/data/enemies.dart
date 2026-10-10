@@ -34,7 +34,7 @@ enum EnemyBehavior {
   final String label;
 }
 
-/// 지역마다 나오는 졸개 종류. 지역은 이 중 여섯 종류를 쓴다 ([Region.roster]).
+/// 지역마다 나오는 졸개 종류. 지역은 이 중 일곱에서 여덟 종류를 쓴다 ([Region.roster]).
 ///
 /// 체력 · 속도 · 피해는 그 지역 기본 졸개 대비 배율이고, [size] 는 충돌 반지름 배율.
 /// [xp] 는 쓰러질 때 떨어지는 재의 결정 수.
@@ -71,6 +71,25 @@ enum EnemyKind {
     hp: 1.3,
     damage: 1.3,
     size: 1.1,
+  ),
+  carrionCrow(
+    '잿빛 까마귀',
+    MonsterSprite.carrionCrow,
+    EnemyBehavior.phantom,
+    hp: 0.6,
+    speed: 1.3,
+    damage: 0.8,
+    size: 0.85,
+  ),
+  ashRam(
+    '잿털 숫양',
+    MonsterSprite.ashRam,
+    EnemyBehavior.charger,
+    hp: 2.2,
+    speed: 0.9,
+    damage: 1.5,
+    size: 1.5,
+    xp: 2,
   ),
   ashOgre(
     '잿더미 거한',
@@ -113,6 +132,16 @@ enum EnemyKind {
     hp: 0.7,
     speed: 1.25,
   ),
+  bogCroc(
+    '늪 악어',
+    MonsterSprite.bogCroc,
+    EnemyBehavior.charger,
+    hp: 1.8,
+    speed: 0.85,
+    damage: 1.4,
+    size: 1.4,
+    xp: 2,
+  ),
   tideWarden(
     '조수의 파수꾼',
     MonsterSprite.maskedOrcTide,
@@ -148,6 +177,20 @@ enum EnemyKind {
     EnemyBehavior.shooter,
     hp: 0.8,
     speed: 0.9,
+  ),
+  emberMaw(
+    '잉걸 아귀꽃',
+    MonsterSprite.emberMaw,
+    EnemyBehavior.caster,
+    hp: 1.1,
+    speed: 0.55,
+  ),
+  emberDrake(
+    '불씨 새끼용',
+    MonsterSprite.emberDrake,
+    EnemyBehavior.phantom,
+    hp: 0.8,
+    speed: 1.3,
   ),
   charredHulk(
     '숯덩이 거인',
@@ -198,6 +241,15 @@ enum EnemyKind {
     hp: 0.7,
     speed: 1.3,
   ),
+  rustScorpion(
+    '녹슨 전갈',
+    MonsterSprite.rustScorpion,
+    EnemyBehavior.swarm,
+    hp: 0.5,
+    speed: 1.4,
+    damage: 0.7,
+    size: 0.85,
+  ),
   rustOgre(
     '녹슨 거한',
     MonsterSprite.ogreRust,
@@ -241,6 +293,14 @@ enum EnemyKind {
     hp: 1.3,
     damage: 1.3,
     size: 1.1,
+  ),
+  flameLizard(
+    '화염 도마뱀 전사',
+    MonsterSprite.flameLizard,
+    EnemyBehavior.shooter,
+    hp: 1.1,
+    speed: 1,
+    damage: 1.1,
   ),
   fleshHulk(
     '살덩이 거구',

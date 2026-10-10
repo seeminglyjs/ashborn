@@ -34,10 +34,6 @@ class _GameScreenState extends State<GameScreen> {
     startStage: widget.stage,
   );
 
-  /// 타이틀(첫 화면)로 돌아간다.
-  void _toTitle(BuildContext context) =>
-      Navigator.of(context).popUntil((route) => route.isFirst);
-
   @override
   Widget build(BuildContext context) {
     // 뒤로 가기로 바로 나가지 않고 일시정지 메뉴를 연다 (떠 있으면 닫는다).
@@ -54,15 +50,15 @@ class _GameScreenState extends State<GameScreen> {
             AshbornGame.gameOverOverlay: (context, game) => GameOverOverlay(
               game: game,
               onChooseCharacter: () => Navigator.of(context).pop(),
-              onMainMenu: () => _toTitle(context),
             ),
             AshbornGame.levelUpOverlay: (context, game) =>
                 LevelUpOverlay(game: game),
             AshbornGame.pauseOverlay: (context, game) => PauseOverlay(
               game: game,
+              // 런을 끝내면 캐릭터 선택으로 돌아가 바로 다시 출정할 수 있게 한다.
               onQuit: () {
                 game.quitRun();
-                _toTitle(context);
+                Navigator.of(context).pop();
               },
             ),
             AshbornGame.equipmentOverlay: (context, game) =>

@@ -40,10 +40,17 @@ Mastery withPassive(ClassPassive passive, int level) {
 
 void main() {
   group('직업 숙련', () {
-    test('직업마다 고유 패시브가 셋이고, 레벨마다 수치가 오른다', () {
+    test('직업마다 공통 특성 셋 · 고유 스킬 특성 셋이고, 레벨마다 수치가 오른다', () {
       for (final c in CharacterId.values) {
-        expect(ClassPassive.of(c), hasLength(3));
+        final traits = ClassPassive.of(c);
+        expect(traits, hasLength(6));
+        expect(traits.where((p) => p.isSkillTrait), hasLength(3));
+        // 스킬 특성은 그 직업의 전용 스킬만 노린다.
+        for (final p in traits.where((p) => p.isSkillTrait)) {
+          expect(p.skill!.owner, c);
+        }
       }
+      expect(Mastery.maxLevel, ClassPassive.maxLevel * 6);
       for (final p in ClassPassive.values) {
         expect(p.value(0), 0);
         expect(p.value(2), isNot(p.value(1)));
@@ -162,6 +169,61 @@ void main() {
         expect(
           sword.comboChance,
           closeTo(ClassPassive.swordMastery.value(5), 1e-9),
+        );
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '스킬 특성: 그 스킬의 피해 · 범위만 오른다',
+      gameWith(Roster.knight, mastery: withPassive(ClassPassive.quake, 4)),
+      (game) async {
+        await game.ready();
+        final player = game.world.player
+          ..gainWeapon(WeaponId.earthSlam)
+          ..gainWeapon(WeaponId.cleave);
+        await game.ready();
+        final slam = player.weapon(WeaponId.earthSlam)!;
+        final cleave = player.weapon(WeaponId.cleave)!;
+        expect(
+          slam.damageMultiplier,
+          closeTo(1 + ClassPassive.quake.value(4), 1e-9),
+        );
+        expect(
+          slam.areaMultiplier,
+          closeTo(1 + ClassPassive.quake.value2(4), 1e-9),
+        );
+        expect(cleave.damageMultiplier, 1, reason: '다른 스킬은 그대로');
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '불굴의 함성: 함성을 외치면 잠시 받는 피해가 준다',
+      gameWith(Roster.knight, mastery: withPassive(ClassPassive.rally, 3)),
+      (game) async {
+        await game.ready();
+        game.world.children.whereType<WaveSystem>().toList().forEach(
+          game.world.remove,
+        );
+        await clearEnemies(game);
+        final player = game.world.player..gainWeapon(WeaponId.warCry);
+        await addEnemy(game, Vector2(40, 0), hp: 1e9);
+        for (var i = 0; i < 80 && !player.isGuarded; i++) {
+          await advance(game, 0.1);
+        }
+        expect(player.isGuarded, isTrue);
+        // 부딪혀 생긴 무적 시간이 지나도록 적을 치우고 기다린다 (함성 효과는 3초).
+        await clearEnemies(game);
+        await advance(game, Balance.playerInvulnerableTime + 0.05);
+        expect(player.isGuarded, isTrue);
+        final hp = player.hp;
+        player.takeDamage(100, type: DamageType.fire);
+        final guard = Balance.warCryGuard + ClassPassive.rally.value2(3);
+        expect(
+          hp - player.hp,
+          closeTo(
+            100 * Roster.knight.damageTakenMultiplier * (1 - guard),
+            1e-6,
+          ),
         );
       },
     );

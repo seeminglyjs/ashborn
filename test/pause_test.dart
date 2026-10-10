@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 타이틀 자리(첫 라우트) 위에 게임 화면을 띄운다. 메인 화면으로 돌아가는지 보려고.
+/// 캐릭터 선택 자리(첫 라우트) 위에 게임 화면을 띄운다. 런을 끝내면 그리로 돌아가는지 보려고.
 Future<AshbornGame> openGame(
   WidgetTester tester, {
   Inventory? inventory,
@@ -25,7 +25,7 @@ Future<AshbornGame> openGame(
       profile: Profile(inventory: inventory),
       child: MaterialApp(
         navigatorKey: navigator,
-        home: const Scaffold(body: Text('타이틀 자리')),
+        home: const Scaffold(body: Text('캐릭터 선택 자리')),
       ),
     ),
   );
@@ -80,7 +80,7 @@ void main() {
       'pause-resume',
       'pause-equipment',
       'pause-settings',
-      'pause-main-menu',
+      'pause-quit',
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget);
     }
@@ -104,7 +104,7 @@ void main() {
     expect(pauseMenu, findsNothing);
   });
 
-  testWidgets('메인 화면으로: 취소하면 그대로, 확인하면 재화를 정산하고 타이틀로', (tester) async {
+  testWidgets('캐릭터 선택으로: 취소하면 그대로, 확인하면 재화를 정산하고 캐릭터 선택으로', (tester) async {
     final inventory = Inventory();
     final game = await openGame(tester, inventory: inventory);
     // 처치로 잔불 · 골드를 모았지만 아직 정산하지 않았다.
@@ -116,7 +116,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('open-pause')));
     await tester.pump();
-    await tester.tap(find.byKey(const Key('pause-main-menu')));
+    await tester.tap(find.byKey(const Key('pause-quit')));
     await tester.pumpAndSettle();
     expect(find.textContaining('정산'), findsOneWidget);
 
@@ -126,20 +126,20 @@ void main() {
     expect(pauseMenu, findsOneWidget);
     expect(inventory.ember, 0);
 
-    await tester.tap(find.byKey(const Key('pause-main-menu')));
+    await tester.tap(find.byKey(const Key('pause-quit')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirm-quit')));
     await tester.pumpAndSettle();
 
     expect(find.byType(GameScreen), findsNothing);
-    expect(find.text('타이틀 자리'), findsOneWidget);
+    expect(find.text('캐릭터 선택 자리'), findsOneWidget);
     expect(inventory.ember, greaterThan(0));
     expect(inventory.ember, game.world.runEmber);
     expect(inventory.gold, greaterThan(0));
     expect(inventory.gold, game.world.runGold);
   });
 
-  testWidgets('쓰러진 화면의 메인 화면 버튼으로 타이틀에 돌아간다', (tester) async {
+  testWidgets('쓰러진 화면에는 메인 화면 버튼 없이 캐릭터 선택으로 돌아간다', (tester) async {
     final game = await openGame(tester);
 
     game.world.player.takeDamage(100000);
@@ -148,11 +148,12 @@ void main() {
     expect(find.text('다시 일어서기'), findsOneWidget);
     expect(find.text('캐릭터 선택'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('game-over-main-menu')));
+    expect(find.text('메인 화면'), findsNothing);
+    await tester.tap(find.byKey(const Key('game-over-choose-character')));
     await tester.pumpAndSettle();
 
     expect(find.byType(GameScreen), findsNothing);
-    expect(find.text('타이틀 자리'), findsOneWidget);
+    expect(find.text('캐릭터 선택 자리'), findsOneWidget);
   });
 
   testWidgets('뒤로 가기는 나가지 않고 일시정지 메뉴를 열고 닫는다', (tester) async {

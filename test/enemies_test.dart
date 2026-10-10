@@ -61,11 +61,16 @@ void main() {
       region.roster,
     );
     for (final r in Region.values) {
-      expect(
-        r.roster.map((k) => k.behavior).toSet().length,
-        r.roster.length,
-        reason: '${r.label}: 한 지역 안의 졸개는 행동이 모두 다르다',
-      );
+      // 같은 행동은 많아야 두 종류 (나머지는 모두 다르다).
+      final behaviors = r.roster.map((k) => k.behavior).toList();
+      for (final b in behaviors.toSet()) {
+        expect(
+          behaviors.where((x) => x == b).length,
+          lessThanOrEqualTo(2),
+          reason: '${r.label}: ${b.label}',
+        );
+      }
+      expect(behaviors.toSet().length, greaterThanOrEqualTo(6));
     }
   });
 
@@ -200,7 +205,7 @@ void main() {
 
   group('맵', () {
     testWithGame<AshbornGame>(
-      '기둥 밑동은 지나갈 수 없다',
+      '기둥 밑동은 발로 지나갈 수 없다',
       gameWith(Roster.witch, stage: const Stage(1)),
       (game) async {
         await game.ready();
@@ -210,12 +215,17 @@ void main() {
           (x, y) => world.obstacles.structureAt(x, y) != null,
         );
         final foot = Obstacles.footOf(gx, gy);
-        final player = world.player..position.setFrom(foot);
+        // 발 자리가 밑동 한가운데 오도록 세운다.
+        final player = world.player
+          ..position.setValues(foot.x, foot.y - Balance.playerFootOffset);
         await advance(game, 1 / 60);
         final s = world.obstacles.structureAt(gx, gy)!;
+        final feet = player.position + Vector2(0, Balance.playerFootOffset);
         expect(
-          player.position.distanceTo(foot),
-          greaterThanOrEqualTo(s.foot * DungeonFloor.pixel - 1e-3),
+          feet.distanceTo(foot),
+          greaterThanOrEqualTo(
+            s.foot * DungeonFloor.pixel + Balance.playerFootRadius - 1e-3,
+          ),
         );
       },
     );

@@ -12,9 +12,11 @@ python -I tool/assets/sprites.py <압축 푼 0x72_DungeonTilesetII_v1.7/frames> 
 - 화톳불: 원본에 없어 이 스크립트가 직접 그린다 (scene/campfire.png, 16x24 프레임 6장).
 - 전투 맵: 바닥 장식 16x16 scene/decor.png, 부서진 기둥 scene/column_broken.png,
   부술 수 있는 나무 상자 scene/crate.png (16x24) 와 보물 상자 scene/chest.png.
-- 아이템: 장비 부위 아이콘 items/gear.png (고유 등급은 items/gear_unique.png) 와
+- 아이템: 장비 부위 아이콘 items/gear.png (고유 등급은 items/gear_unique.png),
+  직업 무기 아이콘 items/weapons.png (고유 등급은 items/weapons_unique.png) 와
   소모품 items/pickups.png (16x16).
-  원본에 없는 갑옷 · 장신구는 이 스크립트에 글자 그림으로 직접 그린다.
+  원본에 없는 갑옷 · 장신구 · 무기는 이 스크립트에 글자 그림으로 직접 그린다.
+  장비 · 무기 아이콘만 다시 만들 때는 원본 없이 tool/assets/gear_icons.py 를 쓴다.
 """
 import colorsys
 import math
@@ -364,6 +366,246 @@ GEAR = {
         '.....pPPpp......',
         '......ppp.......',
         '.......p........',
+        '................',
+        '................',
+    ],
+    # 갑옷: 어깨받이 둘과 목 트임 · 금 띠가 있는 흉갑.
+    'armor': [
+        '................',
+        '................',
+        '..LL........MM..',
+        '.LWL#LY..YM#MMD.',
+        '.LLM#LLYYMM#MDD.',
+        '.MLM#LLWMMD#MDD.',
+        '..MD#LLLMMD#DD..',
+        '....MLLLMMMD....',
+        '....MLWLMMMD....',
+        '....MLLLMMMD....',
+        '.....MLLMMD.....',
+        '....YYYYYYYy....',
+        '....MLM..MMD....',
+        '....MM....DD....',
+        '................',
+        '................',
+    ],
+}
+
+# 직업 무기 아이콘. 순서는 Dart 의 무기 종류 enum 과 같다
+# (기사 4 · 마녀 4 · 사냥꾼 4). 대각선 무기는 손잡이가 왼쪽 아래, 끝이 오른쪽 위.
+WEAPONS = {
+    'longsword': [
+        '................',
+        '..............W.',
+        '.............WM.',
+        '............LM..',
+        '...........LM...',
+        '..........LM....',
+        '.........LM.....',
+        '....Y...LM......',
+        '.....YyLM.......',
+        '......Yy........',
+        '.....BbY........',
+        '....Bb..Y.......',
+        '...Bb...........',
+        '.YYb............',
+        '..YY............',
+        '................',
+    ],
+    'mace': [
+        '................',
+        '..........D.....',
+        '..........M.....',
+        '.........WLL....',
+        '........WLLLM...',
+        '......DMLLLMMMD.',
+        '........LLMMD...',
+        '........yMMD....',
+        '.......Bb.M.....',
+        '......Bb..D.....',
+        '.....Bb.........',
+        '....Bb..........',
+        '...Bb...........',
+        '..Bb............',
+        '.Yy.............',
+        '................',
+    ],
+    'greatsword': [
+        '................',
+        '.............WL.',
+        '...........WLMM.',
+        '..........WLLMD.',
+        '.........WLLMD..',
+        '...Y....WLLMD...',
+        '...yY..WLLMD....',
+        '....yYWLLMD.....',
+        '.....yYLMD......',
+        '......yYD.......',
+        '.....BbyY.......',
+        '....Bb..yY......',
+        '..YYb....yY.....',
+        '...YY...........',
+        '................',
+        '................',
+    ],
+    'battleAxe': [
+        '................',
+        '...WW...........',
+        '..WLLM......LM..',
+        '..WLMMM....Bb...',
+        '.WLLMMMD..Bb....',
+        '.WLMMMDDDBbM....',
+        '.WLMMDDDBbM.....',
+        '..WMDD.Bb.......',
+        '..WD..Bb........',
+        '.....Bb.........',
+        '....Bb..........',
+        '...Bb...........',
+        '..Bb............',
+        '.Bb.............',
+        '................',
+        '................',
+    ],
+    'wand': [
+        '................',
+        '................',
+        '............f...',
+        '...........Ff...',
+        '.........YFfFR..',
+        '.........YYFR...',
+        '.........BYY....',
+        '........Bb.Y....',
+        '.......Bb.......',
+        '......Bb........',
+        '.....Bb.........',
+        '....Bb..........',
+        '..YBb...........',
+        '...Y............',
+        '................',
+        '................',
+    ],
+    'orb': [
+        '................',
+        '................',
+        '......PPPP......',
+        '.....PWWPPP.....',
+        '....PWWPPPPP....',
+        '....PWPPPPPp....',
+        '....PPPPPPpp....',
+        '...YPPPPPpppy...',
+        '....YPPppppy....',
+        '.....Yppppy.....',
+        '......YYyy......',
+        '.......Yy.......',
+        '.....BBBbbb.....',
+        '................',
+        '................',
+        '................',
+    ],
+    'tome': [
+        '................',
+        '................',
+        '..YRRRRRRRRY....',
+        '..RrrrrrrrrrO...',
+        '..RrrrfFrrrrOo..',
+        '..RrrfWFFrrrOo..',
+        '..RrrFFFFrrYYo..',
+        '..RrrrFFrrrYYo..',
+        '..RrrrrrrrrrOo..',
+        '..RrrrrrrrrrOo..',
+        '..RrrrrrrrrrOo..',
+        '..RrrrrrrrrrOo..',
+        '..YrrrrrrrrYOo..',
+        '...ooooooooooo..',
+        '................',
+        '................',
+    ],
+    'staff': [
+        '................',
+        '....BB....bb....',
+        '....B..fF..b....',
+        '....B.fWFF.b....',
+        '....B.FFFR.b....',
+        '.....B.FR.b.....',
+        '......B..b......',
+        '.......Bb.......',
+        '.......Bb.......',
+        '.......Rr.......',
+        '.......Rr.......',
+        '.......Bb.......',
+        '.......Bb.......',
+        '.......Bb.......',
+        '.......yy.......',
+        '................',
+    ],
+    'handCrossbow': [
+        '................',
+        '.......WM.......',
+        '......WLMD......',
+        '.......LM.......',
+        '..LLLLLBbMMMMD..',
+        '.LL....Bb....DD.',
+        '..O....Bb....O..',
+        '...O...Bb...O...',
+        '....O..Bb..O....',
+        '.....OOBbOO.....',
+        '.......Bb.......',
+        '.......BbD......',
+        '......Bb........',
+        '.....Bb.........',
+        '................',
+        '................',
+    ],
+    'dagger': [
+        '................',
+        '................',
+        '................',
+        '................',
+        '...........W....',
+        '..........WM....',
+        '........LLM.....',
+        '.....YyLLM......',
+        '......YyMD......',
+        '......BYy.......',
+        '.....Bb.Y.......',
+        '...YYb...Y......',
+        '....YY..........',
+        '................',
+        '................',
+        '................',
+    ],
+    'bow': [
+        '................',
+        '................',
+        '.......y........',
+        '......Bb........',
+        '.....O.Bb.......',
+        '.....O..Bb......',
+        '.....O..Bb......',
+        '.....O...RR.....',
+        '.....O...RR.....',
+        '.....O..Bb......',
+        '.....O..Bb......',
+        '.....O.Bb.......',
+        '......Bb........',
+        '.......y........',
+        '................',
+        '................',
+    ],
+    'longbow': [
+        '................',
+        '...........BBy..',
+        '........BBB.O...',
+        '......BBb..O....',
+        '....RRb...O.....',
+        '....Rr...O......',
+        '...Bb...O.......',
+        '...B...O........',
+        '..Bb..O.........',
+        '..B..O..........',
+        '..B.O...........',
+        '.B.O............',
+        '.BO.............',
+        '.y..............',
         '................',
         '................',
     ],
@@ -1039,6 +1281,21 @@ def sheet(frames):
     return out
 
 
+def write_gear_icons(out):
+    """장비 부위 · 직업 무기 아이콘 (보통 · 고유). 0x72 원본 없이 그린다.
+    tool/assets/gear_icons.py 가 이 함수만 따로 부른다."""
+    os.makedirs(f'{out}/items', exist_ok=True)
+    for name, arts in (('gear', GEAR), ('weapons', WEAPONS)):
+        sheet([sword() if art is None else pixel_art(art) for art in arts.values()]
+              ).save(f'{out}/items/{name}.png', optimize=True)
+        sheet([
+            unique_icon(
+                sword(UNIQUE_PALETTE) if art is None
+                else pixel_art(art, palette=UNIQUE_PALETTE), i)
+            for i, art in enumerate(arts.values())
+        ]).save(f'{out}/items/{name}_unique.png', optimize=True)
+
+
 def main(src, out):
     for name, (base, rules) in HEROES.items():
         frames = [
@@ -1089,15 +1346,7 @@ def main(src, out):
     pixel_art(FIRE_VENT, outline=False).save(
         f'{out}/scene/fire_vent.png', optimize=True)
     sheet(campfire(logs=False)).save(f'{out}/scene/flame.png', optimize=True)
-    os.makedirs(f'{out}/items', exist_ok=True)
-    sheet([sword() if art is None else pixel_art(art) for art in GEAR.values()]
-          ).save(f'{out}/items/gear.png', optimize=True)
-    sheet([
-        unique_icon(
-            sword(UNIQUE_PALETTE) if art is None
-            else pixel_art(art, palette=UNIQUE_PALETTE), i)
-        for i, art in enumerate(GEAR.values())
-    ]).save(f'{out}/items/gear_unique.png', optimize=True)
+    write_gear_icons(out)
     sheet([
         fit16(Image.open(f'{src}/flask_big_red.png').convert('RGBA'))
         if art is None else pixel_art(art)

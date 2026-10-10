@@ -147,7 +147,6 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                           child: AshButton(
                             key: const Key('open-hearth'),
                             label: '화톳불',
-                            icon: Icons.upgrade,
                             fontSize: 15,
                             onPressed: _openHearth,
                           ),
@@ -157,7 +156,6 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                           child: AshButton(
                             key: const Key('open-equipment'),
                             label: '장비',
-                            icon: Icons.backpack,
                             fontSize: 15,
                             onPressed: _openEquipment,
                           ),
@@ -166,10 +164,13 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                         Expanded(
                           child: AshButton(
                             key: const Key('open-mastery'),
-                            label: profile.mastery.points(_selected.id) > 0
-                                ? '숙련 •'
-                                : '숙련',
-                            icon: Icons.auto_graph,
+                            // 남은 포인트가 있으면 개수를 붙여 올릴 것이 있다고 알린다.
+                            label: switch (profile.mastery.points(
+                              _selected.id,
+                            )) {
+                              > 0 && final points => '특성 +$points',
+                              _ => '특성',
+                            },
                             fontSize: 15,
                             onPressed: _owned ? _openMastery : null,
                           ),
@@ -181,7 +182,6 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                       AshButton(
                         key: const Key('depart'),
                         label: '출정하기',
-                        icon: Icons.local_fire_department,
                         fontSize: 20,
                         onPressed: _depart,
                       )
@@ -189,7 +189,6 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                       AshButton(
                         key: const Key('unlock'),
                         label: '해금 · 골드 ${formatGold(_selected.price)}',
-                        icon: Icons.lock_open,
                         fontSize: 20,
                         onPressed:
                             profile.progress.canUnlock(
@@ -251,8 +250,8 @@ class _StagePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final canPrev = stage.index > 0;
     final canNext = stage.index < unlocked.index;
+    // 가운데 이름 칸이 남는 폭을 모두 써서 화살표가 양 끝에, 이름이 정가운데 온다.
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           key: const Key('stage-prev'),
@@ -261,8 +260,7 @@ class _StagePicker extends StatelessWidget {
           icon: const Icon(Icons.chevron_left),
           color: AshColors.gold,
         ),
-        SizedBox(
-          width: 230,
+        Expanded(
           child: Column(
             children: [
               Text(
@@ -345,7 +343,7 @@ const _cardColor = Color(0xFF1A1411);
 /// 칸에 맞는 정수 배율. 정수 배로 키워야 픽셀이 고르게 보인다.
 double _spriteScale(BoxConstraints c, {double fill = 0.95}) => [
   c.maxHeight * fill / 28,
-  c.maxWidth * 0.7 / 16,
+  c.maxWidth * 0.7 / heroFrame.width,
 ].reduce((a, b) => a < b ? a : b).floorToDouble().clamp(2.0, 14.0);
 
 /// 고른 캐릭터를 크게 보여 주는 자리. 캐릭터 색으로 밝힌 바닥 위에 픽셀 캐릭터가
@@ -400,7 +398,7 @@ class _Showcase extends StatelessWidget {
                       child: PixelSprite(
                         key: Key('portrait-${character.id.name}'),
                         asset: 'assets/images/${character.sprite}',
-                        frameSize: const Size(16, 28),
+                        frameSize: heroFrame,
                         count: 4,
                         fps: 6,
                         scale: _spriteScale(constraints, fill: 0.9),
@@ -434,7 +432,7 @@ class _Showcase extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _InfoLine(
-                  icon: Icons.whatshot,
+                  tag: '무기',
                   color: accent,
                   text:
                       '${character.weaponName} · '
@@ -442,7 +440,7 @@ class _Showcase extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 _InfoLine(
-                  icon: Icons.auto_awesome,
+                  tag: '고유',
                   color: AshColors.gold,
                   text: character.trait,
                 ),
@@ -511,7 +509,7 @@ class _Pick extends StatelessWidget {
                       alignment: Alignment.bottomCenter,
                       child: PixelSprite(
                         asset: 'assets/images/${character.sprite}',
-                        frameSize: const Size(16, 28),
+                        frameSize: heroFrame,
                         count: selected ? 4 : 1,
                         fps: 6,
                         scale: _spriteScale(constraints),
@@ -556,13 +554,10 @@ class _Pick extends StatelessWidget {
 }
 
 class _InfoLine extends StatelessWidget {
-  const _InfoLine({
-    required this.icon,
-    required this.color,
-    required this.text,
-  });
+  const _InfoLine({required this.tag, required this.color, required this.text});
 
-  final IconData icon;
+  /// 줄 앞의 짧은 머리말 (무엇에 대한 줄인지).
+  final String tag;
   final Color color;
   final String text;
 
@@ -570,8 +565,15 @@ class _InfoLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 12, color: color),
-        const SizedBox(width: 4),
+        Text(
+          tag,
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,

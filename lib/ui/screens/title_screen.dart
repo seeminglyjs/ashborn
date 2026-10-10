@@ -44,11 +44,11 @@ class TitleScreen extends StatelessWidget {
             required bool flip,
             required int phase,
           }) => Positioned(
-            left: base.dx + dx * tile - 8 * px,
+            left: base.dx + dx * tile - heroFrame.width / 2 * px,
             top: base.dy + dy * tile - 28 * px,
             child: PixelSprite(
               asset: 'assets/images/${c.sprite}',
-              frameSize: const Size(16, 28),
+              frameSize: heroFrame,
               count: 4,
               fps: 6,
               scale: px,
@@ -126,7 +126,6 @@ class TitleScreen extends StatelessWidget {
                   child: AshButton(
                     key: const Key('title-start'),
                     label: '게임 시작',
-                    icon: Icons.local_fire_department,
                     fontSize: (logo * 0.36).clamp(16.0, 26.0),
                     onPressed: () => _start(context),
                   ),
