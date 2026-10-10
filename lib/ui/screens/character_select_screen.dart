@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/characters.dart';
 import '../../data/stages.dart';
+import '../../services/audio.dart';
 import '../equipment/equipment_screen.dart';
 import '../hearth/hearth_screen.dart';
 import '../mastery/mastery_screen.dart';
@@ -35,11 +36,18 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
   bool get _owned => ProfileScope.of(context).progress.owns(_selected);
 
+  @override
+  void initState() {
+    super.initState();
+    GameAudio.music(Bgm.hearth);
+  }
+
   Future<void> _depart() async {
     if (!_owned) return _unlock();
     await Navigator.of(
       context,
     ).push(fadeRoute(GameScreen(character: _selected, stage: _currentStage)));
+    GameAudio.music(Bgm.hearth);
     // 돌아오면 새로 열린 가장 먼 스테이지를 기본으로 보여 준다.
     if (mounted) setState(() => _stage = null);
   }

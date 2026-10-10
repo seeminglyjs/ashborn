@@ -115,13 +115,6 @@ class SettingsPanel extends StatelessWidget {
       // 놓으면 바뀐 크기로 한 번 들려준다.
       onChangeEnd: (_) => GameAudio.play(Sfx.select),
     ),
-    const Padding(
-      padding: EdgeInsets.only(left: 16, bottom: 4),
-      child: Text(
-        '배경음은 다음 업데이트에 추가됩니다.',
-        style: TextStyle(color: AshColors.ash, fontSize: 11),
-      ),
-    ),
     const _Section('진동'),
     _Toggle(
       keyName: 'vibration',

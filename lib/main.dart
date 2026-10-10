@@ -43,6 +43,9 @@ class AshbornApp extends StatefulWidget {
 class _AshbornAppState extends State<AshbornApp> {
   final _navigator = GlobalKey<NavigatorState>();
   late Profile _profile = widget.profile;
+
+  /// 앱을 내리거나 탭을 가리면 배경음을 멈춘다.
+  late final AppLifecycleListener _lifecycle;
   late final _cloud = CloudSync(
     backend: widget.cloud,
     profile: _profile,
@@ -52,6 +55,10 @@ class _AshbornAppState extends State<AshbornApp> {
   @override
   void initState() {
     super.initState();
+    _lifecycle = AppLifecycleListener(
+      onHide: () => GameAudio.setHidden(true),
+      onShow: () => GameAudio.setHidden(false),
+    );
     unawaited(_cloud.start());
   }
 
@@ -70,6 +77,7 @@ class _AshbornAppState extends State<AshbornApp> {
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _cloud.dispose();
     super.dispose();
   }

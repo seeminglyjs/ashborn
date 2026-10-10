@@ -81,23 +81,66 @@ enum Sfx {
   };
 }
 
-/// 실제로 소리를 내는 쪽. 앱은 [SoLoudSfxPlayer], 테스트는 기록만 하는 가짜를 쓴다.
-abstract interface class SfxPlayer {
-  Future<void> load();
+/// 배경음. 파일은 `tool/sound/music.py` 가 같은 이름으로 만든다 (assets/audio/music/<이름>.ogg).
+/// 모두 이음매 없이 반복된다. [volume] 은 효과음 아래에 깔리도록 맞춘 배율.
+enum Bgm {
+  /// 타이틀 · 설정.
+  title(volume: 0.5),
+
+  /// 캐릭터 선택 · 화톳불 · 장비 · 숙련. 출정 전 쉬는 곳.
+  hearth(volume: 0.45),
+
+  /// 웨이브를 버티는 동안.
+  battle(volume: 0.38),
+
+  /// 보스가 나온 뒤.
+  boss(volume: 0.42);
+
+  const Bgm({required this.volume});
+
+  final double volume;
+
+  String get asset => 'assets/audio/music/$name.ogg';
+}
+
+/// 실제로 소리를 내는 쪽. 앱은 [SoLoudBackend], 테스트는 기록만 하는 가짜를 쓴다.
+abstract interface class AudioBackend {
+  Future<void> loadSfx();
+
+  Future<void> loadMusic();
 
   /// [speed] 1 이 원래 음높이. 2 면 한 옥타브 위 (빨라진다).
   void play(Sfx sfx, {required double volume, required double speed});
+
+  /// 지금 곡을 [fade] 동안 줄이며 멈추고, [bgm] 을 [fade] 동안 키우며 반복해서 튼다.
+  /// [bgm] 이 null 이면 멈추기만 한다.
+  void playMusic(Bgm? bgm, {required double volume, required Duration fade});
+
+  void setMusicVolume(double volume, {required Duration fade});
+
+  void pauseMusic(bool paused);
 }
 
-/// 효과음 창구. 게임 코드는 [play] 만 부른다.
+/// 효과음 · 배경음 창구. 게임 코드는 [play] 와 [music] 만 부른다.
 ///
 /// [start] 로 엔진을 켜기 전에는 아무 소리도 내지 않는다. 테스트와 밸런스 시뮬레이터는
 /// [start] 를 부르지 않으므로 오디오 플러그인 없이 그대로 돈다.
 abstract final class GameAudio {
-  static SfxPlayer? _player;
+  static AudioBackend? _backend;
+
+  /// 배경음 파일을 다 읽었다. 그 전에 [music] 으로 고른 곡은 다 읽은 뒤 튼다.
+  static bool _musicReady = false;
+
+  static Settings? _settings;
 
   /// 볼륨을 읽을 설정. 클라우드 기록을 받으면 [main] 이 새 설정으로 바꿔 끼운다.
-  static Settings? settings;
+  /// 배경음 볼륨을 바꾸면 지금 곡에 바로 적용한다.
+  static Settings? get settings => _settings;
+  static set settings(Settings? value) {
+    _settings?.removeListener(_applyMusicVolume);
+    _settings = value?..addListener(_applyMusicVolume);
+    _applyMusicVolume();
+  }
 
   static final _clock = Stopwatch()..start();
   static double Function() _now = () => _clock.elapsedMicroseconds / 1e6;
@@ -113,22 +156,46 @@ abstract final class GameAudio {
   static const _shardChainGap = 0.4;
   static const _shardChainMax = 12;
 
-  /// 엔진을 켜고 효과음을 읽는다. 실패하면 (기기에 출력 장치가 없다든가) 소리 없이 계속한다.
-  static Future<void> start(Settings settings, {SfxPlayer? player}) async {
+  /// 지금 고른 곡. null 이면 조용하다.
+  static Bgm? _bgm;
+  static Bgm? get currentMusic => _bgm;
+
+  /// 일시정지 · 레벨업처럼 게임이 멈춘 동안 배경음을 줄인다.
+  static bool _ducked = false;
+  static const duckRatio = 0.35;
+
+  /// 마지막으로 엔진에 알린 배경음 크기. 같은 값을 거듭 보내지 않는다.
+  static double? _sentMusicVolume;
+
+  static const _crossfade = Duration(milliseconds: 900);
+  static const _duckFade = Duration(milliseconds: 300);
+
+  /// 엔진을 켜고 효과음, 배경음 순으로 읽는다. 실패하면 (출력 장치가 없다든가) 소리 없이 계속한다.
+  static Future<void> start(Settings settings, {AudioBackend? backend}) async {
     GameAudio.settings = settings;
-    final p = player ?? SoLoudSfxPlayer();
+    final b = backend ?? SoLoudBackend();
     try {
-      await p.load();
-      _player = p;
+      await b.loadSfx();
+      _backend = b;
     } catch (e) {
       debugPrint('효과음을 켜지 못했습니다: $e');
+      return;
+    }
+    try {
+      await b.loadMusic();
+      _musicReady = true;
+      _sentMusicVolume = _musicVolume;
+      b.playMusic(_bgm, volume: _musicVolume, fade: _crossfade);
+    } catch (e) {
+      debugPrint('배경음을 읽지 못했습니다: $e');
     }
   }
 
-  /// 테스트용: 엔진과 시계를 바꿔 끼우고 기록을 비운다. [player] 가 null 이면 소리를 끈다.
+  /// 테스트용: 엔진과 시계를 바꿔 끼우고 기록을 비운다. [backend] 가 null 이면 소리를 끈다.
   @visibleForTesting
-  static void debugReset({SfxPlayer? player, double Function()? now}) {
-    _player = player;
+  static void debugReset({AudioBackend? backend, double Function()? now}) {
+    _backend = backend;
+    _musicReady = backend != null;
     settings = null;
     _now = now ?? () => _clock.elapsedMicroseconds / 1e6;
     for (final list in _endsAt.values) {
@@ -137,14 +204,17 @@ abstract final class GameAudio {
     _lastAt.clear();
     _shardChain = 0;
     _lastShard = -1;
+    _bgm = null;
+    _ducked = false;
+    _sentMusicVolume = null;
   }
 
   /// [sfx] 를 울린다. 같은 소리가 이미 [Sfx.voices] 개 울리고 있거나 [Sfx.gap] 안에
   /// 다시 부르면 건너뛴다. [pitch] 는 음높이 배율 (1 이 원래 음).
   static void play(Sfx sfx, {double pitch = 1}) {
-    final player = _player;
+    final backend = _backend;
     final volume = (settings?.sfxVolume ?? 0.8) * sfx.volume;
-    if (player == null || volume <= 0) return;
+    if (backend == null || volume <= 0) return;
     final now = _now();
     if (sfx == Sfx.shard) pitch *= _chainPitch(now);
     final ends = _endsAt[sfx]!..removeWhere((t) => t <= now);
@@ -154,7 +224,7 @@ abstract final class GameAudio {
     ends.add(now + sfx.length / pitch);
     _lastAt[sfx] = now;
     final wobble = sfx.jitter * (_random.nextDouble() * 2 - 1);
-    player.play(sfx, volume: volume, speed: pitch * (1 + wobble));
+    backend.play(sfx, volume: volume, speed: pitch * (1 + wobble));
   }
 
   /// 연달아 주울수록 반음씩, 한 옥타브까지 올라간다. 줍는 재미가 쌓이는 느낌을 준다.
@@ -171,16 +241,59 @@ abstract final class GameAudio {
     play(Sfx.enhance, pitch: math.pow(2, math.min(level, 15) / 24).toDouble());
     if (level > 0 && level % 5 == 0) play(Sfx.levelUp);
   }
+
+  /// 배경음을 [bgm] 으로 바꾼다 (null 이면 서서히 멈춘다). 이미 그 곡이면 이어서 튼다.
+  static void music(Bgm? bgm) {
+    if (bgm == _bgm) return;
+    _bgm = bgm;
+    final backend = _backend;
+    if (backend == null || !_musicReady) return;
+    _sentMusicVolume = _musicVolume;
+    backend.playMusic(bgm, volume: _musicVolume, fade: _crossfade);
+  }
+
+  /// 게임이 멈춘 동안 배경음을 줄인다.
+  static void duck(bool on) {
+    if (on == _ducked) return;
+    _ducked = on;
+    _applyMusicVolume(fade: _duckFade);
+  }
+
+  /// 앱을 내리거나 탭을 가리면 배경음을 멈추고, 돌아오면 이어서 튼다.
+  static void setHidden(bool hidden) {
+    if (_musicReady) _backend?.pauseMusic(hidden);
+  }
+
+  static double get _musicVolume {
+    final bgm = _bgm;
+    if (bgm == null) return 0;
+    return (settings?.musicVolume ?? 0.8) *
+        bgm.volume *
+        (_ducked ? duckRatio : 1);
+  }
+
+  static void _applyMusicVolume({Duration fade = Duration.zero}) {
+    final backend = _backend;
+    final volume = _musicVolume;
+    if (backend == null || !_musicReady || _bgm == null) return;
+    if (volume == _sentMusicVolume) return;
+    _sentMusicVolume = volume;
+    backend.setMusicVolume(volume, fade: fade);
+  }
 }
 
-/// flutter_soloud 로 효과음을 낸다. 웹은 `web/index.html` 의 init_soloud.js 가 필요하다.
-class SoLoudSfxPlayer implements SfxPlayer {
-  final _sources = <Sfx, AudioSource>{};
+/// flutter_soloud 로 소리를 낸다. 웹은 `web/index.html` 의 init_soloud.js 가 필요하다.
+class SoLoudBackend implements AudioBackend {
+  final _sfx = <Sfx, AudioSource>{};
+  final _music = <Bgm, AudioSource>{};
+
+  /// 지금 반복 중인 배경음.
+  SoundHandle? _playing;
 
   SoLoud get _soloud => SoLoud.instance;
 
   @override
-  Future<void> load() async {
+  Future<void> loadSfx() async {
     if (!_soloud.isInitialized) await _soloud.init(bufferSize: 1024);
     // 짧은 소리가 많이 겹치는 게임이라 기본 16 보다 넉넉히.
     _soloud.setMaxActiveVoiceCount(48);
@@ -188,13 +301,24 @@ class SoLoudSfxPlayer implements SfxPlayer {
       for (final sfx in Sfx.values) _soloud.loadAsset(sfx.asset),
     ]);
     for (final (i, sfx) in Sfx.values.indexed) {
-      _sources[sfx] = loaded[i];
+      _sfx[sfx] = loaded[i];
+    }
+  }
+
+  @override
+  Future<void> loadMusic() async {
+    // 앱에서는 곡을 통째로 풀어 두지 않고 흘려 읽어 메모리를 아낀다 (웹은 늘 통째로 읽는다).
+    for (final bgm in Bgm.values) {
+      _music[bgm] = await _soloud.loadAsset(
+        bgm.asset,
+        mode: kIsWeb ? LoadMode.memory : LoadMode.disk,
+      );
     }
   }
 
   @override
   void play(Sfx sfx, {required double volume, required double speed}) {
-    final source = _sources[sfx];
+    final source = _sfx[sfx];
     if (source == null) return;
     try {
       if (speed == 1) {
@@ -208,6 +332,54 @@ class SoLoudSfxPlayer implements SfxPlayer {
         ..setPause(handle, false);
     } on SoLoudException catch (e) {
       debugPrint('효과음 재생 실패 ($sfx): $e');
+    }
+  }
+
+  @override
+  void playMusic(Bgm? bgm, {required double volume, required Duration fade}) {
+    try {
+      if (_playing case final old?) {
+        _soloud
+          ..fadeVolume(old, 0, fade)
+          ..scheduleStop(old, fade);
+      }
+      _playing = null;
+      final source = bgm == null ? null : _music[bgm];
+      if (source == null) return;
+      final handle = _soloud.play(source, volume: 0, looping: true);
+      // 효과음이 아무리 몰려도 배경음 목소리를 빼앗기지 않게 한다.
+      _soloud
+        ..setProtectVoice(handle, true)
+        ..fadeVolume(handle, volume, fade);
+      _playing = handle;
+    } on SoLoudException catch (e) {
+      debugPrint('배경음 재생 실패 ($bgm): $e');
+    }
+  }
+
+  @override
+  void setMusicVolume(double volume, {required Duration fade}) {
+    final handle = _playing;
+    if (handle == null) return;
+    try {
+      if (fade == Duration.zero) {
+        _soloud.setVolume(handle, volume);
+      } else {
+        _soloud.fadeVolume(handle, volume, fade);
+      }
+    } on SoLoudException catch (e) {
+      debugPrint('배경음 볼륨 실패: $e');
+    }
+  }
+
+  @override
+  void pauseMusic(bool paused) {
+    final handle = _playing;
+    if (handle == null) return;
+    try {
+      _soloud.setPause(handle, paused);
+    } on SoLoudException catch (e) {
+      debugPrint('배경음 일시정지 실패: $e');
     }
   }
 }

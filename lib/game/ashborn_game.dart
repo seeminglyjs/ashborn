@@ -124,8 +124,22 @@ class AshbornGame extends FlameGame<RunWorld>
     notices.tick(dt);
   }
 
+  /// 레벨업 · 일시정지 · 클리어 화면처럼 게임이 멈춘 동안 배경음을 줄인다.
+  @override
+  void pauseEngine() {
+    super.pauseEngine();
+    GameAudio.duck(true);
+  }
+
+  @override
+  void resumeEngine() {
+    super.resumeEngine();
+    GameAudio.duck(false);
+  }
+
   void onPlayerDied() {
     GameAudio.play(Sfx.gameOver);
+    GameAudio.music(null);
     world
       ..bankEmber()
       ..bankLoot()
@@ -209,6 +223,7 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 런을 여기서 끝낸다. 쓰러졌을 때처럼 처치로 모은 잔불 · 골드 · 강화석을
   /// 정산하고 게임을 멈춘다. 메인 화면으로 가는 화면 이동은 부르는 쪽이 한다.
   void quitRun() {
+    GameAudio.music(null);
     world
       ..bankEmber()
       ..bankLoot()

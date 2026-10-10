@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/characters.dart';
 import '../../game/ashborn_game.dart';
+import '../../services/audio.dart';
 import '../hud/hud.dart';
 import '../../data/stages.dart';
 import '../profile_scope.dart';
@@ -33,6 +34,13 @@ class _GameScreenState extends State<GameScreen> {
     profile: ProfileScope.of(context),
     startStage: widget.stage,
   );
+
+  @override
+  void dispose() {
+    // 멈춘 채로 나가면 줄인 배경음이 다음 화면까지 이어지지 않게 한다.
+    GameAudio.duck(false);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

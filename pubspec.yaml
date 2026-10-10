@@ -69,6 +69,8 @@ flutter:
     - assets/images/sprites/items/
     # 효과음 (tool/sound/sfx.py 가 만든다).
     - assets/audio/sfx/
+    # 배경음 (tool/sound/music.py 가 만든다).
+    - assets/audio/music/
 
   # 픽셀 한글 글꼴 (OFL-1.1, assets/fonts/Galmuri-OFL.md). 제목 · 버튼에 쓴다.
   fonts:
