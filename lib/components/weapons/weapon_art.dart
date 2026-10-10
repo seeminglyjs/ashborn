@@ -1,5 +1,24 @@
 import 'dart:ui';
 
+/// 게임 전체가 함께 쓰는 고정 팔레트 Endesga 32 (Lospec 공개 팔레트) 의 색.
+/// 새로 그리는 픽셀 그림은 이 색만 쓴다 (tool/assets/palette.py 와 같은 표).
+abstract final class Pal {
+  static const outline = Color(0xFF181425);
+  static const white = Color(0xFFFFFFFF);
+  static const steelLight = Color(0xFFC0CBDC);
+  static const steel = Color(0xFF8B9BB4);
+  static const steelDark = Color(0xFF5A6988);
+  static const steelDeep = Color(0xFF3A4466);
+  static const goldLight = Color(0xFFFEE761);
+  static const gold = Color(0xFFFEAE34);
+  static const goldDark = Color(0xFFD77643);
+  static const leatherLight = Color(0xFFB86F50);
+  static const leather = Color(0xFF733E39);
+  static const red = Color(0xFFE43B44);
+  static const redDark = Color(0xFFA22633);
+  static const pink = Color(0xFFF6757A);
+}
+
 /// 글자 격자로 적은 작은 픽셀 그림. 한 번 그려 [Picture] 로 들고 있다가 돌리고 키워서 쓴다.
 ///
 /// [rows] 의 글자 하나가 한 픽셀이고, '.' 은 비운다. 색은 [palette] 에서 찾는다.
@@ -60,21 +79,22 @@ final greatswordArt = PixelArt(
     '............oo....................................',
   ],
   const {
-    'o': Color(0xFF17131C),
-    'y': Color(0xFFE8B84A),
-    'Y': Color(0xFF9C6A22),
-    'r': Color(0xFFD8344A),
-    'R': Color(0xFFFF8C96),
-    'b': Color(0xFF6E4228),
-    'B': Color(0xFFA36A44),
-    'i': Color(0xFF3E4250),
-    'I': Color(0xFF8C93A6),
-    'J': Color(0xFFC4CAD8),
-    'w': Color(0xFFF6F9FF),
-    's': Color(0xFFCDD6E4),
-    'm': Color(0xFF96A2B8),
-    'd': Color(0xFF606A84),
-    'f': Color(0xFF76829C),
+    'o': Pal.outline,
+    'y': Pal.gold,
+    'Y': Pal.goldDark,
+    'r': Pal.red,
+    'R': Pal.pink,
+    'b': Pal.leather,
+    'B': Pal.leatherLight,
+    'i': Pal.steelDeep,
+    'I': Pal.steel,
+    'J': Pal.steelLight,
+    'w': Pal.white,
+    's': Pal.steelLight,
+    'm': Pal.steel,
+    'd': Pal.steelDeep,
+    // 홈(fuller)은 날 가운데보다 한 단계 어둡게.
+    'f': Pal.steelDark,
   },
 );
 
@@ -83,17 +103,17 @@ const greatswordGrip = Offset(8, 7);
 const double greatswordReachPixels = 42;
 
 const _steelPalette = {
-  'o': Color(0xFF17131C),
-  'S': Color(0xFFBEC8D8),
-  'W': Color(0xFFF6F9FF),
-  'M': Color(0xFF78829A),
-  'b': Color(0xFF6E4228),
-  'B': Color(0xFFA36A44),
-  'f': Color(0xFF962828),
-  'F': Color(0xFFDC5046),
-  'y': Color(0xFFE8B84A),
-  'Y': Color(0xFF9C6A22),
-  'I': Color(0xFF8C93A6),
+  'o': Pal.outline,
+  'S': Pal.steelLight,
+  'W': Pal.white,
+  'M': Pal.steelDark,
+  'b': Pal.leather,
+  'B': Pal.leatherLight,
+  'f': Pal.redDark,
+  'F': Pal.red,
+  'y': Pal.gold,
+  'Y': Pal.goldDark,
+  'I': Pal.steel,
 };
 
 /// 사냥 석궁의 강철 화살. 오른쪽이 촉, 왼쪽이 붉은 깃.
