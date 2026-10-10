@@ -91,6 +91,31 @@ $browser = @(
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $browser) { Fail 'Chrome 이나 Edge 를 찾지 못했습니다.' }
 
+# 게임 창은 없는데 이 프로필의 브라우저 프로세스만 남아 있으면 세이브 저장소를 쥐고 있을 수 있다.
+# 그러면 새 창이 저장소를 열지 못해 빈 기록으로 뜬다 (2026-10-10 에 실제로 겪었다). 남은 것을 정리한다.
+$profileProcs = Get-CimInstance Win32_Process -Filter "Name='chrome.exe' OR Name='msedge.exe'" |
+    Where-Object { $_.CommandLine -like "*$BrowserProfile*" }
+if ($profileProcs) {
+    $visible = $profileProcs | Where-Object {
+        (Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue).MainWindowHandle -ne 0
+    }
+    if (-not $visible) {
+        Write-Host '  지난번 게임 브라우저가 덜 꺼져 있어 정리합니다.' -ForegroundColor Yellow
+        $profileProcs | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Milliseconds 500
+    }
+}
+
+# 세이브 백업: 실행할 때마다 세이브 저장소를 통째로 복사해 둔다 (최근 20개).
+# 저장소가 열리지 않아 빈 기록으로 뜨더라도 여기서 되살릴 수 있다.
+$Storage = Join-Path $BrowserProfile 'Default\Local Storage'
+$Backups = Join-Path $env:LOCALAPPDATA 'Ashborn\save-backups'
+if (Test-Path $Storage) {
+    Copy-Item $Storage (Join-Path $Backups (Get-Date -Format 'yyyyMMdd-HHmmss')) -Recurse -ErrorAction SilentlyContinue
+    Get-ChildItem $Backups -Directory | Sort-Object Name -Descending | Select-Object -Skip 20 |
+        Remove-Item -Recurse -Force -Confirm:$false -ErrorAction SilentlyContinue
+}
+
 Write-Host '게임을 엽니다. 게임 창을 닫으면 이 창도 닫힙니다.' -ForegroundColor Green
 $window = Start-Process $browser -PassThru -ArgumentList @(
     "--app=$Url",
