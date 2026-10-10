@@ -14,6 +14,8 @@ import 'dart:ui' as ui;
 
 import 'package:ashborn/components/effects/burst.dart';
 import 'package:ashborn/components/effects/ground_fx.dart';
+import 'package:ashborn/components/enemies/hazards.dart';
+import 'package:ashborn/components/weapons/ember_orb.dart';
 import 'package:ashborn/components/enemies/minions.dart';
 import 'package:ashborn/components/weapons/witch_weapons.dart';
 import 'package:ashborn/data/balance.dart';
@@ -309,6 +311,51 @@ void main() {
       await tester.pump(Duration(milliseconds: f - elapsed));
       elapsed = f;
       await _shot(tester, key, 'earth_burst_$f');
+    }
+    game.pauseEngine();
+  });
+
+  testWidgets('보스 지진파', (tester) async {
+    // 보스 내려찍기의 지진파를 퍼지는 순서대로 찍는다 (earthquake_*.png).
+    final (game, key) = await _arena(tester, Roster.knight, ratio: 2);
+    final world = game.world;
+    world.add(
+      Shockwave(
+        position: world.player.position + Vector2(0, -40),
+        maxRadius: Balance.bossSlamRadius,
+        damage: 0,
+        type: DamageType.physical,
+        color: hazardColor(DamageType.physical),
+      ),
+    );
+    var elapsed = 0;
+    for (final f in [250, 600, 1000, 1400]) {
+      await tester.pump(Duration(milliseconds: f - elapsed));
+      elapsed = f;
+      await _shot(tester, key, 'earthquake_$f');
+    }
+    game.pauseEngine();
+  });
+
+  testWidgets('원소 폭주', (tester) async {
+    // 마녀 원소 폭주의 4원소 레이저를 시간 순서로 찍는다 (surge_*.png).
+    final (game, key) = await _arena(tester, Roster.witch, ratio: 2);
+    final world = game.world;
+    final at = world.player.position.clone();
+    world.add(_dummy(EnemyKind.ashWalker, at + Vector2(150, -60)));
+    world.add(
+      ElementalBeam(
+        position: at.clone(),
+        angle: math.atan2(-60, 150),
+        damage: 0,
+        beamWidth: Balance.surgeWidth,
+      ),
+    );
+    var elapsed = 0;
+    for (final f in [30, 150, 300]) {
+      await tester.pump(Duration(milliseconds: f - elapsed));
+      elapsed = f;
+      await _shot(tester, key, 'surge_$f');
     }
     game.pauseEngine();
   });

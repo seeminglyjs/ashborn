@@ -235,9 +235,12 @@ abstract final class Balance {
   static const double bossChargeDuration = 0.6;
   static const double bossChargeSpeed = 3.5;
 
-  /// 내려찍기: 힘 모으는 시간과 충격파가 퍼지는 거리.
+  /// 내려찍기: 힘 모으는 시간, 지진파가 퍼지는 거리와 속도.
+  /// 속도는 [playerSpeed] 보다 조금 느려서, 예고를 보고 바로 바깥으로 달리면 따돌릴 수 있다.
+  /// (예전 340 거리 · 약 378/s 는 화면 안이면 피할 길이 없었다.)
   static const double bossSlamWindup = 0.8;
-  static const double bossSlamRadius = 340;
+  static const double bossSlamRadius = 230;
+  static const double bossSlamSpeed = 150;
 
   /// 충격파 · 운석은 보스 접촉 피해의 이 배율, 탄은 [bossBulletDamage] 배.
   static const double bossHazardDamage = 1;
@@ -748,6 +751,13 @@ abstract final class Balance {
   /// 은총 카드 등급 운. 타락 단계의 등급 운에 더해진다.
   static const double upgradeFateLuck = 0.1;
 
+  /// 원소 · 상태이상 강화: 레벨마다 지금 수치(장비 · 은총 · 특성 합)를 이 비율만큼 키운다.
+  /// 더하는 것이 아니라 곱하므로 원래 수치가 없으면 효과도 없다. 최대 레벨이면 1.5배.
+  static const double upgradeAmplify = 0.05;
+  static const double upgradeCritChance = 0.005;
+  static const double upgradeCritDamage = 0.03;
+  static const double upgradeResist = 0.01;
+
   // 무기 공통
   static const int weaponMaxLevel = 8;
 
@@ -768,13 +778,15 @@ abstract final class Balance {
   static const int stormPierceBonus = 3;
 
   // 무기: 잔불 구체 (재의 마녀)
-  /// 과열: [overheatLevel] 부터 [overheatEvery] 번째 시전마다 큰 화염구를 하나 더 쏜다.
-  /// 화염구는 [overheatDamage] 배 피해에, 맞힌 자리에서 반지름 [overheatRadius] 로 터진다.
-  static const int overheatLevel = 4;
-  static const int overheatEvery = 4;
-  static const double overheatDamage = 2;
-  static const double overheatRadius = 55;
-  static const double overheatSize = 2.2;
+  /// 원소 폭주: [surgeLevel] 부터 [surgeEvery] 번째 시전은 구체 대신 4원소(화염 · 냉기 · 번개 · 바람)
+  /// 레이저를 쏜다. 레이저는 구체 한 발의 [surgeDamage] 배 피해를 네 원소로 고루 나눠, 길이 [surgeLength]
+  /// · 굵기 [surgeWidth] 줄 위의 적을 모두 꿰뚫는다. (예전 과열: 2배 화염구를 한 발 더 쏨)
+  static const int surgeLevel = 4;
+  static const int surgeEvery = 4;
+  static const double surgeDamage = 4;
+  static const double surgeLength = 520;
+  static const double surgeWidth = 26;
+  static const double surgeTime = 0.45;
 
   static const double emberOrbCooldown = 0.6;
   static const double emberOrbDamage = 12;
@@ -839,13 +851,17 @@ abstract final class Balance {
 
   // 무기: 사냥 석궁 (불씨 사냥꾼)
   /// 연사: [volleyLevel] 부터 콤보 확률로 [volleyDelay] 초 뒤 한 번 더 쏜다.
-  /// 저격: [sniperLevel] 부터 [sniperEvery] 번째 사격마다 [sniperDamage] 배 피해에 끝없이 꿰뚫는 화살.
+  /// 헤드샷: [headshotLevel] 부터 사격마다 [headshotChance] 확률로 [headshotDamage] 배 피해에
+  /// 끝없이 꿰뚫고 맞힌 적마다 반드시 출혈을 거는 화살. (예전 저격: 4번째 사격마다 2.5배 — 기대 피해는 비슷하다)
+  /// 맹공: [hunterOnslaughtLevel] 부터 연사가 [onslaughtStreak] 번 연달아 나면 기사의 맹공과
+  /// 같이 [onslaughtDuration] 초 동안 쿨다운이 [onslaughtCooldown] 배가 된다.
   static const int volleyLevel = 2;
   static const double volleyDelay = 0.12;
-  static const int sniperLevel = 4;
-  static const int sniperEvery = 4;
-  static const double sniperDamage = 2.5;
-  static const int sniperPierce = 99;
+  static const int headshotLevel = 4;
+  static const double headshotChance = 0.15;
+  static const double headshotDamage = 3;
+  static const int headshotPierce = 99;
+  static const int hunterOnslaughtLevel = 6;
 
   static const double crossbowCooldown = 0.9;
   static const double crossbowDamage = 16;

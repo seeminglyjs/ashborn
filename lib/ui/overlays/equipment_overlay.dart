@@ -14,6 +14,7 @@ class EquipmentOverlay extends StatelessWidget {
     inventory: game.inventory,
     character: game.character,
     extra: game.profile.permanentBonus,
+    amplify: game.profile.upgrades.amplify,
     settings: game.settings,
     onClose: game.closeEquipment,
   );

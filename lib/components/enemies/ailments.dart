@@ -17,6 +17,11 @@ enum ColdStage { none, chilled, frozen }
 ///
 /// 문턱은 적마다 다르다 ([Enemy.ailmentThreshold]). 쌓인 양은 시간이 지나면 조금씩 빠진다.
 class Ailments {
+  Ailments({this.immune = false});
+
+  /// 상태이상이 걸리지 않는다 (상자처럼 살아 있지 않은 것). 모든 걸기가 아무 일도 하지 않는다.
+  final bool immune;
+
   // 중독
   double _poisonDps = 0;
   double _poisonTime = 0;
@@ -102,18 +107,21 @@ class Ailments {
 
   /// 중독: [total] 피해를 지속 시간 동안 나눠 준다. 이미 중독이면 새것으로 덮어쓴다.
   void poison(double total) {
+    if (immune) return;
     _poisonDps = total / Balance.poisonDuration;
     _poisonTime = Balance.poisonDuration;
   }
 
   /// 옆의 적에게서 옮은 중독: 같은 세기로 처음부터.
   void catchPoison(double dps) {
+    if (immune) return;
     _poisonDps = dps;
     _poisonTime = Balance.poisonDuration;
   }
 
   /// 출혈: [total] 은 세지기 전 기준 피해. 더 센 출혈이면 바꾸고, 아니면 시간만 새로 한다.
   void bleed(double total) {
+    if (immune) return;
     final dps = total / Balance.bleedDuration;
     if (!bleeding || dps >= _bleedDps) {
       _bleedDps = dps;
@@ -124,7 +132,7 @@ class Ailments {
 
   /// 화염 피해 [amount] 를 쌓는다. 문턱을 넘으면 한 번에 [tick] 씩 타는 점화가 붙고 true.
   bool addFire(double amount, double threshold, double tick) {
-    if (amount <= 0) return false;
+    if (immune || amount <= 0) return false;
     _fire += amount;
     if (_fire < threshold) return false;
     _fire = 0;
@@ -134,6 +142,7 @@ class Ailments {
 
   /// 점화를 붙인다. 이미 타고 있으면 더 센 쪽으로 바꾸고 시간을 새로 한다.
   void ignite(double tick) {
+    if (immune) return;
     if (!ignited || tick >= _igniteTick) _igniteTick = tick;
     if (!ignited) _igniteClock = Balance.igniteInterval;
     _igniteTime = Balance.igniteDuration;
@@ -147,7 +156,7 @@ class Ailments {
     required double cold,
     double freezeTime = Balance.freezeDuration,
   }) {
-    if (amount <= 0 || frozen) return ColdStage.none;
+    if (immune || amount <= 0 || frozen) return ColdStage.none;
     _cold += amount;
     if (_cold < threshold) return ColdStage.none;
     _cold = 0;
@@ -164,13 +173,14 @@ class Ailments {
 
   /// 냉각(느려짐)을 건다. 서리 갑옷 · 지옥불 고리처럼 냉기 축적 없이 바로 거는 것도 여기로 온다.
   void chill(double slow, double duration) {
+    if (immune) return;
     _chillSlow = chilled ? math.max(_chillSlow, slow) : slow;
     _chillTime = math.max(_chillTime, duration);
   }
 
   /// 번개 피해 [amount] 를 쌓는다. 문턱을 넘으면 [stun] 초 굳고 true (감전).
   bool addLightning(double amount, double threshold, {double? stun}) {
-    if (amount <= 0) return false;
+    if (immune || amount <= 0) return false;
     _lightning += amount;
     if (_lightning < threshold) return false;
     _lightning = 0;

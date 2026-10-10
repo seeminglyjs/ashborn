@@ -50,6 +50,7 @@ class ItemDrop extends Pickup with HasGameReference<AshbornGame> {
             item,
             game.character,
             extra: game.profile.permanentBonus,
+            amplify: game.profile.upgrades.amplify,
           ) <=
           0;
 

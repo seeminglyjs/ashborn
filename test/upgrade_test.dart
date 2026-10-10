@@ -87,6 +87,46 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
+      '원소 강화는 지금 수치에 곱한다: 점화 축적 5% 에 +50% 면 7.5%, 원래 없던 것은 그대로 0',
+      gameWith(
+        Roster.witch,
+        inventory: wearing({
+          StatType.burnChance: 0.05,
+          StatType.fireDamage: 10,
+        }),
+        upgrades: Upgrades({
+          Upgrade.elementBuildup: Upgrade.elementBuildup.maxLevel,
+          Upgrade.elementDamage: 4,
+        }),
+      ),
+      (game) async {
+        await game.ready();
+        final player = game.world.player;
+
+        expect(player.bonus(StatType.burnChance), closeTo(0.075, 1e-9));
+        expect(player.bonus(StatType.chillChance), 0);
+        expect(
+          player.bonus(StatType.fireDamage),
+          closeTo(10 * (1 + Balance.upgradeAmplify * 4), 1e-9),
+        );
+      },
+    );
+
+    test('잿불 갑주는 네 원소 저항을 함께 올린다', () {
+      final upgrades = Upgrades({Upgrade.resist: 3});
+      for (final stat in [
+        StatType.fireResist,
+        StatType.coldResist,
+        StatType.lightningResist,
+        StatType.windResist,
+      ]) {
+        expect(upgrades.bonus(stat), closeTo(Balance.upgradeResist * 3, 1e-9));
+      }
+      expect(upgrades.bonus(StatType.physicalReduction), 0);
+      expect(upgrades.amplify(StatType.fireResist), 1);
+    });
+
+    testWithGame<AshbornGame>(
       '잔불 수확은 처치와 클리어 잔불 모두를 늘린다',
       gameWith(Roster.witch, upgrades: Upgrades({Upgrade.emberGain: 4})),
       (game) async {

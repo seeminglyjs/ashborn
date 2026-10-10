@@ -35,6 +35,7 @@ class EquipmentPanel extends StatefulWidget {
     required this.character,
     required this.onClose,
     this.extra,
+    this.amplify,
     this.settings,
   });
 
@@ -44,6 +45,9 @@ class EquipmentPanel extends StatefulWidget {
 
   /// 장비 밖에서 오른 능력치 (화톳불 강화 · 은총). 종합 전투력에 함께 넣는다.
   final double Function(StatType stat)? extra;
+
+  /// 능력치 합에 곱하는 화톳불 배율.
+  final double Function(StatType stat)? amplify;
 
   /// 일괄 분해 등급 · 자동 분해를 기억하는 설정. 없으면 이 화면 안에서만 기억한다.
   final Settings? settings;
@@ -79,8 +83,12 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
   late final Gear _gear = _inventory.gear(widget.character.id);
 
   /// 지금 장비의 종합 전투력.
-  int get _power =>
-      AutoEquip.current(_gear, widget.character, extra: widget.extra);
+  int get _power => AutoEquip.current(
+    _gear,
+    widget.character,
+    extra: widget.extra,
+    amplify: widget.amplify,
+  );
 
   /// [item] 을 [slot] 에 끼면 바뀌는 전투력 (강화 계승 반영).
   int _powerChange(Item item, EquipSlot slot) {
@@ -94,6 +102,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
             item,
           ],
           extra: widget.extra,
+          amplify: widget.amplify,
           enhanceOf: (i) => identical(i, item) ? inherited : i.enhance,
         ) -
         _power;
@@ -107,6 +116,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
       _inventory,
       widget.character,
       extra: widget.extra,
+      amplify: widget.amplify,
     );
     if (count > 0) GameAudio.play(Sfx.equip);
     setState(

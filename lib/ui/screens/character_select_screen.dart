@@ -74,7 +74,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
     context: context,
     builder: (context) => AlertDialog(
       backgroundColor: AshColors.panel,
-      title: const Text('새로 출정할까요?', style: TextStyle(color: AshColors.gold)),
+      title: const Text('새로 시작할까요?', style: TextStyle(color: AshColors.gold)),
       content: Text(
         '이어 할 런(${saved.stage.name} · Lv ${saved.level})을 버리고 '
         '레벨 1, 카드 없이 새로 시작합니다.',
@@ -88,7 +88,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
         TextButton(
           key: const Key('confirm-new-run'),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('새로 출정', style: TextStyle(color: AshColors.ember)),
+          child: const Text('새로 시작', style: TextStyle(color: AshColors.ember)),
         ),
       ],
     ),
@@ -257,7 +257,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                         final saved? => _resumeRow(saved),
                         null => AshButton(
                           key: const Key('depart'),
-                          label: '출정하기',
+                          label: '전투 시작',
                           fontSize: 20,
                           onPressed: _depart,
                         ),
@@ -285,7 +285,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
     );
   }
 
-  /// 이어 할 런이 있을 때: 어디서 · 몇 레벨로 이어 가는지와, 이어 하기 · 새로 출정 버튼.
+  /// 이어 할 런이 있을 때: 어디서 · 몇 레벨로 이어 가는지와, 이어 하기 · 새로 시작 버튼.
   Widget _resumeRow(RunSave saved) {
     final cards =
         saved.weapons.length +
@@ -307,7 +307,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
               flex: 2,
               child: AshButton(
                 key: const Key('depart'),
-                label: '새로 출정',
+                label: '새로 시작',
                 fontSize: 15,
                 onPressed: _depart,
               ),
@@ -398,22 +398,35 @@ class _CorruptionPicker extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                [
-                  '장비 Lv ${start.level}~${start.level + Region.values.length - 1}',
-                  if (corruption > 0) '드랍 +$drop% · 등급 운 +$luck%',
-                ].join(' · '),
-                key: const Key('corruption-rewards'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AshColors.ash, fontSize: 11),
-              ),
-              if (rules.isNotEmpty)
-                Text(
-                  rules.map((r) => r.label).join(' · '),
-                  key: const Key('corruption-rules'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AshColors.ember, fontSize: 11),
+              // 단계마다 높이가 같도록 줄 수를 고정한다: 규칙이 없어도 셋째 줄을 비워 두지 않고,
+              // 규칙이 많아 길어지면 줄을 바꾸지 않고 글씨를 줄여 한 줄에 넣는다.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  [
+                    '장비 Lv ${start.level}~${start.level + Region.values.length - 1}',
+                    if (corruption > 0) '드랍 +$drop% · 등급 운 +$luck%',
+                  ].join(' · '),
+                  key: const Key('corruption-rewards'),
+                  style: const TextStyle(color: AshColors.ash, fontSize: 11),
                 ),
+              ),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: rules.isEmpty
+                    ? const Text(
+                        '특수 규칙 없음',
+                        style: TextStyle(color: AshColors.ash, fontSize: 11),
+                      )
+                    : Text(
+                        rules.map((r) => r.label).join(' · '),
+                        key: const Key('corruption-rules'),
+                        style: const TextStyle(
+                          color: AshColors.ember,
+                          fontSize: 11,
+                        ),
+                      ),
+              ),
             ],
           ),
         ),

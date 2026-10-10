@@ -199,10 +199,14 @@ class WeaponModel {
         final bolts = 1 + id.total(WeaponStat.count, level);
         // 부채꼴로 퍼져 보스(반지름 40)에 맞는 구체 수 (거리 200 기준).
         final hit = _fanHits(bolts.round(), Balance.emberOrbSpread);
-        // 과열: 네 번째 시전마다 화염구 하나 (피해 ×2).
-        final overheat = Balance.overheatDamage / Balance.overheatEvery;
+        // 원소 폭주: 네 번째 시전은 구체 대신 레이저 한 줄 (피해 ×4, 보스에 한 번 맞음).
+        final surge = level >= Balance.surgeLevel;
+        final perCast = surge
+            ? (hit * (Balance.surgeEvery - 1) + Balance.surgeDamage) /
+                  Balance.surgeEvery
+            : hit;
         return (
-          hits: (hit + overheat) * echo,
+          hits: perCast * echo,
           base: Balance.emberOrbDamage * damage,
           interval: cooldown,
           power: 1.0,
@@ -210,15 +214,21 @@ class WeaponModel {
       case WeaponId.fireCrossbow:
         final arrows = 1 + id.total(WeaponStat.count, level);
         final hit = _fanHits(arrows.round(), Balance.stormSpread);
-        final volley = 1 + id.total(WeaponStat.combo, level);
-        // 저격: 네 번째 사격마다 피해 ×2.5.
-        final sniper =
-            (Balance.sniperEvery - 1 + Balance.sniperDamage) /
-            Balance.sniperEvery;
+        final volleyChance = id.total(WeaponStat.combo, level);
+        final volley = 1 + volleyChance;
+        // 헤드샷: 사격마다 확률로 피해 ×3.
+        final headshot = level >= Balance.headshotLevel
+            ? 1 + Balance.headshotChance * (Balance.headshotDamage - 1)
+            : 1.0;
+        // 맹공: 연사가 두 번 연달아 나면 쿨다운이 짧아진다 (사격마다 한 번 굴림).
+        final onslaught = level >= Balance.hunterOnslaughtLevel
+            ? _onslaughtUptime(volleyChance, rolls: 1)
+            : 0.0;
         return (
-          hits: hit * volley * sniper,
+          hits: hit * volley * headshot,
           base: Balance.crossbowDamage * damage,
-          interval: cooldown,
+          interval:
+              cooldown * (1 - onslaught * (1 - Balance.onslaughtCooldown)),
           power: 1.0,
         );
       default:
@@ -237,7 +247,8 @@ class WeaponModel {
   }
 
   /// 맹공이 켜져 있는 시간 비율. 콤보 판정 사슬을 짧게 굴려 본다 (난수 고정, 결정적).
-  double _onslaughtUptime(double combo) {
+  /// [rolls] 는 한 번 쓸 때 콤보를 굴리는 수 (대검은 기술 셋이라 2, 석궁 연사는 1).
+  double _onslaughtUptime(double combo, {int rolls = 2}) {
     final random = math.Random(7);
     var streak = 0;
     var time = 0.0;
@@ -245,7 +256,7 @@ class WeaponModel {
     var left = 0.0;
     const step = 1.0;
     for (var i = 0; i < 20000; i++) {
-      for (var k = 0; k < 2; k++) {
+      for (var k = 0; k < rolls; k++) {
         if (random.nextDouble() >= combo) {
           streak = 0;
           break;

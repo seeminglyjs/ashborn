@@ -128,29 +128,8 @@ class Greatsword extends Weapon {
       streak = 0;
       final starting = !inOnslaught;
       onslaught = Balance.onslaughtDuration + world.player.onslaughtBonus;
-      if (starting) _announceOnslaught();
+      if (starting) announceOnslaught(world);
     }
-  }
-
-  void _announceOnslaught() {
-    final at = world.player.position;
-    world
-      ..add(
-        CallOut(
-          position: at + Vector2(0, -44),
-          text: '맹공!',
-          color: const Color(0xFFFF6A3D),
-          fontSize: 18,
-        ),
-      )
-      ..add(
-        Ring(
-          position: at.clone(),
-          radius: 70,
-          color: const Color(0xFFFF6A3D),
-          strokeWidth: 5,
-        ),
-      );
   }
 
   /// [move] 를 가장 가까운 적 쪽으로 휘두른다. 피해는 칼이 닿는 순간 준다.
@@ -496,4 +475,26 @@ class SwordStrike extends PositionComponent with HasWorldReference<RunWorld> {
     final grip = Balance.slamOffset * sizeScale - _blade * 0.55;
     _sword(canvas, angle, math.max(4, grip * down), fade, scale: lift);
   }
+}
+
+/// 맹공에 들어갈 때 머리 위 글씨와 둘레 고리로 알린다 (기사 대검 · 사냥꾼 석궁).
+void announceOnslaught(RunWorld world) {
+  final at = world.player.position;
+  world
+    ..add(
+      CallOut(
+        position: at + Vector2(0, -44),
+        text: '맹공!',
+        color: const Color(0xFFFF6A3D),
+        fontSize: 18,
+      ),
+    )
+    ..add(
+      Ring(
+        position: at.clone(),
+        radius: 70,
+        color: const Color(0xFFFF6A3D),
+        strokeWidth: 5,
+      ),
+    );
 }
