@@ -108,7 +108,7 @@ class Boss extends Enemy {
       Balance.bossMoveInterval * (_enraged ? Balance.bossEnragedInterval : 1);
 
   static const _chargeLane = Color(0x40FF3A2E);
-  static final _slamFill = Paint()..color = const Color(0x33FF3A2E);
+  static final _slamFill = Paint()..color = const Color(0x22FF3A2E);
   static final _slamEdge = dangerStroke(3.5);
 
   Color get _hazard => hazardColor(damageType);
@@ -457,10 +457,11 @@ class Boss extends Enemy {
           _chargeLane,
         );
       case BossMove.slam:
+        // 지진파가 닿는 실제 거리를 처음부터 테두리로 보여 주고, 안쪽을 차오르게 칠한다.
         final t = (_t / Balance.bossSlamWindup).clamp(0.0, 1.0);
         canvas
-          ..drawCircle(c, radius * 1.6 * t + radius, _slamFill)
-          ..drawCircle(c, radius * 2.6, _slamEdge);
+          ..drawCircle(c, Balance.bossSlamRadius * t, _slamFill)
+          ..drawCircle(c, Balance.bossSlamRadius, _slamEdge);
       default:
         break;
     }

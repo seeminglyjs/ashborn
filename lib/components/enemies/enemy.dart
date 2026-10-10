@@ -71,7 +71,10 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   /// 맞으면 잠깐 커졌다 돌아온다 (남은 시간).
   double _pop = 0;
 
-  final ailments = Ailments();
+  late final ailments = Ailments(immune: ailmentImmune);
+
+  /// 상태이상이 걸리지 않는가 (상자).
+  bool get ailmentImmune => false;
 
   final _velocity = Vector2.zero();
   double _flash = 0;
@@ -220,7 +223,7 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
       ..spreadIgnite = false;
     final near = world
         .enemiesNear(position, Balance.spreadRange + radius)
-        .where((e) => e != this)
+        .where((e) => e != this && !e.ailments.immune)
         .toList();
     if (near.isEmpty) return;
     if (poison) {

@@ -18,6 +18,7 @@ class EquipmentScreen extends StatelessWidget {
         inventory: ProfileScope.of(context).inventory,
         character: character,
         extra: ProfileScope.of(context).permanentBonus,
+        amplify: ProfileScope.of(context).upgrades.amplify,
         settings: ProfileScope.of(context).settings,
         onClose: () => Navigator.of(context).pop(),
       ),

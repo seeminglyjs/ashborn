@@ -40,11 +40,12 @@ abstract final class CombatPower {
   };
 
   /// [character] 가 [items] 를 꼈을 때의 전투력. [extra] 는 장비 밖에서 오른 능력치
-  /// (화톳불 강화 · 은총). [enhanceOf] 를 주면 그 장비를 그 강화 단계로 친다 (강화 계승 미리 보기).
+  /// (화톳불 강화 · 은총), [amplify] 는 그 합에 곱하는 화톳불 배율. [enhanceOf] 를 주면 그 장비를 그 강화 단계로 친다 (강화 계승 미리 보기).
   static int of(
     CharacterDef character,
     Iterable<Item> items, {
     double Function(StatType stat)? extra,
+    double Function(StatType stat)? amplify,
     int Function(Item item)? enhanceOf,
   }) {
     final totals = {for (final s in StatType.values) s: extra?.call(s) ?? 0.0};
@@ -59,7 +60,7 @@ abstract final class CombatPower {
         transcend[option] = transcend[option]! + item.transcend(option);
       }
     }
-    double t(StatType s) => totals[s]!;
+    double t(StatType s) => totals[s]! * (amplify?.call(s) ?? 1);
 
     // 공격력: 한 타 × 피해 증가 × 치명타 기대 × 공격 속도 × 상태이상 · 효과 · 초월.
     final added = DamageType.values.fold(0.0, (sum, d) => sum + t(d.added));

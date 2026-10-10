@@ -97,7 +97,8 @@ class Player extends PositionComponent
 
   bool get isDead => hp <= 0;
 
-  /// 패시브, 장비, 운명, 화톳불 강화로 오른 [stat] 의 합.
+  /// 패시브, 장비, 운명, 화톳불 강화로 오른 [stat] 의 합. 화톳불의 곱하는 강화
+  /// ([Upgrades.amplify]) 는 이 합 전체를 키운다.
   double bonus(StatType stat) {
     var total =
         game.gear.bonus(stat) +
@@ -106,7 +107,7 @@ class Player extends PositionComponent
     passives.forEach((id, level) {
       if (id.stat == stat) total += id.perLevel * level;
     });
-    return total + _classBonus(stat);
+    return (total + _classBonus(stat)) * game.upgrades.amplify(stat);
   }
 
   /// 직업 패시브 [passive] 의 레벨. 다른 직업의 패시브는 0.
@@ -791,16 +792,27 @@ class Player extends PositionComponent
   /// [secondary] 는 효과로 생긴 추가 타격: 장비 속성 피해를 다시 더하지 않고,
   /// 바람 검기 · 소용돌이 · 연쇄 번개를 다시 일으키지 않는다.
   /// [power] 는 장비 피해까지 더한 한 타 전체에 곱하는 배율 (대검의 무게).
+  /// [split] 은 [base] 를 고루 나눌 속성들, [bleed] 는 확률 없이 출혈을 건다.
   double strike(
     Enemy enemy,
     double base,
     DamageType type, {
     bool secondary = false,
     double power = 1,
+    List<DamageType>? split,
+    bool bleed = false,
   }) {
     if (enemy.isDead) return 0;
     final random = game.random;
-    final hit = Hit()..add(type, base);
+    final hit = Hit();
+    // [split] 이 있으면 [base] 를 그 속성들에 고루 나눈다 (원소 폭주처럼 여러 원소가 섞인 한 타).
+    if (split case final types? when types.isNotEmpty) {
+      for (final t in types) {
+        hit.add(t, base / types.length);
+      }
+    } else {
+      hit.add(type, base);
+    }
     if (!secondary) {
       for (final t in DamageType.values) {
         hit.add(t, bonus(t.added));
@@ -841,7 +853,7 @@ class Player extends PositionComponent
       if (hit.crit && enemy is Boss) world.shake(0.08);
       GameAudio.play(hit.crit ? Sfx.crit : Sfx.hit);
     }
-    _applyAilments(enemy, hit, raw, random, secondary: secondary);
+    _applyAilments(enemy, hit, raw, random, secondary: secondary, bleed: bleed);
     if (!secondary) {
       if (effects.contains(UniqueEffect.chainLightning) &&
           random.nextDouble() < Balance.chainLightningChance) {
@@ -882,11 +894,14 @@ class Player extends PositionComponent
     Map<DamageType, double> raw,
     math.Random random, {
     required bool secondary,
+    bool bleed = false,
   }) {
     final ailments = enemy.ailments;
     final threshold = enemy.ailmentThreshold;
     final physical = hit[DamageType.physical];
-    if (physical > 0 && random.nextDouble() < bonus(StatType.bleedChance)) {
+    // [bleed] 면 확률 없이 반드시 출혈 (헤드샷).
+    if (physical > 0 &&
+        (bleed || random.nextDouble() < bonus(StatType.bleedChance))) {
       ailments.bleed(
         physical * Balance.bleedRatio * (1 + bonus(StatType.bleedDamage)),
       );

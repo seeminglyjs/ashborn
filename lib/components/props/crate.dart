@@ -21,6 +21,10 @@ class Crate extends Enemy {
 
   static final _shadow = Paint()..color = const Color(0x55000000);
 
+  /// 살아 있지 않아 타거나 얼거나 중독되지 않는다.
+  @override
+  bool get ailmentImmune => true;
+
   @override
   void onKilled() => world.breakCrate(this);
 

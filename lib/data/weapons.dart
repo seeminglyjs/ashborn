@@ -109,7 +109,7 @@ enum WeaponId {
   ),
   emberOrb(
     '잔불 구체',
-    '가장 가까운 적을 노리는 불씨. 레벨이 오르면 과열을 익혀 큰 화염구를 섞어 쏜다',
+    '가장 가까운 적을 노리는 불씨. 레벨이 오르면 원소 폭주를 익혀 4원소 레이저를 섞어 쏜다',
     '구체',
     DamageType.fire,
     owner: CharacterId.witch,
@@ -124,7 +124,7 @@ enum WeaponId {
       {WeaponStat.damage: 0.25},
       {WeaponStat.count: 1, WeaponStat.speed: 0.2},
     ],
-    perks: {Balance.overheatLevel: '과열 습득'},
+    perks: {Balance.surgeLevel: '원소 폭주 습득'},
   ),
   meteor(
     '운석 낙하',
@@ -182,7 +182,7 @@ enum WeaponId {
   ),
   fireCrossbow(
     '사냥 석궁',
-    '적을 꿰뚫는 강철 화살. 레벨이 오르면 연사 · 저격을 익힌다',
+    '적을 꿰뚫는 강철 화살. 레벨이 오르면 연사 · 헤드샷 · 맹공을 익힌다',
     '화살',
     DamageType.physical,
     owner: CharacterId.hunter,
@@ -197,7 +197,11 @@ enum WeaponId {
       {WeaponStat.speed: 0.2, WeaponStat.cooldown: 0.1, WeaponStat.combo: 0.05},
       {WeaponStat.count: 1, WeaponStat.damage: 0.2},
     ],
-    perks: {Balance.volleyLevel: '연사 습득', Balance.sniperLevel: '저격 습득'},
+    perks: {
+      Balance.volleyLevel: '연사 습득',
+      Balance.headshotLevel: '헤드샷 습득',
+      Balance.hunterOnslaughtLevel: '맹공 습득',
+    },
   ),
   emberMine(
     '불씨 덫',
