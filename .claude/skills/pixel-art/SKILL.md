@@ -55,6 +55,7 @@ cp -r assets/images/sprites <스크래치>/before
 | 대검 기술 연출 | `lib/components/weapons/greatsword.dart` 의 `SwordStrike` |
 | 상태이상 연출 | `lib/components/enemies/ailment_fx.dart` |
 | 몬스터 걷기 연출 | `lib/components/enemies/enemy.dart` 의 `_bounce` |
+| AI 생성 그림 후처리 | `tool/assets/ai_cleanup.py` (아래 6절) |
 
 스프라이트 스크립트는 같은 결과를 다시 만든다. `polish.py` 는 두 번 돌리면 두 번 칠해지니,
 늘 `sprites.py` · `monsters.py` 로 새로 만든 시트에 한 번만 돌린다.
@@ -80,3 +81,18 @@ cp -r assets/images/sprites <스크래치>/before
 
 - 무료 도트 편집기: LibreSprite, Pixelorama. PNG 로 저장해 `assets/images/sprites/` 에 넣으면 이 스킬의 확인 루프로 바로 본다.
 - 팔레트는 Lospec 에서 Endesga 32 를 받아 편집기에 불러오면 같은 색을 쓴다.
+
+## 6. AI 로 만든 그림 다듬기
+
+AI 픽셀 그림은 칸 크기가 들쭉날쭉하고 색이 수십 개라 그대로 넣으면 기존 그림과 따로 논다. 반드시 후처리를 거친다.
+
+```bash
+python -I tool/assets/ai_cleanup.py <png 또는 폴더> [--scale 8] [--no-trim]
+```
+
+- 격자(Pixel Snapper) → 배경 제거 → Endesga 32 → 떨어진 잡티 제거 → 외곽선 `#181425` 통일 → 여백 자르기 순서다.
+  결과는 `build/ai_cleanup/`, 비교 이미지는 `build/preview/ai_cleanup.png`. 4절 확인 루프대로 열어 본다.
+- 확대 배율을 정확히 알면 `--scale` 을 준다 (그쪽이 더 정확하다). 스프라이트 시트는 `--no-trim`.
+- 받아 올 때: PNG 만, 흐릿하게 뭉개진 결과는 버린다. JPEG · 흐림은 격자 찾기가 매번 실패했다.
+- 특정 작가 화풍을 흉내 낸 모델 · LoRA 결과물은 쓰지 않는다 (유료 판매 · 스킨 계획과 충돌). 쓴 도구와 라이선스는 README 에셋 절에 적는다.
+- Snapper 설치: `cargo install spritefusion-pixel-snapper` (Rust 필요, MIT 라이선스).

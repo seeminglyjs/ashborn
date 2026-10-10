@@ -388,6 +388,7 @@ flowchart TD
   그다음 [tool/assets/monsters.py](tool/assets/monsters.py) 로 지역 변종을 만들고, [tool/assets/polish.py](tool/assets/polish.py) 로 캐릭터 · 몬스터에 색조 이동 명암 · 윗면 빛 · 색 외곽선과 캐릭터 장비(기사 대검, 마녀 지팡이, 사냥꾼 석궁)를 덧입힙니다 (이 순서로 한 번씩).
 - 화톳불 픽셀 애니메이션(`scene/campfire.png`)은 원본 팩에 없어 같은 스크립트가 직접 그립니다.
 - 예전 타이틀 · 캐릭터 일러스트는 앱에 넣지 않고 `art/illustrations/` 에 보관합니다 (스토어 이미지 등 참고용).
+- AI 로 만든 픽셀 그림은 [tool/assets/ai_cleanup.py](tool/assets/ai_cleanup.py) 로 격자 · 배경 · 팔레트(Endesga 32) · 잡티 · 외곽선을 정리한 뒤 넣습니다. 격자 찾기는 [Sprite Fusion Pixel Snapper](https://github.com/Hugo-Dz/spritefusion-pixel-snapper) (MIT, `cargo install spritefusion-pixel-snapper`) 를 씁니다. 도구라서 게임에 들어가지 않으니 위 표에는 올리지 않습니다.
 - 앱 아이콘 원본은 `art/logo/app_icon.png` 이고, `python -I tool/assets/app_icons.py art/logo/app_icon.png` 로 Android (적응형 포함) · iOS · Windows 아이콘을 한 번에 만듭니다.
 
 ---
