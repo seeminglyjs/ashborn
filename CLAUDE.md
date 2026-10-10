@@ -58,6 +58,8 @@
 (`python -I tool/sound/sfx.py [출력 폴더] [이름 ...]`). 재생은 `lib/services/audio.dart` 의 `GameAudio.play(Sfx.x)` 하나로 하고,
 소리별 음량 · 동시 재생 수 · 최소 간격은 `Sfx` 에서 맞춘다. 새 소리는 스크립트 함수와 `Sfx` 값을 같은 이름으로 함께 추가한다.
 엔진(flutter_soloud)은 `main()` 에서만 켜므로 테스트 · 시뮬레이터에서는 소리 없이 돈다.
+배경음 4곡(타이틀 · 화톳불 · 전투 · 보스)은 `tool/sound/music.py` 가 악보 문자열로 작곡 · 합성해 `assets/audio/music/*.ogg` 로 만든다
+(`soundfile` 패키지 필요). 곡은 `GameAudio.music(Bgm.x)` 로 바꾸고, 게임이 멈추면 `GameAudio.duck` 으로 줄인다.
 
 ## 도트 작업
 

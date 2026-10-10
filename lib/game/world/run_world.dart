@@ -136,6 +136,7 @@ class RunWorld extends World
       _camera,
     ]);
     game.camera.follow(_camera);
+    GameAudio.music(Bgm.battle);
   }
 
   /// 화면을 [amount] (초) 만큼 흔든다. 더 센 흔들림이 이긴다. 설정에서 진동을 끄면 약하게.
@@ -242,6 +243,7 @@ class RunWorld extends World
     game.notify('${region.bossName} 등장', color: const Color(0xFFE8463A));
     shake(0.5);
     GameAudio.play(Sfx.bossAppear);
+    GameAudio.music(Bgm.boss);
   }
 
   /// 보스를 잡으면 남은 졸개는 재가 되어 흩어지고 웨이브가 멈춘다.
@@ -286,7 +288,9 @@ class RunWorld extends World
       hazard.removeFromParent();
     }
     shake(0.6);
+    // 배경음을 거두고 보스 처치음 · 클리어 팡파르가 들리게 한다. 다음 지역에서 다시 튼다.
     GameAudio.play(Sfx.bossDown);
+    GameAudio.music(null);
     game.stats
       ..bossHealth.value = null
       ..stageCleared.value = true;
@@ -354,6 +358,7 @@ class RunWorld extends World
     _bossSpawned = false;
     _clearTimer = null;
     _publishStage();
+    GameAudio.music(Bgm.battle);
     if (stage.corruption > previous.corruption) {
       game.notify(
         '타락 ${stage.corruption}단계: 적과 보상이 강해진다',

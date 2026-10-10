@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/characters.dart';
+import '../../services/audio.dart';
 import '../routes.dart';
 import '../settings/settings_screen.dart';
 import '../theme.dart';
@@ -13,11 +14,24 @@ import 'character_select_screen.dart';
 
 /// 메인 화면. 던전 바닥의 화톳불 둘레에 세 애쉬본이 서 있고, 위에 로고가 뜬다.
 /// 배경 · 인물 · 불은 모두 픽셀 스프라이트이고 로고와 버튼은 코드로 그린다.
-class TitleScreen extends StatelessWidget {
+class TitleScreen extends StatefulWidget {
   const TitleScreen({super.key});
 
-  void _start(BuildContext context) =>
-      Navigator.of(context).push(fadeRoute(const CharacterSelectScreen()));
+  @override
+  State<TitleScreen> createState() => _TitleScreenState();
+}
+
+class _TitleScreenState extends State<TitleScreen> {
+  @override
+  void initState() {
+    super.initState();
+    GameAudio.music(Bgm.title);
+  }
+
+  Future<void> _start(BuildContext context) async {
+    await Navigator.of(context).push(fadeRoute(const CharacterSelectScreen()));
+    GameAudio.music(Bgm.title);
+  }
 
   void _openSettings(BuildContext context) =>
       Navigator.of(context).push(fadeRoute(const SettingsScreen()));

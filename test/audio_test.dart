@@ -12,27 +12,50 @@ import 'package:flutter_test/flutter_test.dart';
 import 'helpers.dart';
 
 /// 울린 소리를 기록만 하는 가짜 엔진.
-class RecordingPlayer implements SfxPlayer {
+class RecordingBackend implements AudioBackend {
   final played = <({Sfx sfx, double volume, double speed})>[];
 
   List<Sfx> get sounds => [for (final p in played) p.sfx];
 
+  /// 배경음을 바꾼 기록 (null 은 멈춤).
+  final tracks = <Bgm?>[];
+
+  /// 지금 배경음 크기.
+  double musicVolume = 0;
+  bool musicPaused = false;
+
   @override
-  Future<void> load() async {}
+  Future<void> loadSfx() async {}
+
+  @override
+  Future<void> loadMusic() async {}
 
   @override
   void play(Sfx sfx, {required double volume, required double speed}) =>
       played.add((sfx: sfx, volume: volume, speed: speed));
+
+  @override
+  void playMusic(Bgm? bgm, {required double volume, required Duration fade}) {
+    tracks.add(bgm);
+    musicVolume = bgm == null ? 0 : volume;
+  }
+
+  @override
+  void setMusicVolume(double volume, {required Duration fade}) =>
+      musicVolume = volume;
+
+  @override
+  void pauseMusic(bool paused) => musicPaused = paused;
 }
 
 void main() {
-  late RecordingPlayer player;
+  late RecordingBackend player;
   var now = 0.0;
 
   setUp(() {
-    player = RecordingPlayer();
+    player = RecordingBackend();
     now = 0;
-    GameAudio.debugReset(player: player, now: () => now);
+    GameAudio.debugReset(backend: player, now: () => now);
   });
 
   tearDown(GameAudio.debugReset);
@@ -136,6 +159,104 @@ void main() {
       for (var i = 1; i < lengths.length; i++) {
         expect(lengths[i], greaterThanOrEqualTo(lengths[i - 1]));
       }
+    });
+  });
+
+  group('배경음', () {
+    test('모든 배경음 파일이 있다 (tool/sound/music.py 와 이름이 같다)', () {
+      for (final bgm in Bgm.values) {
+        expect(File(bgm.asset).existsSync(), isTrue, reason: bgm.asset);
+      }
+    });
+
+    test('곡을 바꾸면 배경음 볼륨에 맞춰 틀고, 같은 곡은 다시 틀지 않는다', () {
+      GameAudio.settings = Settings()..musicVolume = 0.5;
+      GameAudio.music(Bgm.battle);
+      GameAudio.music(Bgm.battle);
+      GameAudio.music(Bgm.boss);
+      GameAudio.music(null);
+
+      expect(player.tracks, [Bgm.battle, Bgm.boss, null]);
+      expect(player.musicVolume, 0);
+    });
+
+    test('배경음 볼륨을 바꾸면 지금 곡에 바로 적용된다', () {
+      final settings = Settings()..musicVolume = 1;
+      GameAudio.settings = settings;
+      GameAudio.music(Bgm.hearth);
+      expect(player.musicVolume, closeTo(Bgm.hearth.volume, 1e-9));
+
+      settings.musicVolume = 0.25;
+      expect(player.musicVolume, closeTo(0.25 * Bgm.hearth.volume, 1e-9));
+    });
+
+    test('게임이 멈춘 동안 배경음을 줄였다가 이어지면 되돌린다', () {
+      GameAudio.settings = Settings()..musicVolume = 1;
+      GameAudio.music(Bgm.battle);
+      GameAudio.duck(true);
+      expect(
+        player.musicVolume,
+        closeTo(Bgm.battle.volume * GameAudio.duckRatio, 1e-9),
+      );
+
+      GameAudio.duck(false);
+      expect(player.musicVolume, closeTo(Bgm.battle.volume, 1e-9));
+    });
+
+    test('엔진을 켜기 전에 고른 곡은 다 읽은 뒤에 튼다', () async {
+      GameAudio.debugReset();
+      GameAudio.music(Bgm.title);
+      expect(player.tracks, isEmpty);
+
+      await GameAudio.start(Settings(), backend: player);
+      expect(player.tracks, [Bgm.title]);
+    });
+
+    test('앱을 내리면 배경음을 멈추고 돌아오면 이어 튼다', () {
+      GameAudio.music(Bgm.title);
+      GameAudio.setHidden(true);
+      expect(player.musicPaused, isTrue);
+      GameAudio.setHidden(false);
+      expect(player.musicPaused, isFalse);
+    });
+  });
+
+  group('게임 속 배경음', () {
+    testWithGame('출정하면 전투곡, 보스가 나오면 보스곡', gameWith(Roster.witch), (game) async {
+      expect(GameAudio.currentMusic, Bgm.battle);
+      game.world.spawnBoss();
+      expect(GameAudio.currentMusic, Bgm.boss);
+    });
+
+    testWithGame(
+      '보스를 잡으면 배경음을 거두고 다음 지역에서 전투곡을 다시 튼다',
+      gameWith(Roster.witch),
+      (game) async {
+        game.world.spawnBoss();
+        await game.ready();
+        game.world.boss!.takeDamage(1e12);
+        expect(GameAudio.currentMusic, isNull);
+        expect(player.sounds, contains(Sfx.bossDown));
+
+        game.continueToNextStage();
+        expect(GameAudio.currentMusic, Bgm.battle);
+      },
+    );
+
+    testWithGame('게임이 멈추면 배경음이 줄고 다시 돌면 돌아온다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      GameAudio.settings = Settings()..musicVolume = 1;
+      final full = player.musicVolume;
+      game.pauseEngine();
+      expect(player.musicVolume, lessThan(full));
+      game.resumeEngine();
+      expect(player.musicVolume, closeTo(full, 1e-9));
+    });
+
+    testWithGame('런을 끝내면 배경음이 멈춘다', gameWith(Roster.witch), (game) async {
+      game.quitRun();
+      expect(GameAudio.currentMusic, isNull);
     });
   });
 
