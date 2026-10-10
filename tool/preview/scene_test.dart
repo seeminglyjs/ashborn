@@ -37,6 +37,7 @@ import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
 import 'package:ashborn/data/profile.dart';
 import 'package:ashborn/data/progress.dart';
+import 'package:ashborn/data/run_save.dart';
 import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/game/world/obstacles.dart';
 import 'package:ashborn/game/world/region_theme.dart';
@@ -595,6 +596,7 @@ void main() {
       Widget child, {
       Size size = const Size(390, 844),
       Progress? progress,
+      SavedRuns? runs,
     }) async {
       tester.view
         ..physicalSize = size
@@ -636,6 +638,7 @@ void main() {
               mastery: mastery,
               inventory: inventory,
               progress: progress,
+              runs: runs,
             ),
             child: MaterialApp(theme: ThemeData.dark(), home: child),
           ),
@@ -847,6 +850,25 @@ void main() {
         progress: Progress(Region.values.length * 4 + 2),
       );
       await _shot(tester, key, 'ui_select_corruption');
+    });
+
+    testWidgets('캐릭터 선택 (이어 하기)', (tester) async {
+      final profileRuns = SavedRuns({
+        CharacterId.knight: const RunSave(
+          stage: Stage(3),
+          level: 14,
+          xp: 0,
+          weapons: [(id: WeaponId.greatsword, level: 5, awakened: false)],
+          passives: {PassiveId.fury: 2, PassiveId.haste: 1},
+        ),
+      });
+      final key = await screen(
+        tester,
+        const CharacterSelectScreen(),
+        progress: Progress(4),
+        runs: profileRuns,
+      );
+      await _shot(tester, key, 'ui_select_resume');
     });
 
     testWidgets('캐릭터 선택 (받을 은총)', (tester) async {

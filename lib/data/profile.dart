@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'class_passives.dart';
 import 'inventory.dart';
 import 'progress.dart';
+import 'run_save.dart';
 import 'save_snapshot.dart';
 import 'settings.dart';
 import 'stats.dart';
@@ -20,12 +21,14 @@ class Profile {
     Settings? settings,
     Upgrades? upgrades,
     Mastery? mastery,
+    SavedRuns? runs,
     DateTime? modifiedAt,
   }) : inventory = inventory ?? Inventory(),
        progress = progress ?? Progress(),
        settings = settings ?? Settings(),
        upgrades = upgrades ?? Upgrades(),
-       mastery = mastery ?? Mastery() {
+       mastery = mastery ?? Mastery(),
+       runs = runs ?? SavedRuns() {
     _modifiedAt = modifiedAt;
     // 저장소에는 밀리초까지만 남으니 처음부터 밀리초로 맞춰 둔다
     // (안 그러면 같은 기록도 시각이 달라 보여 충돌로 오인한다).
@@ -45,6 +48,9 @@ class Profile {
 
   /// 직업 숙련과 직업 패시브.
   final Mastery mastery;
+
+  /// 캐릭터마다 이어 할 런. 기기에만 남는다 (클라우드에 올리지 않는다).
+  final SavedRuns runs;
 
   /// 장비 밖에서 영구히 오른 [stat]: 화톳불 강화와 받은 은총. 종합 전투력 계산에 쓴다.
   double permanentBonus(StatType stat) =>
@@ -99,6 +105,7 @@ class Profile {
   static const settingsKey = 'settings.v1';
   static const upgradesKey = 'upgrades.v1';
   static const masteryKey = 'mastery.v1';
+  static const runsKey = 'runs.v1';
 
   /// 클라우드에 함께 올리는 기록의 키.
   static const syncedKeys = [
@@ -152,6 +159,13 @@ class Profile {
         masteryKey,
         Mastery.fromJson,
         Mastery.new,
+        (v) => v.toJson(),
+      ),
+      runs: _bind(
+        prefs,
+        runsKey,
+        SavedRuns.fromJson,
+        SavedRuns.new,
         (v) => v.toJson(),
       ),
     );

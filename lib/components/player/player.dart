@@ -12,8 +12,10 @@ import '../../data/class_passives.dart';
 import '../../data/damage.dart';
 import '../../data/equipment.dart';
 import '../../data/passives.dart';
+import '../../data/run_save.dart';
 import '../../data/stats.dart';
 import '../../data/transcend.dart';
+import '../../data/stages.dart';
 import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
@@ -283,10 +285,43 @@ class Player extends PositionComponent
     add(CircleHitbox(isSolid: true));
     // 스프라이트는 기다리지 않고 읽는다. 다 읽기 전에는 그림자만 보인다.
     unawaited(_loadSprite());
-    gainWeapon(character.startWeapon);
-    // 받아 둔 은총 중 출정 때 효과 (무기 레벨 · 새 무기 · 시작 레벨).
-    FateSystem.depart(world);
+    if (world.resume case final save?) {
+      _restore(save);
+    } else {
+      gainWeapon(character.startWeapon);
+      // 받아 둔 은총 중 출정 때 효과 (무기 레벨 · 새 무기 · 시작 레벨).
+      FateSystem.depart(world);
+    }
   }
+
+  /// 이어 하는 런: 무기 · 패시브 카드를 되살리고 체력을 가득 채워 시작한다.
+  /// 카드를 고르지 않은 레벨이 남아 있으면 바로 고르게 한다.
+  void _restore(RunSave save) {
+    for (final w in save.weapons) {
+      for (var i = 0; i < w.level; i++) {
+        gainWeapon(w.id);
+      }
+      if (w.awakened) weapon(w.id)?.awaken();
+    }
+    passives.addAll(save.passives);
+    syncMaxHp();
+    hp = _knownMaxHp = maxHp;
+    energyShield = maxEnergyShield;
+    _publish();
+    if (save.levelUps > 0) game.onLevelUp(save.levelUps);
+  }
+
+  /// 이어 할 런 기록: 지금 레벨 · 카드로 [stage] 처음부터 다시 시작한다.
+  RunSave checkpoint(Stage stage, {int levelUps = 0}) => RunSave(
+    stage: stage,
+    level: game.stats.level.value,
+    xp: game.stats.xp.value,
+    weapons: [
+      for (final w in weapons) (id: w.id, level: w.level, awakened: w.awakened),
+    ],
+    passives: {...passives},
+    levelUps: levelUps,
+  );
 
   /// 캐릭터 스프라이트 시트를 읽어 자세별 애니메이션으로 붙인다.
   /// 무기 이펙트 아래에 그려지도록 우선순위를 낮춘다.

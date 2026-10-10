@@ -5,6 +5,7 @@ import '../../data/characters.dart';
 import '../../game/ashborn_game.dart';
 import '../../services/audio.dart';
 import '../hud/hud.dart';
+import '../../data/run_save.dart';
 import '../../data/stages.dart';
 import '../profile_scope.dart';
 import '../overlays/build_overlay.dart';
@@ -20,10 +21,14 @@ class GameScreen extends StatefulWidget {
     super.key,
     required this.character,
     this.stage = Stage.first,
+    this.resume,
   });
 
   final CharacterDef character;
   final Stage stage;
+
+  /// 이어 하는 런. 있으면 [stage] 대신 그 기록의 스테이지에서 시작한다.
+  final RunSave? resume;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -34,6 +39,7 @@ class _GameScreenState extends State<GameScreen> {
     character: widget.character,
     profile: ProfileScope.of(context),
     startStage: widget.stage,
+    resume: widget.resume,
   );
 
   @override
@@ -78,7 +84,10 @@ class _GameScreenState extends State<GameScreen> {
                 BuildOverlay(game: game),
             AshbornGame.stageClearOverlay: (context, game) => StageClearOverlay(
               game: game,
-              onReturn: () => Navigator.of(context).pop(),
+              onReturn: () {
+                game.returnToHearth();
+                Navigator.of(context).pop();
+              },
             ),
           },
           initialActiveOverlays: const [AshbornGame.hudOverlay],

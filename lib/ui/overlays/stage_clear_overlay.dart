@@ -123,6 +123,18 @@ class StageClearOverlay extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (!conquest) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '화톳불로 돌아가도 다음에 ${next.name}부터 지금 레벨 · 카드로 이어 합니다',
+                      key: const Key('clear-keep-run'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AshColors.ash,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ],
               );
             },
