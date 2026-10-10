@@ -152,8 +152,9 @@ void main() {
         near.position.setFrom(game.world.player.position + Vector2(50, 0));
       }
 
-      expect(near.hp, near.maxHp - Balance.thrustDamage);
-      expect(far.hp, far.maxHp - Balance.thrustDamage, reason: '꿰뚫는다');
+      const thrust = Balance.thrustDamage * Balance.thrustPower;
+      expect(near.hp, closeTo(near.maxHp - thrust, 1e-9));
+      expect(far.hp, closeTo(far.maxHp - thrust, 1e-9), reason: '꿰뚫는다');
       expect(behind.hp, behind.maxHp, reason: '뒤는 찌르지 않는다');
     });
 

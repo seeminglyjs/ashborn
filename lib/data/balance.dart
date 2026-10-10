@@ -665,7 +665,13 @@ abstract final class Balance {
   // 무기: 강철 대검 (잿불 기사)
   // 쿨다운마다 익힌 기술을 차례로 하나씩 쓴다 (찌르기 → 휘두르기 → 내려찍기 → …).
   // 확률로 다음 기술을 곧바로 이어 쓰고 (콤보), 콤보가 2번 연달아 나면 맹공에 들어간다.
-  static const double greatswordCooldown = 0.9;
+  static const double greatswordCooldown = 0.8;
+
+  /// 대검의 무게: 기술마다 장비로 더해지는 피해까지 포함한 한 타 전체에 곱하는 배율.
+  /// 타격 수가 적은 대검이 매 타격 고정 피해를 많이 받는 무기(구체 · 화살)에 밀리지 않게 한다.
+  static const double thrustPower = 2.0;
+  static const double swingPower = 1.5;
+  static const double slamPower = 2.8;
 
   /// 이만큼 안에 적이 있어야 휘두른다.
   static const double greatswordReach = 135;

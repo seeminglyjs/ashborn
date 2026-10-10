@@ -610,11 +610,13 @@ class Player extends PositionComponent
   ///
   /// [secondary] 는 효과로 생긴 추가 타격: 장비 속성 피해를 다시 더하지 않고,
   /// 바람 검기 · 소용돌이 · 연쇄 번개를 다시 일으키지 않는다.
+  /// [power] 는 장비 피해까지 더한 한 타 전체에 곱하는 배율 (대검의 무게).
   double strike(
     Enemy enemy,
     double base,
     DamageType type, {
     bool secondary = false,
+    double power = 1,
   }) {
     if (enemy.isDead) return 0;
     final random = game.random;
@@ -627,7 +629,8 @@ class Player extends PositionComponent
     }
     // 배율을 곱하기 전 속성별 피해. 원소 효과(파편 · 연쇄 번개 · 바람)의 기준이 된다.
     final raw = Map.of(hit.parts);
-    var multiplier = damageMultiplier * enemy.ailments.hitTakenMultiplier;
+    var multiplier =
+        damageMultiplier * enemy.ailments.hitTakenMultiplier * power;
     if (enemy is Boss) {
       multiplier *= 1 + transcend(TranscendOption.bossDamage);
     }
