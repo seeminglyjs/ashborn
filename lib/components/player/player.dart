@@ -32,6 +32,7 @@ import '../weapons/hunter_weapons.dart';
 import '../weapons/knight_weapons.dart';
 import '../weapons/weapon.dart';
 import '../weapons/witch_weapons.dart';
+import 'sprite_motion.dart';
 
 /// 캐릭터 스프라이트의 자세.
 enum PlayerPose { idle, run, hit }
@@ -76,6 +77,7 @@ class Player extends PositionComponent
 
   /// 캐릭터 스프라이트. 이미지를 다 읽기 전에는 null 이다.
   SpriteAnimationGroupComponent<PlayerPose>? _sprite;
+  SpriteMotion? _motion;
   bool _facingLeft = false;
   double _hitPose = 0;
 
@@ -281,19 +283,23 @@ class Player extends PositionComponent
       position: Vector2(size.x / 2, size.y / 2 + Balance.playerRadius),
       priority: -1,
     );
-    if (_facingLeft) sprite.flipHorizontally();
+    // 좌우 뒤집기는 연출이 크기와 함께 매 프레임 정한다.
+    _motion = SpriteMotion(
+      sprite.position.clone(),
+      pixel: Balance.playerSpriteScale,
+    );
     _sprite = sprite;
     add(sprite);
   }
 
   /// 움직임에 맞춰 자세와 방향을 바꾸고, 무적 시간 동안 깜빡인다.
+  /// 숨쉬기 · 통통 튐 · 기울기 같은 코드 연출은 [SpriteMotion] 이 얹는다.
   void _updateSprite(double dt) {
     final sprite = _sprite;
     if (_hitPose > 0) _hitPose -= dt;
     if (sprite == null) return;
     if (_move.x.abs() > 0.05 && (_move.x < 0) != _facingLeft) {
       _facingLeft = !_facingLeft;
-      sprite.flipHorizontally();
     }
     sprite
       ..current = _hitPose > 0
@@ -302,6 +308,23 @@ class Player extends PositionComponent
           ? PlayerPose.run
           : PlayerPose.idle
       ..opacity = _blinking ? 0 : 1;
+    final stepped = _motion!.apply(
+      sprite,
+      dt,
+      move: _move,
+      facingLeft: _facingLeft,
+      hit: _hitPose > 0,
+      running: sprite.current == PlayerPose.run,
+    );
+    if (stepped) {
+      world.add(
+        DustPuff(
+          position: position + Vector2(0, Balance.playerRadius),
+          drift: Vector2(-_move.x * 30, -6),
+          pixel: Balance.playerSpriteScale,
+        ),
+      );
+    }
   }
 
   bool get _blinking =>
@@ -410,11 +433,13 @@ class Player extends PositionComponent
   void render(Canvas canvas) {
     if (_blinking) return;
     if (hasVeil) _renderVeil(canvas);
+    // 뛰어올라 있으면 그림자를 조금 줄인다.
+    final lift = 1 - (_motion?.hop ?? 0) * 0.04;
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(size.x / 2, size.y / 2 + Balance.playerRadius),
-        width: Balance.playerRadius * 1.6,
-        height: Balance.playerRadius * 0.6,
+        width: Balance.playerRadius * 1.6 * lift,
+        height: Balance.playerRadius * 0.6 * lift,
       ),
       _shadowPaint,
     );

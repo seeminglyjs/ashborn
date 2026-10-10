@@ -5,7 +5,8 @@
 // flutter test tool/preview/scene_test.dart --plain-name 무기   # 하나만
 //
 // 찍는 것: 무기 픽셀 그림 (art_*.png), 대검 기술 프레임 (sword_*.png),
-// 상태이상 진열 (ailments.png), 사냥꾼 전투 (hunter_fight.png), 숙련 화면 (mastery.png).
+// 상태이상 진열 (ailments.png), 사냥꾼 전투 (hunter_fight.png), 숙련 화면 (mastery.png),
+// 플레이어 움직임 프레임 (motion/f_*.png → tool/preview/motion.py 로 묶는다).
 // Windows 빌드가 막혀 있어 게임을 띄우지 않고 그림을 확인하는 방법이다.
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -44,7 +45,9 @@ Future<void> _shot(WidgetTester tester, GlobalKey key, String name) async {
   await tester.runAsync(() async {
     final boundary =
         key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-    final image = await boundary.toImage();
+    final image = await boundary.toImage(
+      pixelRatio: tester.view.devicePixelRatio,
+    );
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     File('build/preview/$name.png')
       ..createSync(recursive: true)
@@ -53,13 +56,15 @@ Future<void> _shot(WidgetTester tester, GlobalKey key, String name) async {
 }
 
 /// 게임을 띄우고 이미지를 읽은 뒤, 웨이브 · 상자 · 적을 치운 빈 전장을 돌려준다.
+/// [ratio] 는 기기 픽셀 배율 (실제 폰은 3 안팎). 도트가 뭉개지는지 볼 때는 3 으로 찍는다.
 Future<(AshbornGame, GlobalKey)> _arena(
   WidgetTester tester,
-  CharacterDef character,
-) async {
+  CharacterDef character, {
+  double ratio = 1,
+}) async {
   tester.view
-    ..physicalSize = const Size(390, 600)
-    ..devicePixelRatio = 1;
+    ..physicalSize = Size(390 * ratio, 600 * ratio)
+    ..devicePixelRatio = ratio;
   addTearDown(tester.view.reset);
   await _fonts();
   final game = AshbornGame(character: character, profile: Profile());
@@ -245,6 +250,36 @@ void main() {
       await tester.pump(const Duration(milliseconds: 16));
     }
     await _shot(tester, key, 'hunter_fight');
+    game.pauseEngine();
+  });
+
+  testWidgets('플레이어 움직임', (tester) async {
+    // 서 있기 → 오른쪽 달리기 → 왼쪽으로 돌기 → 멈추기 → 맞기 를 30fps 로 찍는다.
+    // build/preview/motion/ 의 프레임은 tool/preview/motion.py 로 GIF · 띠 그림으로 묶는다.
+    final dir = Directory('build/preview/motion');
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+    final (game, key) = await _arena(tester, Roster.knight, ratio: 3);
+    final player = game.world.player;
+    final stick = game.joystick.delta;
+    var n = 0;
+    Future<void> run(double seconds, Vector2 input) async {
+      stick.setFrom(input);
+      for (var i = 0; i < (seconds * 30).round(); i++) {
+        await tester.pump(const Duration(microseconds: 33333));
+        await _shot(
+          tester,
+          key,
+          'motion/f_${(n++).toString().padLeft(3, '0')}',
+        );
+      }
+    }
+
+    await run(1.8, Vector2.zero());
+    await run(1.0, Vector2(1000, 0));
+    await run(0.6, Vector2(-1000, 0));
+    await run(0.8, Vector2.zero());
+    player.takeDamage(1);
+    await run(0.7, Vector2.zero());
     game.pauseEngine();
   });
 
