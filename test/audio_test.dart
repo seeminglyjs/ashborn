@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:ashborn/components/pickups/item_drop.dart';
 import 'package:ashborn/data/characters.dart';
@@ -134,12 +135,12 @@ void main() {
       expect(player.played.last.speed, 1);
     });
 
-    test('연속 줍기 음은 한 옥타브에서 멈춘다', () {
+    test('연속 줍기 음은 5도(7반음)에서 멈춘다', () {
       for (var i = 0; i < 40; i++) {
         GameAudio.play(Sfx.shard);
         now += 0.1;
       }
-      expect(player.played.last.speed, closeTo(2, 1e-9));
+      expect(player.played.last.speed, closeTo(math.pow(2, 7 / 12), 1e-9));
     });
 
     test('강화음은 단계가 오를수록 높고, 5단계마다 팡파르가 붙는다', () {
