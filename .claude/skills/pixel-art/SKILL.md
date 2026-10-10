@@ -54,6 +54,7 @@ cp -r assets/images/sprites <스크래치>/before
 |:---|:---|
 | 캐릭터 스프라이트 | `tool/assets/heroes.py` 가 0x72 없이 처음부터 그린다 (24x28 프레임, `heroFrame`) |
 | 몬스터 스프라이트 | `tool/assets/sprites.py` → `monsters.py` → `polish.py` 순서로 원본에서 만든다 (README 의 에셋 절) |
+| 지역 보스 스프라이트 | `tool/assets/bosses.py` 가 처음부터 그린다 (48x48 프레임, 큰 덩어리 명암은 `BossCanvas.volume`) |
 | 장비 아이콘 | `tool/assets/gear_icons.py` (부위 `gear.png`, 직업 무기 `weapons.png`, 각 고유판) |
 | 내 공격 도트 이펙트 | `lib/components/effects/pixel_fx.dart` (`PixelFx` · `PixelCanvas` · `FxTones`), 땅 이펙트 `ground_fx.dart` |
 | 적 공격 빨간 테두리 | `lib/components/enemies/hazards.dart` (`enemyOutline` · `dangerStroke` · `HostileBurst`) |

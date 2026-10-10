@@ -119,8 +119,15 @@ void main() {
 
       final arrows = game.world.children.whereType<FireArrow>().toList();
       expect(arrows.length, Balance.stormArrows + bow.bonusCount);
+      // 최대 레벨이라 확률로 헤드샷(끝없이 꿰뚫음)이 섞일 수 있다.
       expect(
-        arrows.every((a) => a.pierce == pierce + Balance.stormPierceBonus),
+        arrows.every(
+          (a) =>
+              a.pierce ==
+              (a.headshot
+                  ? Balance.headshotPierce
+                  : pierce + Balance.stormPierceBonus),
+        ),
         isTrue,
       );
     },

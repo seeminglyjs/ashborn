@@ -1,17 +1,15 @@
-/// 0x72 DungeonTileset II (CC-0) 에서 가져온 적 · 보스 스프라이트 시트와 그 변종.
-/// 걷기 애니메이션 [frameCount] 장을 가로로 붙였고, `tool/assets/sprites.py` 가 만든다.
-/// 원본은 모두 오른쪽을 보고 있다.
+/// 적 · 보스 스프라이트 시트. 걷기 애니메이션 [frameCount] 장을 가로로 붙였고, 모두 오른쪽을 본다.
+/// 앞쪽은 0x72 DungeonTileset II (CC-0) 원본과 그 변종 (`tool/assets/sprites.py` · `monsters.py`),
+/// 뒤쪽은 Endesga 32 로 처음부터 그린 것 (`new_monsters.py` · `bosses.py`).
+///
+/// 0x72 원본 big_zombie · necromancer · ogre · masked_orc · big_demon 시트도 assets 에 있지만
+/// 게임에서 직접 쓰지 않는다. `monsters.py` 가 지역 변종을 만드는 원본이다.
 enum MonsterSprite {
   tinyZombie('tiny_zombie', 16, 16),
   skelet('skelet', 16, 16),
   imp('imp', 16, 16),
   orcWarrior('orc_warrior', 16, 23),
   chort('chort', 16, 23),
-  bigZombie('big_zombie', 32, 36),
-  necromancer('necromancer', 16, 23),
-  ogre('ogre', 32, 36),
-  maskedOrc('masked_orc', 16, 23),
-  bigDemon('big_demon', 32, 36),
 
   // 아래는 `tool/assets/monsters.py` 가 만든 재채색 변종과 새로 그린 몬스터.
   orcAsh('orc_ash', 16, 23),
@@ -47,7 +45,14 @@ enum MonsterSprite {
   emberMaw('ember_maw', 16, 23),
   emberDrake('ember_drake', 16, 23),
   rustScorpion('rust_scorpion', 16, 16),
-  flameLizard('flame_lizard', 16, 23);
+  flameLizard('flame_lizard', 16, 23),
+
+  // `tool/assets/bosses.py` 가 처음부터 그린 지역 보스. 졸개보다 큰 48x48 판.
+  bossAshGiant('boss_ash_giant', 48, 48),
+  bossDrownedPriest('boss_drowned_priest', 48, 48),
+  bossBurningTreant('boss_burning_treant', 48, 48),
+  bossRustKnight('boss_rust_knight', 48, 48),
+  bossUndyingHeart('boss_undying_heart', 48, 48);
 
   const MonsterSprite(this.file, this.width, this.height);
 

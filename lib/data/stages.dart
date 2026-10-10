@@ -25,7 +25,7 @@ enum Region {
       EnemyKind.ashRam,
       EnemyKind.ashOgre,
     ],
-    bossSprite: MonsterSprite.bigZombie,
+    bossSprite: MonsterSprite.bossAshGiant,
   ),
   sunkenCathedral(
     '가라앉은 성당',
@@ -42,7 +42,7 @@ enum Region {
       EnemyKind.bloatedDrowned,
       EnemyKind.tideWarden,
     ],
-    bossSprite: MonsterSprite.necromancer,
+    bossSprite: MonsterSprite.bossDrownedPriest,
   ),
   burningForest(
     '불타는 숲',
@@ -60,7 +60,7 @@ enum Region {
       EnemyKind.flameWisp,
       EnemyKind.charredHulk,
     ],
-    bossSprite: MonsterSprite.ogre,
+    bossSprite: MonsterSprite.bossBurningTreant,
     speed: 1.25,
   ),
   rustedFortress(
@@ -78,7 +78,7 @@ enum Region {
       EnemyKind.orcLancer,
       EnemyKind.rustOgre,
     ],
-    bossSprite: MonsterSprite.maskedOrc,
+    bossSprite: MonsterSprite.bossRustKnight,
     speed: 0.9,
     hp: 1.4,
   ),
@@ -97,7 +97,7 @@ enum Region {
       EnemyKind.voidRunner,
       EnemyKind.fleshHulk,
     ],
-    bossSprite: MonsterSprite.bigDemon,
+    bossSprite: MonsterSprite.bossUndyingHeart,
     speed: 1.1,
     hp: 1.2,
   );
