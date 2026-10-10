@@ -14,45 +14,45 @@ import '../data/settings.dart';
 /// [jitter] 는 울릴 때마다 흔드는 음높이 비율. 적 수십 마리가 한꺼번에 맞아도
 /// 시끄럽게 뭉개지지 않도록 자주 나는 소리일수록 [voices] 를 줄이고 [gap] 을 둔다.
 enum Sfx {
-  hit(volume: 0.32, voices: 3, gap: 0.05, length: 0.06, jitter: 0.08),
-  crit(volume: 0.4, voices: 2, gap: 0.07, length: 0.12, jitter: 0.06),
-  kill(volume: 0.4, voices: 3, gap: 0.06, length: 0.17, jitter: 0.1),
-  hurt(volume: 0.7, voices: 1, gap: 0.15, length: 0.26, jitter: 0.04),
-  block(volume: 0.55, voices: 1, gap: 0.15, length: 0.22),
-  bossAppear(file: 'boss_appear', volume: 0.9, length: 1.7),
-  bossDown(file: 'boss_down', volume: 0.9, length: 1.4),
+  hit(volume: 0.26, voices: 3, gap: 0.065, length: 0.06, jitter: 0.08),
+  crit(volume: 0.34, voices: 2, gap: 0.07, length: 0.12, jitter: 0.06),
+  kill(volume: 0.3, voices: 2, gap: 0.06, length: 0.17, jitter: 0.1),
+  hurt(volume: 0.6, voices: 1, gap: 0.15, length: 0.26, jitter: 0.04),
+  block(volume: 0.5, voices: 1, gap: 0.15, length: 0.22),
+  bossAppear(file: 'boss_appear', volume: 0.65, length: 1.7),
+  bossDown(file: 'boss_down', volume: 0.6, length: 1.4),
 
   /// 재의 결정. 연달아 주우면 음이 한 단계씩 올라간다 ([GameAudio.play]).
-  shard(volume: 0.3, voices: 3, gap: 0.035, length: 0.07),
-  coin(volume: 0.45, voices: 2, gap: 0.08, length: 0.3),
-  gem(volume: 0.5, voices: 2, gap: 0.08, length: 0.4),
-  heal(volume: 0.55, length: 0.5),
-  magnet(volume: 0.5, length: 0.45),
-  crate(volume: 0.5, voices: 2, gap: 0.06, length: 0.24, jitter: 0.08),
-  equip(volume: 0.5, voices: 2, gap: 0.06, length: 0.16),
+  shard(volume: 0.24, voices: 3, gap: 0.045, length: 0.07),
+  coin(volume: 0.35, voices: 2, gap: 0.08, length: 0.3),
+  gem(volume: 0.4, voices: 2, gap: 0.08, length: 0.4),
+  heal(volume: 0.45, length: 0.5),
+  magnet(volume: 0.4, length: 0.45),
+  crate(volume: 0.4, voices: 2, gap: 0.06, length: 0.24, jitter: 0.08),
+  equip(volume: 0.4, voices: 2, gap: 0.06, length: 0.16),
 
   /// 장비가 떨어질 때. 등급이 높을수록 길고 화려하다 ([forRarity]).
   lootNormal(
     file: 'loot_normal',
-    volume: 0.35,
+    volume: 0.3,
     voices: 2,
     gap: 0.08,
     length: 0.18,
   ),
-  lootRare(file: 'loot_rare', volume: 0.5, voices: 2, gap: 0.1, length: 0.5),
-  lootHero(file: 'loot_hero', volume: 0.6, voices: 2, gap: 0.1, length: 0.8),
-  lootLegend(file: 'loot_legend', volume: 0.75, length: 1.3),
-  lootEpic(file: 'loot_epic', volume: 0.85, length: 1.7),
+  lootRare(file: 'loot_rare', volume: 0.42, voices: 2, gap: 0.1, length: 0.5),
+  lootHero(file: 'loot_hero', volume: 0.5, voices: 2, gap: 0.1, length: 0.8),
+  lootLegend(file: 'loot_legend', volume: 0.58, length: 1.3),
+  lootEpic(file: 'loot_epic', volume: 0.65, length: 1.7),
 
-  levelUp(file: 'level_up', volume: 0.6, length: 0.7),
-  select(volume: 0.5, gap: 0.05, length: 0.17),
-  tap(volume: 0.4, voices: 2, gap: 0.03, length: 0.035),
-  stageClear(file: 'stage_clear', volume: 0.7, length: 1.6),
-  gameOver(file: 'game_over', volume: 0.7, length: 1.9),
+  levelUp(file: 'level_up', volume: 0.42, length: 0.7),
+  select(volume: 0.4, gap: 0.05, length: 0.17),
+  tap(volume: 0.35, voices: 2, gap: 0.03, length: 0.035),
+  stageClear(file: 'stage_clear', volume: 0.52, length: 1.6),
+  gameOver(file: 'game_over', volume: 0.55, length: 1.9),
 
   /// 장비 강화 · 화톳불 강화. 강화 단계가 오를수록 음이 올라간다 ([GameAudio.enhance]).
-  enhance(volume: 0.6, voices: 2, gap: 0.05, length: 0.65),
-  transcend(volume: 0.7, length: 1.1);
+  enhance(volume: 0.5, voices: 2, gap: 0.05, length: 0.65),
+  transcend(volume: 0.55, length: 1.1);
 
   const Sfx({
     this._file,
@@ -91,10 +91,10 @@ enum Bgm {
   hearth(volume: 0.45),
 
   /// 웨이브를 버티는 동안.
-  battle(volume: 0.38),
+  battle(volume: 0.32),
 
   /// 보스가 나온 뒤.
-  boss(volume: 0.42);
+  boss(volume: 0.36);
 
   const Bgm({required this.volume});
 
@@ -154,7 +154,7 @@ abstract final class GameAudio {
   static int _shardChain = 0;
   static double _lastShard = -1;
   static const _shardChainGap = 0.4;
-  static const _shardChainMax = 12;
+  static const _shardChainMax = 7;
 
   /// 지금 고른 곡. null 이면 조용하다.
   static Bgm? _bgm;
@@ -229,7 +229,8 @@ abstract final class GameAudio {
     backend.play(sfx, volume: volume, speed: pitch * (1 + wobble));
   }
 
-  /// 연달아 주울수록 반음씩, 한 옥타브까지 올라간다. 줍는 재미가 쌓이는 느낌을 준다.
+  /// 연달아 주울수록 반음씩, 5도(7반음)까지 올라간다. 줍는 재미가 쌓이는 느낌을 준다.
+  /// 한 옥타브까지 올리면 재의 결정이 몰릴 때 날카롭게 들린다 (3단계 측정).
   static double _chainPitch(double now) {
     _shardChain = now - _lastShard <= _shardChainGap
         ? math.min(_shardChain + 1, _shardChainMax)
@@ -299,6 +300,13 @@ class SoLoudBackend implements AudioBackend {
     if (!_soloud.isInitialized) await _soloud.init(bufferSize: 1024);
     // 짧은 소리가 많이 겹치는 게임이라 기본 16 보다 넉넉히.
     _soloud.setMaxActiveVoiceCount(48);
+    // 보스 처치 · 전리품처럼 큰 소리가 한꺼번에 겹쳐도 깨지지 않게 출력 끝에 리미터를 둔다.
+    // 이 엔진의 문턱(threshold)은 그만큼 소리를 키우는 값이라 (-3dB 면 +3dB) 0 으로 두고,
+    // 상한 -1dB 를 넘는 순간만 누른다. tool/sound/mix.py 가 같은 값으로 흉내 낸다.
+    final limiter = _soloud.filters.limiterFilter;
+    if (!limiter.isActive) limiter.activate();
+    limiter.threshold.value = 0;
+    limiter.outputCeiling.value = -1;
     final loaded = await Future.wait([
       for (final sfx in Sfx.values) _soloud.loadAsset(sfx.asset),
     ]);

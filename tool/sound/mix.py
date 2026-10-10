@@ -1,6 +1,6 @@
 """소리 기록(tool/sound/mix_test.dart)을 실제 소리 파일로 섞어 "플레이 중에 들리는 소리"를 만들고 잰다.
 
-    python -I tool/sound/mix.py <기록.jsonl> [--out build/sound] [--from 초] [--to 초]
+    python -I tool/sound/mix.py <기록.jsonl> [--out build/sound] [--from 초] [--to 초] [--around 효과음]
 
 - <이름>.ogg: 섞은 결과. 직접 들어 보는 용도.
 - 화면 출력:
@@ -52,6 +52,35 @@ def k_weight(x):
     return np.fft.irfft(spec * hp * shelf, len(x))
 
 
+def limit(x, threshold_db=0.0, ceiling_db=-1.0, attack=0.001, release=0.1):
+    """SoLoud 의 전체 리미터를 lib/services/audio.dart 의 설정(문턱 0dB, 상한 -1dB)으로 대략 흉내 낸다.
+    상한을 넘는 순간만 누른다 (SoLoud 의 문턱은 소리를 키우는 값이라 0 으로 둔다).
+    1ms 단위로 최고점을 보고, 줄일 때는 [attack], 되돌릴 때는 [release] 시간에 걸쳐 움직인다.
+    돌려주는 것: (리미터를 거친 소리, 샘플별 이득 1 이하)."""
+    block = max(1, int(RATE * 0.001))
+    n = len(x) // block * block
+    peaks = np.abs(x[:n]).reshape(-1, block).max(axis=1)
+    thr, ceil = 10 ** (threshold_db / 20), 10 ** (ceiling_db / 20)
+    # 문턱 위는 (상한-문턱)/(1-문턱) 비율로 눌러 1.0 이 상한에 닿게 한다.
+    want = np.ones_like(peaks)
+    over = peaks > thr
+    target = thr + (peaks[over] - thr) * (ceil - thr) / max(1e-9, 1 - thr)
+    want[over] = np.minimum(1, target / peaks[over])
+    # 1.0 을 넘는 최고점은 상한까지 확실히 누른다.
+    want = np.minimum(want, np.where(peaks > 0, ceil / np.maximum(peaks, 1e-9), 1))
+    a = np.exp(-0.001 / attack)
+    r = np.exp(-0.001 / release)
+    gain = np.empty_like(want)
+    g = 1.0
+    for i, w in enumerate(want):
+        g = w + (g - w) * (a if w < g else r)
+        g = min(g, w) if w < g else g
+        gain[i] = g
+    per_sample = np.ones(len(x))
+    per_sample[:n] = np.repeat(gain, block)
+    return x * per_sample, per_sample
+
+
 def db(v):
     return 20 * np.log10(max(v, 1e-9))
 
@@ -67,6 +96,9 @@ def main():
     ap.add_argument("--out", default=os.path.join("build", "sound"))
     ap.add_argument("--from", dest="start", type=float, default=0)
     ap.add_argument("--to", dest="end", type=float, default=None)
+    ap.add_argument("--around", help="이 효과음이 울린 때의 앞 60초 · 뒤 20초만 섞는다 (예: bossDown)")
+    ap.add_argument("--nth", type=int, default=1, help="--around 의 몇 번째 소리인가 (1부터)")
+    ap.add_argument("--no-limit", action="store_true", help="리미터 없이 섞는다 (리미터를 넣기 전과 비교할 때)")
     args = ap.parse_args()
 
     events = [json.loads(line) for line in open(args.timeline, encoding="utf-8")]
@@ -81,13 +113,19 @@ def main():
         elif e["kind"] == "music":
             last_vol = e["vol"]
         e["t"] += shift
+    if args.around:
+        hit = [e["t"] for e in events if e["kind"] == "sfx" and e["name"] == args.around][args.nth - 1]
+        args.start, args.end = max(0.0, hit - 60), hit + 20
     end = args.end if args.end is not None else events[-1]["t"] + 3
     events = [e for e in events if args.start <= e["t"] < end]
     length = int((end - args.start) * RATE)
 
     sfx = np.zeros(length)
-    per_sound = collections.defaultdict(lambda: np.zeros(length))
+    # 소리별 에너지는 한 번 울린 것마다 따로 더한다 (겹친 소리끼리의 간섭은 무시).
+    # 소리마다 녹음 길이만 한 배열을 두면 10분 녹음에 수 GB 가 든다.
+    energy = collections.Counter()
     counts = collections.Counter()
+    weighted = {}
 
     # 배경음: 곡마다 (시작, 음량 변화 목록) 을 모아 반복 재생하며 음량 곡선을 입힌다.
     music = np.zeros(length)
@@ -100,7 +138,10 @@ def main():
             n = min(len(x), length - at)
             if n <= 0:
                 continue
-            per_sound[e["name"]][at:at + n] += x[:n]
+            sfx[at:at + n] += x[:n]
+            if e["asset"] not in weighted:
+                weighted[e["asset"]] = float(np.sum(k_weight(load(e["asset"])) ** 2))
+            energy[e["name"]] += weighted[e["asset"]] * e["vol"] ** 2 / e["speed"]
             counts[e["name"]] += 1
         elif e["kind"] == "music":
             fade = int(e["fade"] * RATE)
@@ -134,17 +175,16 @@ def main():
             level = target
         music[start:start + span] += loop * gain
 
-    for x in per_sound.values():
-        sfx += x
     mix = sfx + music
+    limited, reduction = (mix, np.ones(len(mix))) if args.no_limit else limit(mix)
 
     os.makedirs(args.out, exist_ok=True)
     name = os.path.splitext(os.path.basename(args.timeline))[0]
     with soundfile.SoundFile(os.path.join(args.out, f"{name}.ogg"), "w", RATE, 1,
                              format="OGG", subtype="VORBIS") as f:
-        clipped = np.clip(mix, -1, 1)
-        for i in range(0, len(clipped), 8192):
-            f.write(clipped[i:i + 8192])
+        out = np.clip(limited, -1, 1)
+        for i in range(0, len(out), 8192):
+            f.write(out[i:i + 8192])
 
     # ---- 재기 ----
     second = RATE
@@ -154,8 +194,9 @@ def main():
     playing = music_s > 1e-4
 
     print(f"길이 {length / RATE:.0f}s, 효과음 {sum(counts.values())}번")
-    print(f"전체 크기 {db(np.sqrt(np.mean(kmix ** 2))):6.1f} dBFS   최고점 {np.max(np.abs(mix)):.2f}   "
-          f"클리핑 {np.mean(np.abs(mix) > 1) * 100:.3f}% 샘플")
+    print(f"전체 크기 {db(np.sqrt(np.mean(kmix ** 2))):6.1f} dBFS   최고점 {np.max(np.abs(mix)):.2f} "
+          f"(리미터 뒤 {np.max(np.abs(limited)):.2f})   리미터 작동 {np.mean(reduction < 0.999) * 100:.2f}% 시간, "
+          f"가장 깊게 {db(reduction.min()):.1f} dB")
     print(f"1초 창 크기: 중앙값 {db(np.median(mix_s)):.1f}  상위 5% {db(np.percentile(mix_s, 95)):.1f}  "
           f"최고 {db(mix_s.max()):.1f} dBFS")
     both = playing & (sfx_s > 1e-4)
@@ -164,16 +205,12 @@ def main():
         print(f"효과음 - 배경음 (배경음이 나오는 1초 창 중앙값) {np.median(gap):+.1f} dB   "
               f"배경음 {db(np.median(music_s[playing])):.1f} / 효과음 {db(np.median(sfx_s[both])):.1f} dBFS")
 
-    total = sum(float(np.sum(k_weight(x) ** 2)) for x in per_sound.values()) or 1
+    total = sum(energy.values()) or 1
     minutes = length / RATE / 60
     print("\n효과음        횟수   분당   에너지   1회 크기(dBFS)")
-    rows = []
-    for key, x in per_sound.items():
-        energy = float(np.sum(k_weight(x) ** 2))
-        rows.append((energy, key))
-    for energy, key in sorted(rows, reverse=True):
-        per_hit = np.sqrt(energy / counts[key] / RATE)  # 1초에 펼친 1회분의 RMS
-        print(f"{key:12s} {counts[key]:5d} {counts[key] / minutes:6.1f} {energy / total * 100:6.1f}%   {db(per_hit):6.1f}")
+    for key, e in energy.most_common():
+        per_hit = np.sqrt(e / counts[key] / RATE)  # 1초에 펼친 1회분의 RMS
+        print(f"{key:12s} {counts[key]:5d} {counts[key] / minutes:6.1f} {e / total * 100:6.1f}%   {db(per_hit):6.1f}")
 
     print("\n가장 시끄러운 1초 창")
     for i in np.argsort(mix_s)[::-1][:6]:
@@ -182,6 +219,20 @@ def main():
                                     if e["kind"] == "sfx" and t0 <= e["t"] < t0 + 1)
         top = ", ".join(f"{k}×{v}" for k, v in names.most_common(5))
         print(f"  {t0:6.0f}s  {db(mix_s[i]):6.1f} dBFS  최고점 {np.max(np.abs(mix[i * second:(i + 1) * second])):.2f}  {top}")
+    print("\n최고점 (0.8 이 넘는 순간, 0.5초 안에 하나만)")
+    order = np.argsort(np.abs(mix))[::-1]
+    shown = []
+    for i in order[:20000]:
+        if abs(mix[i]) < 0.8 or len(shown) >= 6:
+            break
+        if any(abs(i - j) < RATE // 2 for j in shown):
+            continue
+        shown.append(i)
+        t0 = args.start + i / RATE
+        near = collections.Counter(e["name"] for e in events
+                                   if e["kind"] == "sfx" and t0 - 1.5 <= e["t"] <= t0)
+        top = ", ".join(f"{k}×{v}" for k, v in near.most_common(6))
+        print(f"  {t0:7.2f}s  {mix[i]:+.2f} (효과음 {sfx[i]:+.2f}, 배경음 {music[i]:+.2f})  {top}")
     print(f"\n→ {os.path.join(args.out, name + '.ogg')}")
 
 
