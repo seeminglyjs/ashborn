@@ -1,8 +1,6 @@
-import 'dart:math' as math;
-
 import 'package:ashborn/components/enemies/boss.dart';
 import 'package:ashborn/components/weapons/ember_orb.dart';
-import 'package:ashborn/components/weapons/flame_blade.dart';
+import 'package:ashborn/components/weapons/greatsword.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/damage.dart';
@@ -20,22 +18,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
-
-/// 늘 [value] 를 내는 난수. 성공 여부와 고르는 옵션을 정해 둔다.
-class _Roll implements math.Random {
-  _Roll(this.value);
-
-  final double value;
-
-  @override
-  double nextDouble() => value;
-
-  @override
-  bool nextBool() => value < 0.5;
-
-  @override
-  int nextInt(int max) => (value * max).floor();
-}
 
 /// 초월할 수 있게 강화한 [rarity] 허리띠. [transcends] 를 미리 붙인다.
 Item maxed(Rarity rarity, [List<TranscendRoll> transcends = const []]) => Item(
@@ -76,18 +58,27 @@ void main() {
       expect(Rarity.unique.maxTranscend, 3);
     });
 
-    test('성공하면 초월석과 골드를 쓰고 아직 없는 초월 옵션이 붙는다', () {
+    test('초월석과 골드를 쓰면 반드시 성공하고 고른 초월 옵션이 고정 수치로 붙는다', () {
       final inv = rich();
       final belt = maxed(Rarity.epic);
       final (stones, gold) = (inv.transcendStones, inv.gold);
       final (needStones, needGold) = (belt.transcendStones, belt.transcendGold);
 
-      for (var i = 0; i < Rarity.epic.maxTranscend; i++) {
-        expect(inv.transcend(belt, _Roll(0)), isTrue);
+      const picks = [
+        TranscendOption.thorns,
+        TranscendOption.bossDamage,
+        TranscendOption.goldFind,
+      ];
+      for (final option in picks) {
+        inv.transcend(belt, option);
       }
 
-      expect(belt.transcends.length, Rarity.epic.maxTranscend);
-      expect(belt.transcends.map((t) => t.option).toSet().length, 3);
+      expect([for (final t in belt.transcends) t.option], picks);
+      expect(belt.transcend(TranscendOption.thorns), Balance.transcendThorns);
+      expect(
+        TranscendOption.available({for (final t in belt.transcends) t.option}),
+        isNot(contains(TranscendOption.thorns)),
+      );
       expect(belt.canTranscend, isFalse);
       expect(belt.name, endsWith('★3'));
       expect(inv.transcendStones, lessThan(stones - needStones));
@@ -95,18 +86,7 @@ void main() {
       expect(belt.enhance, Balance.transcendEnhance, reason: '강화 단계는 그대로');
     });
 
-    test('실패하면 재료만 사라진다', () {
-      final inv = rich();
-      final belt = maxed(Rarity.legend);
-      final stones = inv.transcendStones;
-
-      expect(inv.transcend(belt, _Roll(belt.transcendChance)), isFalse);
-
-      expect(belt.transcends, isEmpty);
-      expect(inv.transcendStones, stones - belt.transcendStones);
-    });
-
-    test('초월석이 모자라면 할 수 없고, 단계가 오를수록 비싸고 어렵다', () {
+    test('초월석이 모자라면 할 수 없고, 단계가 오를수록 비싸다', () {
       final belt = maxed(Rarity.unique);
       expect((Inventory()..addLoot(gold: 1 << 30)).canTranscend(belt), isFalse);
 
@@ -115,7 +95,6 @@ void main() {
       ]);
       expect(next.transcendStones, greaterThan(belt.transcendStones));
       expect(next.transcendGold, greaterThan(belt.transcendGold));
-      expect(next.transcendChance, lessThan(belt.transcendChance));
     });
 
     test('초월 옵션과 초월석이 저장되고, 예전 장비에는 없이 들어간다', () {
@@ -163,13 +142,13 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '투사체: 런 중에 장비를 끼면 칼날이 바로 는다',
+      '투사체: 런 중에 장비를 끼면 대검 콤보 확률이 바로 오른다',
       gameWith(Roster.knight),
       (game) async {
         await game.ready();
-        final blade =
-            game.world.player.weapon(WeaponId.flameBlade)! as FlameBlade;
-        final before = blade.children.length;
+        final sword =
+            game.world.player.weapon(WeaponId.greatsword)! as Greatsword;
+        final before = sword.comboChance;
 
         game.gear.add(
           maxed(Rarity.hero, [
@@ -178,7 +157,10 @@ void main() {
         );
         await advance(game, 0.05);
 
-        expect(blade.children.length, before + 1);
+        expect(
+          sword.comboChance,
+          closeTo(before + Balance.comboPerProjectile, 1e-9),
+        );
       },
     );
 
@@ -312,7 +294,7 @@ void main() {
     );
   });
 
-  testWidgets('장비 화면: +20 영웅 장비에 초월 비용과 버튼이 보이고 시도하면 재료를 쓴다', (tester) async {
+  testWidgets('장비 화면: +20 영웅 장비에 초월 비용과 버튼이 보이고 옵션을 고르면 초월한다', (tester) async {
     tester.view
       ..physicalSize = const Size(390, 844)
       ..devicePixelRatio = 1;
@@ -341,14 +323,17 @@ void main() {
 
     expect(
       tester.widget<Text>(find.byKey(const Key('transcend-cost'))).data,
-      '초월석 ${belt.transcendStones} · 골드 ${belt.transcendGold} · '
-      '성공 ${(Balance.transcendChances[0] * 100).round()}%',
+      '초월석 ${belt.transcendStones} · 골드 ${belt.transcendGold}',
     );
 
     await tester.tap(find.byKey(const Key('transcend')));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('transcend-picker')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('transcend-option-bossDamage')));
+    await tester.pumpAndSettle();
 
     expect((inv.transcendStones, inv.gold), (0, 0));
-    expect(find.byKey(const Key('transcend-result')), findsOneWidget);
+    expect(belt.transcends.single.option, TranscendOption.bossDamage);
+    expect(find.byKey(const Key('upgrade-result')), findsOneWidget);
   });
 }

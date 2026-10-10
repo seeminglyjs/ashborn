@@ -189,14 +189,13 @@ class Item {
   bool get canTranscend =>
       canEverTranscend && enhance >= Balance.transcendEnhance;
 
-  /// 다음 초월에 드는 초월석, 골드, 성공 확률.
+  /// 다음 초월에 드는 초월석과 골드. 재료만 있으면 반드시 성공한다.
   int get transcendStones => Balance.transcendStones[transcends.length];
   int get transcendGold =>
       (Balance.transcendGold *
               math.pow(Balance.transcendGoldGrowth, transcends.length) *
               _levelFactor)
           .round();
-  double get transcendChance => Balance.transcendChances[transcends.length];
 
   /// 이 장비의 [option] 초월 수치. 없으면 0.
   double transcend(TranscendOption option) => transcends
@@ -217,9 +216,14 @@ class Item {
 
   double get _levelFactor => 1 + Balance.emberPerItemLevel * (level - 1);
 
-  /// 다음 강화에 드는 강화석.
-  int get enhanceStones =>
-      Balance.enhanceStones + Balance.enhanceStonesPerStep * enhance;
+  /// 다음 강화에 드는 강화석. 재료만 있으면 반드시 한 단계 오른다.
+  int get enhanceStones => enhanceStonesAt(enhance);
+
+  /// [step] 단계에서 다음 단계로 강화할 때 드는 강화석.
+  static int enhanceStonesAt(int step) =>
+      Balance.enhanceStones +
+      Balance.enhanceStonesPerStep * step +
+      step * step ~/ Balance.enhanceStonesSquare;
 
   /// 다음 강화에 드는 골드.
   int get enhanceGold =>
@@ -228,9 +232,6 @@ class Item {
               math.pow(Balance.enhanceRarityGrowth, rarity.index) *
               _levelFactor)
           .round();
-
-  /// 다음 강화가 성공할 확률.
-  double get enhanceChance => Balance.enhanceChances[enhance];
 
   /// 분해하면 얻는 잔불.
   int get salvageValue =>

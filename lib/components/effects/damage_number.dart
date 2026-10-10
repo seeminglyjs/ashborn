@@ -82,3 +82,42 @@ class DamageNumber extends TextComponent with HasWorldReference<RunWorld> {
     );
   }
 }
+
+/// 머리 위로 떠올랐다 사라지는 짧은 글씨 ('콤보!', '맹공!', '튕겨내기!').
+class CallOut extends TextComponent {
+  CallOut({
+    required super.position,
+    required String text,
+    Color color = const Color(0xFFFFFFFF),
+    double fontSize = 14,
+  }) : super(
+         text: text,
+         anchor: Anchor.center,
+         priority: 9,
+         textRenderer: TextPaint(
+           style: TextStyle(
+             color: color,
+             fontSize: fontSize,
+             fontWeight: FontWeight.w900,
+             shadows: const [Shadow(blurRadius: 3)],
+           ),
+         ),
+       );
+
+  static const double duration = 0.7;
+  double _life = 0;
+
+  @override
+  void update(double dt) {
+    _life += dt;
+    if (_life >= duration) {
+      removeFromParent();
+      return;
+    }
+    position.y -= 30 * dt;
+    final t = _life / duration;
+    scale.setAll(
+      t < 0.12 ? 1.5 - t / 0.12 * 0.5 : (t > 0.8 ? (1 - t) / 0.2 : 1),
+    );
+  }
+}

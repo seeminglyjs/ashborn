@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:ashborn/components/weapons/flame_blade.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/weapons.dart';
 import 'package:ashborn/game/ashborn_game.dart';
@@ -46,9 +45,7 @@ void main() {
             player.gainWeapon(id);
           }
           await game.ready();
-          // 대검은 궤도 위에 둔다.
-          final weapon = player.weapon(id);
-          final at = Vector2(weapon is FlameBlade ? weapon.orbitRadius : 45, 0);
+          final at = Vector2(45, 0);
           final enemy = await addEnemy(game, at, hp: 1e9);
 
           for (var i = 0; i < 40 && enemy.hp >= enemy.maxHp; i++) {
@@ -70,15 +67,15 @@ void main() {
   ) async {
     await game.ready();
     final player = game.world.player;
-    while (player.weapon(WeaponId.flameBlade)!.level < WeaponId.maxLevel) {
-      player.gainWeapon(WeaponId.flameBlade);
+    while (player.weapon(WeaponId.greatsword)!.level < WeaponId.maxLevel) {
+      player.gainWeapon(WeaponId.greatsword);
     }
-    player.awaken(WeaponId.flameBlade);
+    player.awaken(WeaponId.greatsword);
     await game.ready();
     expect(game.notices.value.last.text, contains('각성'));
     expect(
       game.notices.value.last.text,
-      contains(WeaponId.flameBlade.awakenedLabel),
+      contains(WeaponId.greatsword.awakenedLabel),
     );
   });
 }

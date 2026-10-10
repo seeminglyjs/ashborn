@@ -10,9 +10,11 @@ import 'package:ashborn/components/pickups/item_drop.dart';
 import 'package:ashborn/components/pickups/pickup.dart';
 import 'package:ashborn/components/pickups/supply_drop.dart';
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/class_passives.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/fates.dart';
 import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/data/transcend.dart';
 import 'package:ashborn/data/upgrades.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/game/world/obstacles.dart';
@@ -297,7 +299,7 @@ class Meta {
 
   final AshbornGame game;
   final math.Random random;
-  int enhanceTries = 0, enhanceFails = 0, transcends = 0;
+  int enhances = 0, transcends = 0;
 
   /// 칸마다 점수가 더 높은 장비로 바꾸고, 남은 가방 장비는 분해한다.
   /// 끼울 장비는 강화를 계승한 뒤의 점수로 비교한다.
@@ -337,6 +339,20 @@ class Meta {
     }
   }
 
+  /// 직업 숙련 포인트를 가장 낮은 패시브부터 고르게 올린다.
+  void mastery() {
+    final mastery = game.mastery;
+    final passives = ClassPassive.of(game.world.character.id);
+    while (true) {
+      final can = passives.where(mastery.canRaise).toList()
+        ..sort(
+          (a, b) => mastery.passiveLevel(a).compareTo(mastery.passiveLevel(b)),
+        );
+      if (can.isEmpty) return;
+      mastery.raise(can.first);
+    }
+  }
+
   /// 강화 단계가 가장 낮은 장착 장비부터 재료가 떨어질 때까지 강화하고, 초월한다.
   void enhance() {
     final inv = game.inventory;
@@ -348,13 +364,19 @@ class Meta {
           return c != 0 ? c : a.enhanceGold.compareTo(b.enhanceGold);
         });
       if (items.isEmpty) break;
-      enhanceTries++;
-      if (!inv.enhance(items.first, random)) enhanceFails++;
+      enhances++;
+      inv.enhance(items.first);
     }
     while (true) {
       final items = gear.equipped.values.where(inv.canTranscend).toList();
       if (items.isEmpty) break;
-      if (inv.transcend(items.first, random)) transcends++;
+      // 공격 쪽 초월 옵션부터 고른다.
+      final item = items.first;
+      final option = TranscendOption.available({
+        for (final t in item.transcends) t.option,
+      }).first;
+      inv.transcend(item, option);
+      transcends++;
     }
   }
 
@@ -370,6 +392,6 @@ class Meta {
     final r = rarities.entries.map((e) => '${e.key.label}${e.value}').join(' ');
     return '${g.length}칸 [$r] 평균강화 +${enhance.toStringAsFixed(1)} '
         '평균Lv ${level.toStringAsFixed(1)} '
-        '강화시도 $enhanceTries 실패 $enhanceFails 초월 $transcends';
+        '강화 $enhances 초월 $transcends';
   }
 }

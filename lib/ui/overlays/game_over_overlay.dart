@@ -62,6 +62,12 @@ class GameOverOverlay extends StatelessWidget {
                 '${game.world.runTranscendStones > 0 ? ' · 초월석  +${game.world.runTranscendStones}' : ''}',
                 style: statStyle,
               ),
+              const SizedBox(height: 6),
+              Text(
+                '숙련  +${game.world.runMastery}',
+                key: const Key('run-mastery'),
+                style: statStyle,
+              ),
               const SizedBox(height: 4),
               Text(
                 '보유 잔불 ${game.inventory.ember} · 화톳불에서 영구 강화에 쓸 수 있다',

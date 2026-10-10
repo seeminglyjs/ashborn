@@ -10,7 +10,9 @@ import '../../data/damage.dart';
 import '../../data/enemies.dart';
 import '../../data/monster_sprites.dart';
 import '../../game/world/run_world.dart';
+import '../effects/burst.dart';
 import '../effects/sparks.dart';
+import 'ailment_fx.dart';
 import 'ailments.dart';
 import 'death_puff.dart';
 
@@ -66,6 +68,9 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   double _walk = 0;
   bool _facingLeft = false;
 
+  /// 상태이상 이펙트 시계. 얼어도 계속 흐른다.
+  double _fxTime = 0;
+
   /// 맞으면 흰색, 상태이상이면 그 색을 스프라이트에 덧칠한다.
   final _spritePaint = Paint();
   Color? _overlay;
@@ -73,6 +78,15 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   static final _shadowPaint = Paint()..color = const Color(0x55000000);
 
   bool get isDead => _dead;
+
+  /// 화염 · 냉기 · 번개가 이만큼 쌓이면 점화 · 냉각(동결) · 감전이 걸린다.
+  double get ailmentThreshold => maxHp * Balance.ailmentThreshold;
+
+  /// 동결 시간 배율. 보스는 짧게 언다.
+  double get freezeScale => 1;
+
+  /// 얼었거나 감전으로 굳어 부딪혀도 피해를 주지 못한다.
+  bool get disabled => ailments.disabled;
 
   /// 밀림 배율. 거구는 덜 밀리고 보스 · 상자는 밀리지 않는다.
   double get knockbackScale => 1;
@@ -117,7 +131,8 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   }
 
   /// 이번 프레임에 움직일 속도를 [out] 에 채운다. 기본은 플레이어를 향해 곧장.
-  /// 동상으로 느려지는 것은 [moveSpeed] 에 들어 있다.
+  /// 냉각 · 중독으로 느려지는 것은 [moveSpeed] 에, 공격 준비가 느려지는 것은
+  /// [update] 가 줄여서 넘기는 [dt] 에 들어 있다. 얼거나 굳으면 부르지 않는다.
   @protected
   void steer(double dt, Vector2 out) {
     out
@@ -138,14 +153,22 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   @override
   void update(double dt) {
     super.update(dt);
-    steer(dt, _velocity);
-    _velocity
-      ..add(separation)
-      ..add(knockback);
+    if (ailments.disabled) {
+      _velocity
+        ..setFrom(knockback)
+        ..scale(0.3);
+      renderShake.setZero();
+    } else {
+      steer(dt * ailments.actionMultiplier, _velocity);
+      _velocity
+        ..add(separation)
+        ..add(knockback);
+      _walk += dt * ailments.actionMultiplier;
+    }
     position.addScaled(_velocity, dt);
     knockback.scale(math.max(0, 1 - Balance.knockbackDecay * dt));
     world.obstacles.pushOut(position, radius * 0.8);
-    _walk += dt;
+    _fxTime += dt;
     if (_velocity.x.abs() > 1) _facingLeft = _velocity.x < 0;
     if (_pop > 0) _pop -= dt;
 
@@ -165,9 +188,50 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
       };
     }
 
-    final dot = ailments.tick(dt);
+    final dot = ailments.tick(
+      dt,
+      threshold: ailmentThreshold,
+      random: world.game.random,
+    );
+    if (ailments.spreadPoison || ailments.spreadIgnite) _spread();
     if (dot > 0) takeDamage(dot, flash: false);
   }
+
+  /// 중독 · 점화를 [Balance.spreadRange] 안의 다른 적 하나에게 옮긴다.
+  /// 아직 그 상태가 아닌 적을 먼저 고른다.
+  void _spread() {
+    final poison = ailments.spreadPoison;
+    final ignite = ailments.spreadIgnite;
+    ailments
+      ..spreadPoison = false
+      ..spreadIgnite = false;
+    final near = world
+        .enemiesNear(position, Balance.spreadRange + radius)
+        .where((e) => e != this)
+        .toList();
+    if (near.isEmpty) return;
+    if (poison) {
+      final target = near.firstWhere(
+        (e) => !e.ailments.poisoned,
+        orElse: () => near.first,
+      );
+      target.ailments.catchPoison(ailments.poisonDps);
+      world.add(
+        SpreadArc(position.clone(), target.position.clone(), _poisonArc),
+      );
+    }
+    if (ignite) {
+      final target = near.firstWhere(
+        (e) => !e.ailments.ignited,
+        orElse: () => near.first,
+      );
+      target.ailments.ignite(ailments.igniteTick);
+      world.add(SpreadArc(position.clone(), target.position.clone(), _fireArc));
+    }
+  }
+
+  static const _poisonArc = Color(0xFF8BE05A);
+  static const _fireArc = Color(0xFFFF8A2A);
 
   @override
   void render(Canvas canvas) {
@@ -175,6 +239,12 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
     final frames = sheet == null ? null : world.game.monsterSprites[sheet];
     if (sheet == null || frames == null) {
       super.render(canvas);
+      paintAilments(
+        canvas,
+        ailments,
+        Rect.fromCircle(center: Offset(radius, radius), radius: radius),
+        _fxTime,
+      );
       return;
     }
     // 발이 충돌 원의 아래쪽 끝에 오도록 바닥 가운데에 맞춘다.
@@ -201,6 +271,7 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
     canvas
       ..save()
       ..translate(renderShake.x, renderShake.y);
+    _bounce(canvas, feet);
     if (_facingLeft) {
       canvas
         ..translate(radius * 2, 0)
@@ -214,7 +285,33 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
       overridePaint: _spritePaint,
     );
     canvas.restore();
+    paintAilments(
+      canvas,
+      ailments,
+      Rect.fromLTWH(radius - w / 2, feet - h, w, h),
+      _fxTime,
+    );
     renderOver(canvas);
+  }
+
+  /// 걷는 동안 발을 기준으로 통통 튀며 늘었다 줄었다 하고, 가는 쪽으로 살짝 기운다.
+  /// 같은 그림이 미끄러지듯 움직이는 단조로움을 덜어 준다. 얼거나 굳으면 멈춘다.
+  void _bounce(Canvas canvas, double feet) {
+    final pace = _velocity.length;
+    if (ailments.disabled || pace < 1) return;
+    final strength = math.min(1.0, pace / Balance.enemySpeed);
+    final step = math.sin(
+      _walk * math.pi * 2 / (Balance.enemyWalkFrameTime * 4),
+    );
+    final squash = Balance.enemyBounceSquash * step * strength;
+    final hop = Balance.enemyBounceHop * step.abs() * strength * radius / 14;
+    // 오른쪽으로 걸으면 오른쪽으로, 왼쪽이면 왼쪽으로 기운다.
+    final lean = _velocity.x / pace * Balance.enemyBounceLean * strength;
+    canvas
+      ..translate(radius, feet - hop)
+      ..rotate(lean)
+      ..scale(1 - squash * 0.6, 1 + squash)
+      ..translate(-radius, -feet);
   }
 
   /// 그림자 · 스프라이트 아래에 그릴 것 (돌진 방향, 폭발 범위 같은 예고).
@@ -228,10 +325,10 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   /// 잠깐 하얗게 깜빡인다 (자폭 직전 같은 예고).
   void flashWhite() => _flash = 0.08;
 
-  /// 감전 중이면 더 아프다. 실제로 들어간 피해를 돌려준다.
+  /// 실제로 들어간 피해를 돌려준다. 출혈 추가 피해는 [Player.strike] 가 더한다.
   double takeDamage(double amount, {bool flash = true}) {
     if (_dead) return 0;
-    final dealt = amount * ailments.damageTakenMultiplier;
+    final dealt = amount;
     hp -= dealt;
     if (flash) {
       _flash = 0.08;
@@ -243,6 +340,10 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
 
   void _die() {
     _dead = true;
+    // 얼어 있다 쓰러지면 얼음 파편이 사방으로 튄다.
+    if (ailments.frozen) {
+      world.player.shatter(position.clone(), ailments.frozenCold);
+    }
     world
       ..add(DeathPuff(position: position.clone()))
       ..add(Sparks(position: position.clone(), color: color, count: 7));

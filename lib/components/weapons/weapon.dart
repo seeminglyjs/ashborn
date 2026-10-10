@@ -72,7 +72,12 @@ abstract class Weapon extends Component
     super.update(dt);
     if (_charge < cooldown) _charge += dt;
     // 쏠 대상이 없으면 충전된 상태로 기다렸다가 적이 나타나면 바로 쏜다.
-    if (_charge >= cooldown && fire()) _charge = 0;
+    if (_charge >= cooldown && fire()) {
+      // 잔향 시전: 확률로 쿨다운 없이 한 번 더 발동한다 (다음 프레임).
+      _charge = world.game.random.nextDouble() < world.player.echoChance
+          ? cooldown
+          : 0;
+    }
   }
 
   /// 실제로 발동했으면 true.

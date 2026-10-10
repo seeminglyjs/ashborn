@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'class_passives.dart';
 import 'inventory.dart';
 import 'progress.dart';
 import 'save_snapshot.dart';
@@ -17,11 +18,13 @@ class Profile {
     Progress? progress,
     Settings? settings,
     Upgrades? upgrades,
+    Mastery? mastery,
     DateTime? modifiedAt,
   }) : inventory = inventory ?? Inventory(),
        progress = progress ?? Progress(),
        settings = settings ?? Settings(),
-       upgrades = upgrades ?? Upgrades() {
+       upgrades = upgrades ?? Upgrades(),
+       mastery = mastery ?? Mastery() {
     _modifiedAt = modifiedAt;
     // 저장소에는 밀리초까지만 남으니 처음부터 밀리초로 맞춰 둔다
     // (안 그러면 같은 기록도 시각이 달라 보여 충돌로 오인한다).
@@ -39,12 +42,16 @@ class Profile {
   /// 화톳불 영구 강화.
   final Upgrades upgrades;
 
+  /// 직업 숙련과 직업 패시브.
+  final Mastery mastery;
+
   /// 클라우드에 함께 올리는 기록(재화 · 장비 · 진행도 · 화톳불)이 바뀔 때 알린다.
   /// 설정은 기기마다 다를 수 있어 빠진다.
   late final Listenable changes = Listenable.merge([
     inventory,
     progress,
     upgrades,
+    mastery,
   ]);
 
   DateTime? _modifiedAt;
@@ -59,6 +66,7 @@ class Profile {
       inventoryKey: inventory.toJson(),
       progressKey: progress.toJson(),
       upgradesKey: upgrades.toJson(),
+      masteryKey: mastery.toJson(),
     },
   );
 
@@ -83,9 +91,15 @@ class Profile {
   static const progressKey = 'progress.v1';
   static const settingsKey = 'settings.v1';
   static const upgradesKey = 'upgrades.v1';
+  static const masteryKey = 'mastery.v1';
 
   /// 클라우드에 함께 올리는 기록의 키.
-  static const syncedKeys = [inventoryKey, progressKey, upgradesKey];
+  static const syncedKeys = [
+    inventoryKey,
+    progressKey,
+    upgradesKey,
+    masteryKey,
+  ];
 
   /// [modifiedAt] 을 남겨 두는 키 (밀리초).
   static const modifiedAtKey = 'profile.modifiedAt';
@@ -124,6 +138,13 @@ class Profile {
         upgradesKey,
         Upgrades.fromJson,
         Upgrades.new,
+        (v) => v.toJson(),
+      ),
+      mastery: _bind(
+        prefs,
+        masteryKey,
+        Mastery.fromJson,
+        Mastery.new,
         (v) => v.toJson(),
       ),
     );

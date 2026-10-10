@@ -39,6 +39,11 @@ abstract final class Balance {
 
   /// 적 걷기 애니메이션 한 프레임의 시간.
   static const double enemyWalkFrameTime = 0.12;
+
+  /// 걷는 적이 늘었다 줄었다 하는 비율, 통통 튀는 높이(보통 졸개 기준 픽셀), 기우는 각도(라디안).
+  static const double enemyBounceSquash = 0.07;
+  static const double enemyBounceHop = 2.5;
+  static const double enemyBounceLean = 0.08;
   static const double enemySpeed = 70;
   static const double enemyBaseHp = 20;
   static const double enemyContactDamage = 10;
@@ -227,6 +232,70 @@ abstract final class Balance {
   static const double passiveXpPerLevel = 0.1;
   static const double passiveAreaPerLevel = 0.1;
 
+  // 직업 숙련: 캐릭터마다 따로 쌓는 숙련 경험치. 숙련 레벨 1마다 직업 패시브 포인트 1.
+  /// 런에서 모은 재의 결정 경험치가 그대로 숙련 경험치가 되고, 보스를 잡으면 스테이지 레벨마다 더 준다.
+  static const double masteryBossXp = 120;
+
+  /// 숙련 레벨 L → L+1 경험치 = masteryXpBase × masteryXpGrowth^L.
+  static const double masteryXpBase = 800;
+  static const double masteryXpGrowth = 1.12;
+
+  /// 직업 패시브 최대 레벨. 직업마다 패시브 3개라 숙련 레벨 상한은 그 세 배.
+  static const int classPassiveMaxLevel = 10;
+
+  /// 포인트 되돌리기 골드: 쓴 포인트 하나마다.
+  static const int masteryResetGold = 400;
+
+  // 직업 패시브 수치: 1레벨 값과 레벨마다 더해지는 값.
+  /// 튕겨내기 (기사): 피격 시 막을 확률과, 받을 뻔한 피해 대비 되돌려 주는 피해 배율.
+  static const double parryChance = 0.06;
+  static const double parryChancePerLevel = 0.02;
+  static const double parryReflect = 1.5;
+  static const double parryReflectPerLevel = 0.35;
+
+  /// 탄 · 장판을 튕겨 낼 때 되돌려 줄 적을 찾는 거리.
+  static const double parryRange = 220;
+
+  /// 연격 숙련 (기사): 대검 콤보 확률과 맹공 지속 시간(초).
+  static const double swordMasteryCombo = 0.03;
+  static const double swordMasteryComboPerLevel = 0.03;
+  static const double swordMasteryOnslaught = 0.25;
+  static const double swordMasteryOnslaughtPerLevel = 0.25;
+
+  /// 강철 의지 (기사): 받는 피해 감소.
+  static const double ironWill = 0.03;
+  static const double ironWillPerLevel = 0.02;
+
+  /// 원소 친화 (마녀): 점화 · 냉각 · 감전 축적과 점화 피해.
+  static const double affinityBuildup = 0.1;
+  static const double affinityBuildupPerLevel = 0.1;
+  static const double affinityIgnite = 0.1;
+  static const double affinityIgnitePerLevel = 0.1;
+
+  /// 잔향 시전 (마녀): 무기가 한 번 더 나갈 확률.
+  static const double spellEcho = 0.04;
+  static const double spellEchoPerLevel = 0.02;
+
+  /// 재의 장막 (마녀): 피해를 한 번 막는 장막이 다시 생기는 시간(초). 레벨마다 줄어든다.
+  static const double ashVeil = 15;
+  static const double ashVeilPerLevel = -1;
+
+  /// 맹독 바르기 (사냥꾼): 중독 확률과 중독 피해.
+  static const double envenomChance = 0.05;
+  static const double envenomChancePerLevel = 0.025;
+  static const double envenomDamage = 0.1;
+  static const double envenomDamagePerLevel = 0.1;
+
+  /// 질주 사격 (사냥꾼): 움직이는 동안 공격 속도.
+  static const double momentum = 0.05;
+  static const double momentumPerLevel = 0.025;
+
+  /// 급소 노리기 (사냥꾼): 치명타 확률과 치명타 피해.
+  static const double weakSpotChance = 0.03;
+  static const double weakSpotChancePerLevel = 0.012;
+  static const double weakSpotDamage = 0.1;
+  static const double weakSpotDamagePerLevel = 0.05;
+
   // 전투
   /// 치명타 기본 배율. 치명타 피해 능력치가 더해진다.
   static const double critMultiplier = 1.5;
@@ -242,24 +311,74 @@ abstract final class Balance {
   static const double energyShieldRechargeDelay = 3;
   static const double energyShieldRechargeRate = 0.25;
 
-  // 상태이상: 지속 피해는 원래 타격 중 해당 속성 피해의 비율만큼을 지속 시간 동안 나눠 준다.
-  static const double bleedDuration = 4;
+  // 상태이상
+  /// 화염 · 냉기 · 번개는 확률이 아니라 쌓여서 터진다. 적 최대 체력의 이 비율만큼
+  /// 그 속성 피해가 쌓이면 점화 · 냉각(→ 동결) · 감전이 걸린다. 보스는 [bossAilmentThreshold].
+  static const double ailmentThreshold = 0.3;
+  static const double bossAilmentThreshold = 0.02;
+
+  /// 쌓인 원소가 초당 문턱의 이 비율씩 빠진다.
+  static const double ailmentDecay = 0.15;
+
+  /// 중독: 타격 전체 피해의 [poisonRatio] 배를 [poisonDuration] 초 동안 나눠 준다.
+  /// 겹치지 않고 마지막에 걸린 중독으로 덮어쓴다. 중독된 적은 이동 · 공격 속도가 [poisonSlow] 느려지고,
+  /// 1초마다 [poisonSpreadChance] 확률로 [spreadRange] 안의 적 하나에게 옮는다.
+  static const double poisonDuration = 5;
+  static const double poisonRatio = 1;
+  static const double poisonSlow = 0.15;
+  static const double poisonSpreadChance = 0.08;
+  static const double spreadRange = 70;
+
+  /// 출혈: 물리 피해의 [bleedRatio] 배가 기준. 걸린 뒤 1초마다 초당 피해가 [bleedRamp] 씩 커진다
+  /// (5초 동안 평균 1.5배). 출혈 중에 맞으면 [bleedHitBonus] 만큼 더 아프다.
+  static const double bleedDuration = 5;
   static const double bleedRatio = 1;
-  static const double burnDuration = 3;
-  static const double burnRatio = 1;
-  static const double poisonDuration = 3;
+  static const double bleedRamp = 0.2;
+  static const double bleedHitBonus = 0.15;
 
-  /// 중독은 타격 전체 피해의 이 비율. 여러 번 쌓인다.
-  static const double poisonRatio = 0.4;
-  static const int poisonMaxStacks = 20;
-  static const double shockDuration = 3;
+  /// 점화: 화염 피해가 쌓여 걸리고, [igniteInterval] 초마다 점화시킨 타격 화염 피해의
+  /// [igniteRatio] 를 [igniteDuration] 초 동안 준다. 1초마다 [igniteSpreadChance] 확률로 옮는다.
+  static const double igniteRatio = 0.1;
+  static const double igniteInterval = 0.5;
+  static const double igniteDuration = 4;
+  static const double igniteSpreadChance = 0.08;
 
-  /// 감전된 적이 받는 피해 증가율.
-  static const double shockEffect = 0.2;
-  static const double chillDuration = 2;
+  /// 냉각: 냉기 피해가 쌓여 걸리고 [chillDuration] 초 동안 이동 · 공격 속도가 [chillSlow] 느려진다.
+  /// 냉각 중에 또 쌓이면 [freezeDuration] 초 동결 (보스는 [bossFreezeScale] 배).
+  static const double chillDuration = 3;
+  static const double chillSlow = 0.25;
+  static const double freezeDuration = 1;
+  static const double bossFreezeScale = 0.5;
 
-  /// 동상에 걸린 적의 이동 속도 감소율.
-  static const double chillSlow = 0.3;
+  /// 얼어 있다 쓰러지면 6방향으로 얼음 파편이 튄다. 동결시킨 냉기 피해의 [shardRatio] 배.
+  static const int shardCount = 6;
+  static const double shardRatio = 1;
+  static const double shardSpeed = 420;
+  static const double shardLifetime = 0.4;
+
+  /// 감전: 번개 피해가 쌓여 걸리고 [shockStun] 초 굳으며, 주변 적 [shockChainTargets] 명에게
+  /// 감전시킨 번개 피해의 [shockChainRatio] 배 연쇄 번개가 튄다.
+  static const double shockStun = 0.3;
+  static const int shockChainTargets = 3;
+  static const double shockChainRatio = 0.6;
+  static const double shockChainRange = 150;
+
+  /// 바람: 바람 피해가 섞인 타격에 확률로 바람 검기(일직선 관통)나 소용돌이(넓은 범위, 2초)가 나간다.
+  /// 둘 다 그 타격 바람 피해 기준. 너무 자주 나가지 않게 각각 재사용 대기 시간이 있다.
+  static const double windSlashChance = 0.12;
+  static const double windSlashCooldown = 0.35;
+  static const double windSlashRatio = 1.5;
+  static const double windSlashSpeed = 520;
+  static const double windSlashLifetime = 0.6;
+  static const double vortexChance = 0.04;
+  static const double vortexCooldown = 1.2;
+  static const double vortexRadius = 65;
+  static const double vortexDuration = 2;
+  static const double vortexTick = 0.25;
+
+  /// 소용돌이 한 번 칠 때 바람 피해 배율 (2초 동안 8번 → 4.8배).
+  static const double vortexRatio = 0.6;
+  static const double vortexPull = 60;
 
   // 고유 장비 효과
   static const double phoenixHp = 0.5;
@@ -321,28 +440,20 @@ abstract final class Balance {
   /// 보스가 주는 강화석. 타락 단계마다 하나씩 더.
   static const int bossStones = 3;
 
-  // 장비 강화: 강화석과 골드를 쓰고 확률로 성공한다. 실패하면 재료만 사라진다.
+  // 장비 강화: 강화석과 골드를 쓰면 반드시 한 단계 오른다 (확률 없음).
+  // 단계가 오를수록 재료가 가파르게 늘어, 예전 확률 강화의 기대 비용과 비슷하게 맞췄다.
   static const int maxEnhance = 30;
 
-  /// 지금 단계에서 다음 단계로 성공할 확률. 길이가 [maxEnhance] 와 같다.
-  /// 최대 단계를 늘리면 여기에 확률을 덧붙인다.
-  static const List<double> enhanceChances = [
-    1, 1, 1, 1, 1, //
-    0.8, 0.75, 0.7, 0.65, 0.6,
-    0.5, 0.45, 0.4, 0.38, 0.35,
-    0.25, 0.25, 0.22, 0.22, 0.2,
-    0.17, 0.17, 0.17, 0.17, 0.17,
-    0.15, 0.15, 0.15, 0.15, 0.15,
-  ];
-
-  /// 다음 단계 강화석 = enhanceStones + enhanceStonesPerStep × 지금 단계.
+  /// 다음 단계 강화석 = enhanceStones + enhanceStonesPerStep × 단계
+  /// + 단계² ÷ [enhanceStonesSquare] (내림).
   static const int enhanceStones = 1;
   static const int enhanceStonesPerStep = 1;
+  static const int enhanceStonesSquare = 6;
 
   /// 다음 단계 골드 = enhanceGold × enhanceGoldGrowth^단계
   /// × enhanceRarityGrowth^등급 × 장비 레벨 배율.
   static const double enhanceGold = 50;
-  static const double enhanceGoldGrowth = 1.1;
+  static const double enhanceGoldGrowth = 1.16;
   static const double enhanceRarityGrowth = 1.5;
 
   /// 강화 1단계마다 모든 옵션 수치가 이 배율로 커진다 (복리: +20 은 약 6.7배, +30 은 약 17배).
@@ -353,17 +464,16 @@ abstract final class Balance {
   static const int transcendEnhance = 20;
 
   // 초월: +20 강화 이상 영웅 이상 장비에 초월 옵션을 하나씩 더한다.
-  // 초월석과 골드를 쓰고 확률로 성공한다. 실패하면 재료만 사라진다.
+  // 초월석과 골드를 쓰면 반드시 성공하고, 붙일 초월 옵션은 플레이어가 고른다 (확률 없음).
   /// 등급별 최대 초월 단계 (노말부터 고유).
   static const List<int> maxTranscend = [0, 0, 1, 2, 3, 3];
 
-  /// 지금 초월 단계에서 다음 단계로 갈 때 드는 초월석과 성공 확률.
-  static const List<int> transcendStones = [1, 2, 3];
-  static const List<double> transcendChances = [0.4, 0.25, 0.12];
+  /// 지금 초월 단계에서 다음 단계로 갈 때 드는 초월석.
+  static const List<int> transcendStones = [2, 5, 12];
 
   /// 초월 골드 = transcendGold × transcendGoldGrowth^단계 × 장비 레벨 배율.
-  static const double transcendGold = 3000;
-  static const double transcendGoldGrowth = 2;
+  static const double transcendGold = 6000;
+  static const double transcendGoldGrowth = 3;
 
   /// 보스가 초월석을 떨어뜨릴 확률. 타락 단계마다 더해진다.
   static const double transcendStoneChance = 0.25;
@@ -418,6 +528,9 @@ abstract final class Balance {
   static const double rollCritDamage = 0.1;
   static const double rollAilmentChance = 0.04;
   static const double rollAilmentDamage = 0.1;
+
+  /// 점화 · 냉각 · 감전 축적 증가 (쌓이는 양 +%).
+  static const double rollAilmentBuildup = 0.15;
   static const double rollArmor = 5;
   static const double rollEvasion = 0.02;
   static const double rollEnergyShield = 8;
@@ -482,8 +595,9 @@ abstract final class Balance {
   /// 원소 은총 (레어 기준): 모든 공격에 무기 기본 피해의 이 비율만큼 그 속성 피해를 더한다.
   static const double fateElementDamage = 0.15;
 
-  /// 원소 은총의 상태이상 확률 (화상 · 동상 · 감전 · 출혈).
+  /// 원소 은총의 출혈 확률 (물리), 그리고 점화 · 냉각 · 감전 축적 증가.
   static const double fateElementAilment = 0.1;
+  static const double fateElementBuildup = 0.3;
 
   /// 바람 은총은 상태이상 대신 이동 속도를 준다.
   static const double fateWindMoveSpeed = 0.05;
@@ -516,9 +630,9 @@ abstract final class Balance {
   // 무기 각성: 최대 레벨 무기 + 짝이 되는 패시브가 있으면 레벨업 때 고를 수 있다.
   static const double awakenDamageMultiplier = 1.5;
 
-  /// 업화의 대검: 칼날 수 증가와 궤도 반지름 배율.
-  static const int infernoBladeBonus = 2;
-  static const double infernoOrbitScale = 1.3;
+  /// 거신의 대검: 범위 배율과 콤보 확률 증가.
+  static const double titanArea = 1.3;
+  static const double titanCombo = 0.25;
 
   /// 유성 잔불: 맞힌 자리에서 터져 주변에 원래 피해의 이 비율을 준다.
   static const double meteorRadius = 70;
@@ -530,6 +644,14 @@ abstract final class Balance {
   static const int stormPierceBonus = 3;
 
   // 무기: 잔불 구체 (재의 마녀)
+  /// 과열: [overheatLevel] 부터 [overheatEvery] 번째 시전마다 큰 화염구를 하나 더 쏜다.
+  /// 화염구는 [overheatDamage] 배 피해에, 맞힌 자리에서 반지름 [overheatRadius] 로 터진다.
+  static const int overheatLevel = 4;
+  static const int overheatEvery = 4;
+  static const double overheatDamage = 2;
+  static const double overheatRadius = 55;
+  static const double overheatSize = 2.2;
+
   static const double emberOrbCooldown = 0.6;
   static const double emberOrbDamage = 12;
   static const double emberOrbRange = 420;
@@ -540,18 +662,58 @@ abstract final class Balance {
   /// 구체를 여러 발 쏠 때 사이 각도(라디안).
   static const double emberOrbSpread = 0.2;
 
-  // 무기: 불꽃 대검 (잿불 기사)
-  static const int flameBladeCount = 2;
-  static const double flameBladeOrbitRadius = 58;
-  static const double flameBladeAngularSpeed = 3.4;
-  static const double flameBladeDamage = 11;
+  // 무기: 강철 대검 (잿불 기사)
+  // 쿨다운마다 익힌 기술을 차례로 하나씩 쓴다 (찌르기 → 휘두르기 → 내려찍기 → …).
+  // 확률로 다음 기술을 곧바로 이어 쓰고 (콤보), 콤보가 2번 연달아 나면 맹공에 들어간다.
+  static const double greatswordCooldown = 0.9;
 
-  /// 같은 적을 다시 벨 수 있을 때까지의 시간.
-  static const double flameBladeHitInterval = 0.45;
-  static const double flameBladeLength = 34;
-  static const double flameBladeWidth = 10;
+  /// 이만큼 안에 적이 있어야 휘두른다.
+  static const double greatswordReach = 135;
 
-  // 무기: 화염 석궁 (불씨 사냥꾼)
+  /// 대검 그림의 한 픽셀 크기 (월드 단위).
+  static const double greatswordPixel = 1.7;
+
+  /// 찌르기: 앞으로 곧게 [thrustLength] 만큼, 폭 [thrustWidth] 안의 적을 모두 꿰뚫는다.
+  static const double thrustDamage = 24;
+  static const double thrustLength = 125;
+  static const double thrustWidth = 30;
+
+  /// 휘두르기: 앞쪽 [swingArc] (반각, 라디안) 부채꼴, 반지름 [swingRadius].
+  static const int swingLevel = 2;
+  static const double swingDamage = 19;
+  static const double swingRadius = 105;
+  static const double swingArc = 1.3;
+
+  /// 내려찍기: 앞쪽 [slamOffset] 자리에 반지름 [slamRadius] 충격, 적을 밀어낸다.
+  static const int slamLevel = 3;
+  static const double slamDamage = 32;
+  static const double slamOffset = 55;
+  static const double slamRadius = 72;
+  static const double slamKnockback = 240;
+
+  /// 콤보: 앞 기술이 끝나고 다음 기술이 나가기까지의 간격.
+  static const double comboDelay = 0.2;
+
+  /// 초월 투사체 옵션 1마다 대검 콤보 확률이 이만큼 는다.
+  static const double comboPerProjectile = 0.1;
+
+  /// 맹공: [onslaughtLevel] 레벨부터. 콤보가 [onslaughtStreak] 번 연달아 나면
+  /// [onslaughtDuration] 초 동안 쿨다운이 [onslaughtCooldown] 배가 된다.
+  static const int onslaughtLevel = 4;
+  static const int onslaughtStreak = 2;
+  static const double onslaughtDuration = 4;
+  static const double onslaughtCooldown = 0.6;
+
+  // 무기: 사냥 석궁 (불씨 사냥꾼)
+  /// 연사: [volleyLevel] 부터 콤보 확률로 [volleyDelay] 초 뒤 한 번 더 쏜다.
+  /// 저격: [sniperLevel] 부터 [sniperEvery] 번째 사격마다 [sniperDamage] 배 피해에 끝없이 꿰뚫는 화살.
+  static const int volleyLevel = 2;
+  static const double volleyDelay = 0.12;
+  static const int sniperLevel = 4;
+  static const int sniperEvery = 4;
+  static const double sniperDamage = 2.5;
+  static const int sniperPierce = 99;
+
   static const double crossbowCooldown = 0.9;
   static const double crossbowDamage = 16;
   static const double crossbowRange = 520;

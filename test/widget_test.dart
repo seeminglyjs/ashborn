@@ -620,7 +620,7 @@ void main() {
       expect(find.textContaining('▼ 최대 체력'), findsNothing);
     });
 
-    testWidgets('강화석과 골드로 강화하고 비용 · 확률 · 결과를 보여 준다', (tester) async {
+    testWidgets('강화석과 골드로 확률 없이 강화하고 비용 · 결과를 보여 준다', (tester) async {
       final helm = item(ItemType.head);
       final inventory = await openFor(
         tester,
@@ -635,7 +635,7 @@ void main() {
       await tester.pump();
       expect(
         tester.widget<Text>(find.byKey(const Key('enhance-cost'))).data,
-        '강화석 ${helm.enhanceStones} · 골드 ${helm.enhanceGold} · 성공 100%',
+        '강화석 ${helm.enhanceStones} · 골드 ${helm.enhanceGold}',
       );
 
       await tester.tap(find.byKey(const Key('enhance')));
@@ -643,7 +643,7 @@ void main() {
 
       expect(helm.enhance, 1);
       expect((inventory.gold, inventory.stones), (0, 0));
-      expect(find.text('강화 성공! +1'), findsOneWidget);
+      expect(find.text('강화 완료! +1'), findsOneWidget);
       expect(find.text('골드 0 · 강화석 0 · 초월석 0'), findsOneWidget);
     });
 

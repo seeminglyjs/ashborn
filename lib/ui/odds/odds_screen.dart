@@ -4,7 +4,6 @@ import '../../data/balance.dart';
 import '../../data/equipment.dart';
 import '../../data/fates.dart';
 import '../../data/supplies.dart';
-import '../../data/transcend.dart';
 import '../../data/upgrades.dart';
 import '../../systems/fate_system.dart';
 import '../../systems/loot_system.dart';
@@ -79,8 +78,7 @@ class OddsList extends StatelessWidget {
         '타락 단계와 화톳불 강화 ${Upgrade.fateLuck.title}에 따라 바뀌는 확률은 '
         '기본값과 지금 값을 함께 보여 줍니다.',
       ),
-      ..._enhance(),
-      ..._transcend(),
+      ..._upgrades(),
       ..._drops(),
       ..._affixes(),
       ..._currency(),
@@ -105,52 +103,14 @@ class OddsList extends StatelessWidget {
     ),
   ];
 
-  /// 강화: 확률이 같은 단계끼리 묶는다.
-  List<Widget> _enhance() {
-    final rows = <List<String>>[];
-    final chances = Balance.enhanceChances;
-    int stones(int step) =>
-        Balance.enhanceStones + Balance.enhanceStonesPerStep * step;
-    var from = 0;
-    for (var i = 1; i <= chances.length; i++) {
-      if (i < chances.length && chances[i] == chances[from]) continue;
-      final last = i - 1;
-      rows.add([
-        from == last ? '+$from' : '+$from ~ +$last',
-        from == last ? '${stones(from)}' : '${stones(from)} ~ ${stones(last)}',
-        pct(chances[from]),
-      ]);
-      from = i;
-    }
-    return [
-      const _Section('장비 강화'),
-      _Table(header: const ['지금 단계', '강화석', '성공 확률'], rows: rows),
-      const _Note('실패하면 강화석과 골드만 사라지고 강화 단계는 내려가지 않습니다.'),
-    ];
-  }
-
-  List<Widget> _transcend() {
-    final options = TranscendOption.values.length;
-    return [
-      const _Section('장비 초월'),
-      _Table(
-        header: const ['단계', '초월석', '성공 확률'],
-        rows: [
-          for (var i = 0; i < Balance.transcendChances.length; i++)
-            [
-              '★$i → ★${i + 1}',
-              '${Balance.transcendStones[i]}',
-              pct(Balance.transcendChances[i]),
-            ],
-        ],
-      ),
-      _Note(
-        '성공하면 이 장비에 아직 없는 초월 옵션 중 하나가 같은 확률로 붙습니다 '
-        '(★1: 각 ${pct(1 / options)}, ★2: 각 ${pct(1 / (options - 1))}, '
-        '★3: 각 ${pct(1 / (options - 2))}). 실패하면 초월석과 골드만 사라집니다.',
-      ),
-    ];
-  }
+  /// 강화 · 초월은 확률형이 아니다. 비용만 안내한다.
+  List<Widget> _upgrades() => const [
+    _Section('장비 강화 · 초월'),
+    _Note(
+      '강화와 초월에는 확률이 없습니다. 재료(강화석 · 초월석 · 골드)가 있으면 반드시 성공하며, '
+      '단계가 오를수록 드는 재료가 늘어납니다. 초월 옵션은 직접 고릅니다.',
+    ),
+  ];
 
   List<Widget> _drops() {
     final now = corruption > 0;

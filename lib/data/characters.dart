@@ -54,7 +54,7 @@ abstract final class Roster {
     id: CharacterId.knight,
     name: '잿불 기사',
     role: '근접 탱커',
-    startWeapon: WeaponId.flameBlade,
+    startWeapon: WeaponId.greatsword,
     trait: '받는 피해 20% 감소',
     sprite: 'sprites/knight.png',
     color: Color(0xFFD64545),

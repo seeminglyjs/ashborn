@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 
 import '../../data/balance.dart';
 import '../../data/characters.dart';
+import '../../data/class_passives.dart';
 import '../../data/damage.dart';
 import '../../data/equipment.dart';
 import '../../data/passives.dart';
@@ -17,13 +18,16 @@ import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
+import '../effects/damage_number.dart';
 import '../effects/sparks.dart';
 import '../enemies/boss.dart';
 import '../enemies/enemy.dart';
+import '../enemies/ailments.dart';
 import '../weapons/common_weapons.dart';
+import '../weapons/element_procs.dart';
 import '../weapons/ember_orb.dart';
 import '../weapons/fire_crossbow.dart';
-import '../weapons/flame_blade.dart';
+import '../weapons/greatsword.dart';
 import '../weapons/hunter_weapons.dart';
 import '../weapons/knight_weapons.dart';
 import '../weapons/weapon.dart';
@@ -86,8 +90,47 @@ class Player extends PositionComponent
     passives.forEach((id, level) {
       if (id.stat == stat) total += id.perLevel * level;
     });
-    return total;
+    return total + _classBonus(stat);
   }
+
+  /// 직업 패시브 [passive] 의 레벨. 다른 직업의 패시브는 0.
+  int classLevel(ClassPassive passive) =>
+      passive.owner == character.id ? game.mastery.passiveLevel(passive) : 0;
+
+  /// 직업 패시브가 올려 주는 능력치.
+  double _classBonus(StatType stat) {
+    double v(ClassPassive p) => p.value(classLevel(p));
+    double v2(ClassPassive p) => p.value2(classLevel(p));
+    return switch (stat) {
+      StatType.burnChance ||
+      StatType.chillChance ||
+      StatType.shockChance => v(ClassPassive.affinity),
+      StatType.burnDamage => v2(ClassPassive.affinity),
+      StatType.poisonChance => v(ClassPassive.envenom),
+      StatType.poisonDamage => v2(ClassPassive.envenom),
+      StatType.critChance => v(ClassPassive.weakSpot),
+      StatType.critDamage => v2(ClassPassive.weakSpot),
+      _ => 0,
+    };
+  }
+
+  /// 연격 숙련: 대검 콤보 확률과 맹공 지속 시간 증가.
+  double get comboBonus =>
+      ClassPassive.swordMastery.value(classLevel(ClassPassive.swordMastery));
+  double get onslaughtBonus =>
+      ClassPassive.swordMastery.value2(classLevel(ClassPassive.swordMastery));
+
+  /// 잔향 시전: 무기가 한 번 더 발동할 확률.
+  double get echoChance =>
+      ClassPassive.spellEcho.value(classLevel(ClassPassive.spellEcho));
+
+  /// 재의 장막: 다시 생길 때까지 남은 시간. 0 이하면 장막이 있다.
+  double _veilCooldown = 0;
+  bool get hasVeil =>
+      classLevel(ClassPassive.ashVeil) > 0 && _veilCooldown <= 0;
+
+  /// 지금 움직이고 있는가 (질주 사격).
+  bool get isMoving => _move.length2 > 0.01;
 
   /// 패시브로 늘어난 무기 범위 배율.
   double get areaMultiplier =>
@@ -127,7 +170,12 @@ class Player extends PositionComponent
     return multiplier;
   }
 
-  double get attackSpeedMultiplier => 1 + bonus(StatType.attackSpeed);
+  double get attackSpeedMultiplier =>
+      1 +
+      bonus(StatType.attackSpeed) +
+      (isMoving
+          ? ClassPassive.momentum.value(classLevel(ClassPassive.momentum))
+          : 0);
 
   /// 장착한 장비의 [option] 초월 수치 합.
   double transcend(TranscendOption option) => game.gear.transcend(option);
@@ -277,7 +325,7 @@ class Player extends PositionComponent
   }
 
   static LeveledWeapon _createWeapon(WeaponId id) => switch (id) {
-    WeaponId.flameBlade => FlameBlade(),
+    WeaponId.greatsword => Greatsword(),
     WeaponId.earthSlam => EarthSlam(),
     WeaponId.cleave => Cleave(),
     WeaponId.emberOrb => EmberOrb(),
@@ -332,6 +380,7 @@ class Player extends PositionComponent
   void update(double dt) {
     super.update(dt);
     if (_invulnerable > 0) _invulnerable -= dt;
+    if (_veilCooldown > 0) _veilCooldown -= dt;
     final regen = bonus(StatType.hpRegen);
     if (regen > 0 && hp < maxHp) {
       hp = (hp + regen * dt).clamp(0, maxHp);
@@ -360,6 +409,7 @@ class Player extends PositionComponent
   @override
   void render(Canvas canvas) {
     if (_blinking) return;
+    if (hasVeil) _renderVeil(canvas);
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(size.x / 2, size.y / 2 + Balance.playerRadius),
@@ -368,6 +418,27 @@ class Player extends PositionComponent
       ),
       _shadowPaint,
     );
+  }
+
+  static final _veilPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2;
+
+  /// 재의 장막: 몸 둘레를 천천히 도는 잿빛 보랏빛 고리.
+  void _renderVeil(Canvas canvas) {
+    final c = Offset(size.x / 2, size.y / 2 - 6);
+    final t = world.elapsed;
+    for (var i = 0; i < 3; i++) {
+      _veilPaint.color = const Color(0xFFB8A6FF)
+          .withValues(alpha: 0.35 + 0.25 * math.sin(t * 3 + i * 2));
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: 26),
+        t * 1.6 + i * math.pi * 2 / 3,
+        1.4,
+        false,
+        _veilPaint,
+      );
+    }
   }
 
   @override
@@ -388,24 +459,60 @@ class Player extends PositionComponent
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
     // 상자처럼 피해가 없는 적은 밟고 지나간다 (무적 시간도 걸리지 않는다).
+    // 얼었거나 감전으로 굳은 적은 부딪혀도 아프지 않다.
     if (other is Enemy &&
         other.contactDamage > 0 &&
-        takeDamage(other.contactDamage, type: other.damageType)) {
+        !other.disabled &&
+        takeDamage(
+          other.contactDamage,
+          type: other.damageType,
+          source: other,
+        )) {
       // 가시: 부딪힌 적에게 원래 피해의 일부를 돌려준다.
       final thorns = transcend(TranscendOption.thorns);
       if (thorns > 0) other.takeDamage(other.contactDamage * thorns);
     }
   }
 
-  /// 회피 → 피해 감소(저항, 방어력, 불굴) → 에너지 보호막 → 체력 순으로 처리한다.
-  /// 무적이나 회피로 피하지 않고 맞았으면 true.
-  bool takeDamage(double amount, {DamageType type = DamageType.physical}) {
+  /// 재의 장막 → 회피 → 튕겨내기 → 피해 감소(저항, 방어력, 강철 의지, 불굴)
+  /// → 에너지 보호막 → 체력 순으로 처리한다. [source] 는 부딪힌 적 (튕겨내기가 노린다).
+  /// 무적이나 회피 · 장막 · 튕겨내기로 피하지 않고 맞았으면 true.
+  bool takeDamage(
+    double amount, {
+    DamageType type = DamageType.physical,
+    Enemy? source,
+  }) {
     if (_invulnerable > 0 || isDead) return false;
     _invulnerable = Balance.playerInvulnerableTime;
+    if (hasVeil) {
+      _veilCooldown = ClassPassive.ashVeil.value(
+        classLevel(ClassPassive.ashVeil),
+      );
+      world
+        ..add(
+          Ring(
+            position: position.clone(),
+            radius: 40,
+            color: const Color(0xFFB8A6FF),
+          ),
+        )
+        ..add(
+          CallOut(
+            position: position + Vector2(0, -40),
+            text: '장막',
+            color: const Color(0xFFB8A6FF),
+          ),
+        );
+      return false;
+    }
     if (game.random.nextDouble() < evasion) return false;
+    if (_parry(amount, source)) return false;
 
     var damage =
-        amount * character.damageTakenMultiplier * (1 - reduction(type));
+        amount *
+        character.damageTakenMultiplier *
+        (1 - reduction(type)) *
+        (1 - ClassPassive.ironWill.value(classLevel(ClassPassive.ironWill)));
     if (type == DamageType.physical) damage *= armorMultiplier;
     if (hp <= maxHp * Balance.lastStandThreshold) {
       damage *=
@@ -436,6 +543,52 @@ class Player extends PositionComponent
     return true;
   }
 
+  /// 튕겨내기: 확률로 공격을 막고, 받을 뻔한 피해 [amount] 의 몇 배를 공격한 적에게 돌려준다.
+  /// 탄 · 장판처럼 공격한 적을 모르면 가장 가까운 적에게 돌려준다. 막았으면 true.
+  bool _parry(double amount, Enemy? source) {
+    final level = classLevel(ClassPassive.parry);
+    if (level <= 0 ||
+        game.random.nextDouble() >= ClassPassive.parry.value(level)) {
+      return false;
+    }
+    final target =
+        source ?? world.nearestEnemy(position, maxDistance: Balance.parryRange);
+    world
+      ..add(
+        CallOut(
+          position: position + Vector2(0, -40),
+          text: '튕겨내기!',
+          color: const Color(0xFFE6EEFF),
+        ),
+      )
+      ..add(
+        Sparks(
+          position: position.clone(),
+          color: const Color(0xFFFFFFFF),
+          count: 10,
+          speed: 240,
+        ),
+      );
+    if (target != null && !target.isDead) {
+      world.add(
+        Ring(
+          position: target.position.clone(),
+          radius: target.radius * 1.8,
+          color: const Color(0xFFE6EEFF),
+          strokeWidth: 4,
+        ),
+      );
+      strike(
+        target,
+        amount * ClassPassive.parry.value2(level),
+        DamageType.physical,
+        secondary: true,
+      );
+      target.knock(target.position - position, Balance.hitKnockback * 2);
+    }
+    return true;
+  }
+
   void _frostArmor() {
     world.add(
       Burst(
@@ -455,7 +608,8 @@ class Player extends PositionComponent
   /// 무기의 [base] 피해에 장비의 속성 피해를 더해 [enemy] 를 때린다.
   /// 치명타, 상태이상, 생명력 흡수를 처리하고 실제로 들어간 피해를 돌려준다.
   ///
-  /// [secondary] 는 효과로 생긴 추가 타격: 장비 속성 피해를 다시 더하지 않는다.
+  /// [secondary] 는 효과로 생긴 추가 타격: 장비 속성 피해를 다시 더하지 않고,
+  /// 바람 검기 · 소용돌이 · 연쇄 번개를 다시 일으키지 않는다.
   double strike(
     Enemy enemy,
     double base,
@@ -471,7 +625,9 @@ class Player extends PositionComponent
         hit.add(t, base * world.fate.extraDamage(t));
       }
     }
-    var multiplier = damageMultiplier;
+    // 배율을 곱하기 전 속성별 피해. 원소 효과(파편 · 연쇄 번개 · 바람)의 기준이 된다.
+    final raw = Map.of(hit.parts);
+    var multiplier = damageMultiplier * enemy.ailments.hitTakenMultiplier;
     if (enemy is Boss) {
       multiplier *= 1 + transcend(TranscendOption.bossDamage);
     }
@@ -501,16 +657,19 @@ class Player extends PositionComponent
       );
       if (hit.crit && enemy is Boss) world.shake(0.08);
     }
-    _applyAilments(enemy, hit, random);
-    if (!secondary &&
-        effects.contains(UniqueEffect.chainLightning) &&
-        random.nextDouble() < Balance.chainLightningChance) {
-      _chainLightning(
-        enemy,
-        hit.total *
-            Balance.chainLightningRatio *
-            effectPower(UniqueEffect.chainLightning),
-      );
+    _applyAilments(enemy, hit, raw, random, secondary: secondary);
+    if (!secondary) {
+      if (effects.contains(UniqueEffect.chainLightning) &&
+          random.nextDouble() < Balance.chainLightningChance) {
+        _chainLightning(
+          enemy,
+          hit.total *
+              Balance.chainLightningRatio *
+              effectPower(UniqueEffect.chainLightning),
+          Balance.chainLightningTargets,
+        );
+      }
+      _windProcs(enemy, raw[DamageType.wind] ?? 0, random);
     }
 
     final steal = bonus(StatType.lifeSteal);
@@ -521,11 +680,11 @@ class Player extends PositionComponent
     return dealt;
   }
 
-  void _chainLightning(Enemy from, double damage) {
+  void _chainLightning(Enemy from, double damage, int count) {
     final targets = world
         .enemiesNear(from.position, Balance.chainLightningRange)
         .where((e) => e != from)
-        .take(Balance.chainLightningTargets)
+        .take(count)
         .toList();
     for (final target in targets) {
       world.add(LightningArc(from.position.clone(), target.position.clone()));
@@ -533,34 +692,143 @@ class Player extends PositionComponent
     }
   }
 
-  void _applyAilments(Enemy enemy, Hit hit, math.Random random) {
-    bool roll(StatType chance, double portion) =>
-        portion > 0 && random.nextDouble() < bonus(chance);
+  void _applyAilments(
+    Enemy enemy,
+    Hit hit,
+    Map<DamageType, double> raw,
+    math.Random random, {
+    required bool secondary,
+  }) {
     final ailments = enemy.ailments;
-    if (roll(StatType.bleedChance, hit[DamageType.physical])) {
+    final threshold = enemy.ailmentThreshold;
+    final physical = hit[DamageType.physical];
+    if (physical > 0 && random.nextDouble() < bonus(StatType.bleedChance)) {
       ailments.bleed(
-        hit[DamageType.physical] *
-            Balance.bleedRatio *
-            (1 + bonus(StatType.bleedDamage)),
+        physical * Balance.bleedRatio * (1 + bonus(StatType.bleedDamage)),
       );
     }
-    if (roll(StatType.burnChance, hit[DamageType.fire])) {
-      ailments.burn(
-        hit[DamageType.fire] *
-            Balance.burnRatio *
-            (1 + bonus(StatType.burnDamage)),
-      );
-    }
-    if (roll(StatType.poisonChance, hit.total)) {
+    if (random.nextDouble() < bonus(StatType.poisonChance)) {
       ailments.poison(
         hit.total * Balance.poisonRatio * (1 + bonus(StatType.poisonDamage)),
       );
     }
-    if (roll(StatType.shockChance, hit[DamageType.lightning])) {
-      ailments.shock(Balance.shockEffect * (1 + bonus(StatType.shockEffect)));
+
+    // 화염 · 냉기 · 번개는 쌓여서 걸린다.
+    final fire = hit[DamageType.fire];
+    if (ailments.addFire(
+      fire * (1 + bonus(StatType.burnChance)),
+      threshold,
+      fire * Balance.igniteRatio * (1 + bonus(StatType.burnDamage)),
+    )) {
+      world.add(
+        Burst(
+          position: enemy.position.clone(),
+          radius: enemy.radius * 1.6,
+          color: const Color(0xFFFF7A2E),
+        ),
+      );
     }
-    if (roll(StatType.chillChance, hit[DamageType.cold])) {
-      ailments.chill(Balance.chillSlow, Balance.chillDuration);
+
+    final cold = hit[DamageType.cold];
+    final stage = ailments.addCold(
+      cold * (1 + bonus(StatType.chillChance)),
+      threshold,
+      cold: raw[DamageType.cold] ?? 0,
+      freezeTime: Balance.freezeDuration * enemy.freezeScale,
+    );
+    if (stage != ColdStage.none) {
+      world.add(
+        Sparks(
+          position: enemy.position.clone(),
+          color: const Color(0xFFCFF3FF),
+          count: stage == ColdStage.frozen ? 10 : 5,
+          speed: 120,
+        ),
+      );
+    }
+
+    final lightning = hit[DamageType.lightning];
+    if (ailments.addLightning(
+      lightning * (1 + bonus(StatType.shockChance)),
+      threshold,
+    )) {
+      world.add(
+        Sparks(
+          position: enemy.position.clone(),
+          color: const Color(0xFFFFF27A),
+          count: 8,
+          speed: 200,
+        ),
+      );
+      // 연쇄 번개는 직접 타격으로 감전됐을 때만 튄다 (번개가 번개를 끝없이 부르지 않게).
+      if (!secondary) {
+        _chainLightning(
+          enemy,
+          (raw[DamageType.lightning] ?? 0) *
+              Balance.shockChainRatio *
+              (1 + bonus(StatType.shockEffect)),
+          Balance.shockChainTargets,
+        );
+      }
+    }
+  }
+
+  /// 바람 검기 · 소용돌이를 쏠 수 있게 되는 시각.
+  double _windSlashReady = 0;
+  double _vortexReady = 0;
+
+  /// 바람 피해가 섞인 타격이면 확률로 소용돌이(드묾)나 바람 검기를 일으킨다.
+  void _windProcs(Enemy enemy, double wind, math.Random random) {
+    if (wind <= 0) return;
+    final now = world.elapsed;
+    if (now >= _vortexReady && random.nextDouble() < Balance.vortexChance) {
+      _vortexReady = now + Balance.vortexCooldown;
+      world.add(
+        Vortex(
+          position: enemy.position.clone(),
+          damage: wind * Balance.vortexRatio,
+        ),
+      );
+      return;
+    }
+    if (now >= _windSlashReady &&
+        random.nextDouble() < Balance.windSlashChance) {
+      _windSlashReady = now + Balance.windSlashCooldown;
+      world.add(
+        WindSlash(
+          position: position.clone(),
+          direction: enemy.position - position,
+          damage: wind * Balance.windSlashRatio,
+        ),
+      );
+    }
+  }
+
+  /// 얼어 있던 적이 [at] 에서 쓰러졌다: 동결시킨 냉기 피해 [cold] 기준으로 6방향 얼음 파편.
+  void shatter(Vector2 at, double cold) {
+    final damage = cold * Balance.shardRatio;
+    world
+      ..add(
+        Sparks(
+          position: at.clone(),
+          color: const Color(0xFFE6F8FF),
+          count: 12,
+          speed: 180,
+        ),
+      )
+      ..add(
+        Ring(position: at.clone(), radius: 40, color: const Color(0xFF9FE0FF)),
+      );
+    if (damage <= 0) return;
+    for (var i = 0; i < Balance.shardCount; i++) {
+      final a = math.pi * 2 * i / Balance.shardCount;
+      world.add(
+        IceShard(
+          position: at.clone(),
+          direction: Vector2(math.cos(a), math.sin(a)),
+          damage: damage,
+        ),
+      );
     }
   }
 }

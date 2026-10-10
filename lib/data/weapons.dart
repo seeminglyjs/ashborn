@@ -16,6 +16,9 @@ enum WeaponStat {
   pierce,
   speed,
   duration,
+
+  /// 콤보 확률 (강철 대검). 0.1 = 10%p.
+  combo,
 }
 
 /// 한 레벨에 오르는 성질과 양 (비율 성질은 0.2 = 20%).
@@ -27,23 +30,28 @@ typedef WeaponUpgrade = Map<WeaponStat, double>;
 /// [owner] 가 있으면 그 캐릭터 전용, null 이면 모든 캐릭터가 얻을 수 있다.
 /// 최대 레벨에서 [catalyst] 패시브를 갖고 있으면 [awakenedLabel] 로 각성할 수 있다.
 enum WeaponId {
-  flameBlade(
-    '불꽃 대검',
-    '주변을 도는 불꽃 칼날',
-    '칼날',
+  greatsword(
+    '강철 대검',
+    '가장 가까운 적을 찌른다. 레벨이 오르면 휘두르기 · 내려찍기를 익히고 콤보로 잇는다',
+    '콤보',
     DamageType.physical,
     owner: CharacterId.knight,
     catalyst: PassiveId.vitality,
-    awakenedLabel: '업화의 대검',
+    awakenedLabel: '거신의 대검',
     upgrades: [
-      {WeaponStat.damage: 0.2},
-      {WeaponStat.count: 1},
-      {WeaponStat.area: 0.15},
-      {WeaponStat.damage: 0.2, WeaponStat.speed: 0.15},
-      {WeaponStat.count: 1},
-      {WeaponStat.cooldown: 0.15},
-      {WeaponStat.damage: 0.3, WeaponStat.area: 0.15},
+      {WeaponStat.combo: 0.15},
+      {WeaponStat.combo: 0.05},
+      {WeaponStat.combo: 0.05},
+      {WeaponStat.damage: 0.25},
+      {WeaponStat.combo: 0.05, WeaponStat.area: 0.15},
+      {WeaponStat.cooldown: 0.12},
+      {WeaponStat.combo: 0.05, WeaponStat.damage: 0.3},
     ],
+    perks: {
+      Balance.swingLevel: '휘두르기 습득',
+      Balance.slamLevel: '내려찍기 습득',
+      Balance.onslaughtLevel: '맹공 습득',
+    },
   ),
   earthSlam(
     '대지 강타',
@@ -83,7 +91,7 @@ enum WeaponId {
   ),
   emberOrb(
     '잔불 구체',
-    '가장 가까운 적을 노리는 불씨',
+    '가장 가까운 적을 노리는 불씨. 레벨이 오르면 과열을 익혀 큰 화염구를 섞어 쏜다',
     '구체',
     DamageType.fire,
     owner: CharacterId.witch,
@@ -98,6 +106,7 @@ enum WeaponId {
       {WeaponStat.damage: 0.25},
       {WeaponStat.count: 1, WeaponStat.speed: 0.2},
     ],
+    perks: {Balance.overheatLevel: '과열 습득'},
   ),
   meteor(
     '운석 낙하',
@@ -136,22 +145,23 @@ enum WeaponId {
     ],
   ),
   fireCrossbow(
-    '화염 석궁',
-    '적을 꿰뚫는 불화살',
+    '사냥 석궁',
+    '적을 꿰뚫는 강철 화살. 레벨이 오르면 연사 · 저격을 익힌다',
     '화살',
     DamageType.physical,
     owner: CharacterId.hunter,
     catalyst: PassiveId.swiftness,
     awakenedLabel: '폭풍 석궁',
     upgrades: [
-      {WeaponStat.pierce: 1, WeaponStat.damage: 0.1},
+      {WeaponStat.combo: 0.15, WeaponStat.damage: 0.1},
       {WeaponStat.cooldown: 0.1},
       {WeaponStat.count: 1},
-      {WeaponStat.damage: 0.25},
+      {WeaponStat.damage: 0.25, WeaponStat.combo: 0.05},
       {WeaponStat.pierce: 2},
-      {WeaponStat.speed: 0.2, WeaponStat.cooldown: 0.1},
+      {WeaponStat.speed: 0.2, WeaponStat.cooldown: 0.1, WeaponStat.combo: 0.05},
       {WeaponStat.count: 1, WeaponStat.damage: 0.2},
     ],
+    perks: {Balance.volleyLevel: '연사 습득', Balance.sniperLevel: '저격 습득'},
   ),
   emberMine(
     '불씨 덫',
@@ -250,6 +260,7 @@ enum WeaponId {
     required this.catalyst,
     required this.awakenedLabel,
     required this.upgrades,
+    this.perks = const {},
   });
 
   final String label;
@@ -268,6 +279,9 @@ enum WeaponId {
 
   /// 2레벨부터 최대 레벨까지 레벨마다 오르는 것. 길이는 [maxLevel] - 1.
   final List<WeaponUpgrade> upgrades;
+
+  /// 레벨마다 새로 익히는 기술 (카드 맨 앞에 쓴다).
+  final Map<int, String> perks;
 
   static const int maxLevel = Balance.weaponMaxLevel;
 
@@ -294,6 +308,7 @@ enum WeaponId {
     final up = upgrades[level - 2];
     String pct(double v) => '${(v * 100).round()}%';
     return [
+      ?perks[level],
       for (final MapEntry(key: stat, value: v) in up.entries)
         switch (stat) {
           WeaponStat.damage => '피해 +${pct(v)}',
@@ -303,6 +318,8 @@ enum WeaponId {
           WeaponStat.pierce => '관통 +${v.round()}',
           WeaponStat.speed => '속도 +${pct(v)}',
           WeaponStat.duration => '지속 시간 +${pct(v)}',
+          WeaponStat.combo =>
+            '${this == fireCrossbow ? '연사' : '콤보'} 확률 +${pct(v)}',
         },
     ].join(', ');
   }
@@ -311,7 +328,9 @@ enum WeaponId {
   String get awakenedDescription {
     final damage = '피해 ×${Balance.awakenDamageMultiplier}';
     return switch (this) {
-      flameBlade => '$damage, 칼날 +${Balance.infernoBladeBonus}, 더 넓게 돈다',
+      greatsword =>
+        '$damage, 범위 ×${Balance.titanArea}, '
+            '콤보 확률 +${(Balance.titanCombo * 100).round()}%',
       earthSlam => '$damage, 한 박자 뒤 더 넓은 여진이 한 번 더 퍼진다',
       cleave => '$damage, 앞뒤를 함께 베고 참격이 더 크다',
       emberOrb =>

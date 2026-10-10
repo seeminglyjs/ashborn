@@ -1,5 +1,6 @@
 import 'package:ashborn/components/enemies/enemy.dart';
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/class_passives.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/profile.dart';
@@ -25,6 +26,7 @@ AshbornGame Function() gameWith(
   Inventory? inventory,
   Progress? progress,
   Upgrades? upgrades,
+  Mastery? mastery,
   Stage stage = Stage.first,
 }) => () {
   // 진동 같은 플랫폼 호출이 있어 바인딩이 필요하다.
@@ -35,6 +37,7 @@ AshbornGame Function() gameWith(
       inventory: inventory,
       progress: progress,
       upgrades: upgrades,
+      mastery: mastery,
     ),
     startStage: stage,
   );

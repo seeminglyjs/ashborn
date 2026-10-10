@@ -1,5 +1,6 @@
 import 'package:ashborn/components/pickups/ash_shard.dart';
 import 'package:ashborn/components/pickups/item_drop.dart';
+import 'package:ashborn/components/weapons/element_procs.dart';
 import 'package:ashborn/components/weapons/fire_crossbow.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
@@ -142,103 +143,198 @@ void main() {
 
   group('상태이상', () {
     testWithGame<AshbornGame>(
-      '출혈은 물리 피해를 지속 시간 동안 나눠 준다',
+      '출혈은 5초 동안 점점 세지는 지속 피해를 주고, 출혈 중에 맞으면 더 아프다',
       gameWith(Roster.witch, inventory: wearing({StatType.bleedChance: 1})),
-      (game) async {
-        await game.ready();
-        await clearEnemies(game);
-        final enemy = await addEnemy(game, Vector2(5000, 0));
-
-        game.world.player.strike(enemy, 20, DamageType.physical);
-        expect(enemy.ailments.bleeding, isTrue);
-        expect(enemy.hp, enemy.maxHp - 20);
-
-        enemy.update(Balance.bleedDuration + 1);
-
-        expect(enemy.hp, closeTo(enemy.maxHp - 20 - 20, 1e-6));
-        expect(enemy.ailments.bleeding, isFalse);
-      },
-    );
-
-    testWithGame<AshbornGame>(
-      '화상은 화염 피해가 섞인 타격에만 걸린다',
-      gameWith(Roster.witch, inventory: wearing({StatType.burnChance: 1})),
       (game) async {
         await game.ready();
         await clearEnemies(game);
         final enemy = await addEnemy(game, Vector2(5000, 0));
         final player = game.world.player;
 
-        player.strike(enemy, 10, DamageType.physical);
-        expect(enemy.ailments.burning, isFalse);
+        player.strike(enemy, 20, DamageType.physical);
+        expect(enemy.ailments.bleeding, isTrue);
+        expect(enemy.hp, enemy.maxHp - 20);
+        final early = enemy.ailments.bleedDps;
+        enemy.update(1);
+        expect(enemy.ailments.bleedDps, greaterThan(early), reason: '점점 세진다');
 
-        player.strike(enemy, 10, DamageType.fire);
-        expect(enemy.ailments.burning, isTrue);
+        final before = enemy.hp;
+        player.strike(enemy, 20, DamageType.physical);
+        expect(
+          before - enemy.hp,
+          closeTo(20 * (1 + Balance.bleedHitBonus), 1e-6),
+          reason: '출혈 중 직접 타격은 추가 피해',
+        );
+
+        for (var i = 0; i < 60; i++) {
+          enemy.update(0.1);
+        }
+        expect(enemy.ailments.bleeding, isFalse);
       },
     );
 
     testWithGame<AshbornGame>(
-      '중독은 타격마다 쌓인다',
+      '중독은 겹치지 않고 마지막 것으로 덮어쓰며 이동을 늦춘다',
       gameWith(Roster.witch, inventory: wearing({StatType.poisonChance: 1})),
       (game) async {
         await game.ready();
         await clearEnemies(game);
         final enemy = await addEnemy(game, Vector2(5000, 0));
+        final player = game.world.player;
 
-        for (var i = 0; i < 3; i++) {
-          game.world.player.strike(enemy, 10, DamageType.physical);
-        }
+        player.strike(enemy, 50, DamageType.physical);
+        player.strike(enemy, 10, DamageType.physical);
 
-        expect(enemy.ailments.poisonStacks, 3);
+        expect(enemy.ailments.poisoned, isTrue);
+        expect(
+          enemy.ailments.poisonDps,
+          closeTo(10 * Balance.poisonRatio / Balance.poisonDuration, 1e-9),
+        );
+        expect(enemy.ailments.speedMultiplier, 1 - Balance.poisonSlow);
       },
     );
 
+    testWithGame<AshbornGame>('중독은 가끔 옆의 적에게 옮는다', gameWith(Roster.witch), (
+      game,
+    ) async {
+      await game.ready();
+      await clearEnemies(game);
+      final a = await addEnemy(game, Vector2(5000, 0));
+      final b = await addEnemy(game, Vector2(5030, 0));
+      a.ailments.poison(100);
+
+      // 1초마다 낮은 확률로 굴리니, 충분히 오래 두면 한 번은 옮는다.
+      for (var i = 0; i < 400 && !b.ailments.poisoned; i++) {
+        a.ailments.poison(100);
+        a.update(0.25);
+        b.position.setFrom(a.position + Vector2(30, 0));
+      }
+      expect(b.ailments.poisoned, isTrue);
+    });
+
     testWithGame<AshbornGame>(
-      '감전된 적은 피해를 더 받는다',
-      gameWith(
-        Roster.witch,
-        inventory: wearing({
-          StatType.shockChance: 1,
-          StatType.lightningDamage: 1,
-        }),
-      ),
+      '화염 피해가 문턱만큼 쌓이면 점화되어 0.5초마다 탄다',
+      gameWith(Roster.witch),
       (game) async {
         await game.ready();
         await clearEnemies(game);
         final enemy = await addEnemy(game, Vector2(5000, 0));
+        final player = game.world.player;
+        final threshold = enemy.ailmentThreshold;
 
-        game.world.player.strike(enemy, 9, DamageType.physical);
-        expect(enemy.ailments.shocked, isTrue);
+        player.strike(enemy, threshold * 0.5, DamageType.physical);
+        expect(enemy.ailments.ignited, isFalse, reason: '물리는 쌓이지 않는다');
+
+        player.strike(enemy, threshold * 0.6, DamageType.fire);
+        expect(enemy.ailments.ignited, isFalse);
+        player.strike(enemy, threshold * 0.6, DamageType.fire);
+        expect(enemy.ailments.ignited, isTrue);
+        expect(
+          enemy.ailments.igniteTick,
+          closeTo(threshold * 0.6 * Balance.igniteRatio, 1e-6),
+        );
+
+        final before = enemy.hp;
+        enemy.update(Balance.igniteInterval + 0.01);
+        expect(before - enemy.hp, closeTo(enemy.ailments.igniteTick, 1e-6));
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '냉기가 쌓이면 냉각, 냉각 중에 또 쌓이면 1초 동결되고 움직이지 못한다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        final enemy = await addEnemy(game, Vector2(400, 0));
+        final player = game.world.player;
+        final threshold = enemy.ailmentThreshold;
+
+        player.strike(enemy, threshold, DamageType.cold);
+        expect(enemy.ailments.chilled, isTrue);
+        expect(enemy.ailments.frozen, isFalse);
+        enemy.knockback.setZero();
+        var start = enemy.position.x;
+        enemy.update(0.5);
+        expect(
+          start - enemy.position.x,
+          closeTo(Balance.enemySpeed * (1 - Balance.chillSlow) * 0.5, 0.01),
+        );
+
+        player.strike(enemy, threshold, DamageType.cold);
+        expect(enemy.ailments.frozen, isTrue);
+        expect(enemy.disabled, isTrue);
+        enemy.knockback.setZero();
+        start = enemy.position.x;
+        enemy.update(0.5);
+        expect(enemy.position.x, start, reason: '얼어서 움직이지 못한다');
+
+        enemy.update(Balance.freezeDuration);
+        expect(enemy.ailments.frozen, isFalse);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '얼어 있다 쓰러지면 6방향으로 얼음 파편이 튄다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        final enemy = await addEnemy(game, Vector2(5000, 0), hp: 100);
+        final player = game.world.player;
+        final threshold = enemy.ailmentThreshold;
+
+        player.strike(enemy, threshold, DamageType.cold);
+        player.strike(enemy, threshold, DamageType.cold);
+        expect(enemy.ailments.frozen, isTrue);
+        player.strike(enemy, 1000, DamageType.physical);
+        await game.ready();
 
         expect(
-          enemy.takeDamage(10),
-          closeTo(10 * (1 + Balance.shockEffect), 1e-9),
+          game.world.children.whereType<IceShard>().length,
+          Balance.shardCount,
         );
       },
     );
 
     testWithGame<AshbornGame>(
-      '동상에 걸린 적은 느려진다',
-      gameWith(
-        Roster.witch,
-        inventory: wearing({StatType.chillChance: 1, StatType.coldDamage: 1}),
-      ),
+      '번개가 쌓이면 감전되어 잠깐 굳고 주변 적에게 연쇄 번개가 튄다',
+      gameWith(Roster.witch),
       (game) async {
         await game.ready();
         await clearEnemies(game);
-        final enemy = await addEnemy(game, Vector2(400, 0));
+        final enemy = await addEnemy(game, Vector2(5000, 0));
+        final other = await addEnemy(game, Vector2(5060, 0));
+        final player = game.world.player;
 
-        game.world.player.strike(enemy, 1, DamageType.physical);
-        // 맞아서 밀려나는 것은 빼고 걷는 속도만 본다.
-        enemy.knockback.setZero();
-        final start = enemy.position.x;
-        enemy.update(0.5);
+        player.strike(enemy, enemy.ailmentThreshold, DamageType.lightning);
 
-        expect(enemy.ailments.chilled, isTrue);
-        expect(
-          start - enemy.position.x,
-          closeTo(Balance.enemySpeed * (1 - Balance.chillSlow) * 0.5, 0.01),
-        );
+        expect(enemy.ailments.stunned, isTrue);
+        expect(enemy.disabled, isTrue);
+        expect(other.hp, lessThan(other.maxHp), reason: '연쇄 번개');
+        enemy.update(Balance.shockStun + 0.01);
+        expect(enemy.ailments.stunned, isFalse);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '바람 피해가 섞인 타격은 바람 검기나 소용돌이를 일으킨다',
+      gameWith(Roster.witch, inventory: wearing({StatType.windDamage: 5})),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        final enemy = await addEnemy(game, Vector2(5000, 0), hp: 1e9);
+        final player = game.world.player;
+
+        // 확률이 낮고 재사용 대기 시간이 있어 시간을 흘려 가며 여러 번 때린다.
+        for (var i = 0; i < 400; i++) {
+          player.strike(enemy, 1, DamageType.physical);
+          game.world.elapsed += 1.3;
+        }
+        await game.ready();
+
+        expect(game.world.children.whereType<WindSlash>(), isNotEmpty);
+        expect(game.world.children.whereType<Vortex>(), isNotEmpty);
       },
     );
   });

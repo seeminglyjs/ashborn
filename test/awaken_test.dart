@@ -1,7 +1,7 @@
 import 'package:ashborn/components/player/player.dart';
 import 'package:ashborn/components/weapons/ember_orb.dart';
 import 'package:ashborn/components/weapons/fire_crossbow.dart';
-import 'package:ashborn/components/weapons/flame_blade.dart';
+import 'package:ashborn/components/weapons/greatsword.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/weapons.dart';
@@ -53,26 +53,23 @@ void main() {
     },
   );
 
-  testWithGame<AshbornGame>('업화의 대검: 칼날이 늘고 더 넓게 돈다', gameWith(Roster.knight), (
-    game,
-  ) async {
-    await game.ready();
-    await maxOut(game, WeaponId.flameBlade);
-    final blade = game.world.player.weapon(WeaponId.flameBlade)! as FlameBlade;
-    final count = blade.bladeCount;
+  testWithGame<AshbornGame>(
+    '거신의 대검: 범위가 넓어지고 콤보 확률이 오른다',
+    gameWith(Roster.knight),
+    (game) async {
+      await game.ready();
+      await maxOut(game, WeaponId.greatsword);
+      final sword =
+          game.world.player.weapon(WeaponId.greatsword)! as Greatsword;
+      final (size, combo) = (sword.size, sword.comboChance);
 
-    blade.awaken();
-    await game.ready();
+      sword.awaken();
+      await game.ready();
 
-    expect(blade.bladeCount, count + Balance.infernoBladeBonus);
-    expect(blade.children.length, blade.bladeCount);
-    expect(
-      blade.orbitRadius,
-      Balance.flameBladeOrbitRadius *
-          blade.areaMultiplier *
-          Balance.infernoOrbitScale,
-    );
-  });
+      expect(sword.size, closeTo(size * Balance.titanArea, 1e-9));
+      expect(sword.comboChance, closeTo(combo + Balance.titanCombo, 1e-9));
+    },
+  );
 
   testWithGame<AshbornGame>(
     '유성 잔불: 불씨가 맞힌 자리에서 터져 주변 적에게 피해를 준다',
