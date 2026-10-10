@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
+import '../../data/corruption.dart';
 import '../../data/damage.dart';
 import '../../data/stages.dart';
 import '../effects/sparks.dart';
@@ -112,9 +113,50 @@ class Boss extends Enemy {
 
   Color get _hazard => hazardColor(damageType);
 
+  /// 마지막으로 맞은 뒤 지난 시간 (타락 "보스 재생").
+  double _sinceHit = 0;
+  double _regenFx = 0;
+
+  @override
+  double takeDamage(double amount, {bool flash = true}) {
+    _sinceHit = 0;
+    return super.takeDamage(amount, flash: flash);
+  }
+
+  /// 격노하는 체력 비율. 타락 "이른 격노" 면 더 일찍.
+  double get enrageHp => world.stage.has(CorruptionRule.earlyEnrage)
+      ? Balance.earlyEnrageHp
+      : Balance.bossEnrageHp;
+
+  /// 타락 "보스 재생": 잠시 맞지 않으면 체력을 회복하고 초록 불티가 피어오른다.
+  void _regenerate(double dt) {
+    if (!world.stage.has(CorruptionRule.bossRegen) || isDead) return;
+    _sinceHit += dt;
+    if (_sinceHit < Balance.bossRegenDelay || hp >= maxHp) return;
+    hp = math.min(maxHp, hp + maxHp * Balance.bossRegenRate * dt);
+    _regenFx -= dt;
+    if (_regenFx > 0) return;
+    _regenFx = 0.3;
+    final random = world.game.random;
+    world.add(
+      Sparks(
+        position:
+            position +
+            Vector2(
+              (random.nextDouble() - 0.5) * radius * 1.4,
+              -random.nextDouble() * radius,
+            ),
+        color: const Color(0xFF63C74D),
+        count: 4,
+        speed: 70,
+      ),
+    );
+  }
+
   @override
   void update(double dt) {
-    if (!_enraged && hp <= maxHp * Balance.bossEnrageHp) {
+    _regenerate(dt);
+    if (!_enraged && hp <= maxHp * enrageHp) {
       _enraged = true;
       world.game.notify('$name 격노!', color: const Color(0xFFE8463A));
       world

@@ -2,7 +2,7 @@
 
 python -I tool/assets/heroes.py [assets/images/sprites]
 
-시트마다 24x28 프레임 9장 (216x28): 0-3 대기, 4-7 달리기, 8 피격. 오른쪽을 보고, 발은 맨 아래 줄(27)에
+시트마다 24x28 프레임 11장 (264x28): 0-3 대기, 4-7 달리기, 8 피격, 9 공격 예비, 10 공격. 오른쪽을 보고, 발은 맨 아래 줄(27)에
 닿는다 (왼쪽은 게임이 뒤집어 그린다). 몸은 x 4-15 쯤에 두고, 오른쪽 빈칸으로 무기를 내민다.
 
 예전 영웅은 0x72 원본 위에 polish.py 가 장비를 덧그린 것이었는데, 머리가 큰 2등신이라 무기가 몸에 묻혀
@@ -92,47 +92,58 @@ LEGS = {
         26: '...o6666o...o5566o',
         27: '...oooooo...oooooo',
     }),
-    'pass': part({     # 앞다리로 딛고 뒷다리를 뒤로 차올린다
+    'stride': part({   # 달리기 디딤: 앞다리를 내딛고 뒷다리는 발끝으로 땅을 차고 나간다.
+        20: '......o34oo12o',   # 대기 자세처럼 두 발을 다 땅에 붙이고 벌리면 걷지 않고
+        21: '......o34oo12o',   # 다리를 벌린 채 통통 튀는 것처럼 보인다 (뒷발을 띄운다).
+        22: '.....o34o.o12o',
+        23: '.....o34o..o12o',
+        24: '....o34o...o12o',
+        25: '....o66o...o12o',
+        26: '....ooo....o5566o',
+        27: '...........oooooo',
+    }),
+    'stride2': part({  # 다리를 바꿔 디딤
+        20: '......o12oo34o',
+        21: '......o12oo34o',
+        22: '.....o12o.o34o',
+        23: '.....o12o..o34o',
+        24: '....o12o...o34o',
+        25: '....o56o...o34o',
+        26: '....ooo....o6666o',
+        27: '...........oooooo',
+    }),
+    'pass': part({     # 앞다리로 딛고, 뒷다리는 무릎을 접어 발을 뒤로 들어 올린다
         20: '......o34oo12o',
-        21: '.....o34o.o12o',
-        22: '....o34o..o12o',
-        23: '...o34o...o12o',
-        24: '..o66o....o12o',
-        25: '..ooo.....o12o',
+        21: '...o..o34oo12o',
+        22: '..o66oo344oo12o',
+        23: '..o664444o.o12o',
+        24: '...ooooo..o12o',
+        25: '..........o12oo',
         26: '..........o5566o',
         27: '..........oooooo',
     }),
-    'swap': part({     # 뒷다리가 앞으로, 앞다리가 뒤로
+    'pass2': part({    # 뒷다리로 딛고, 앞다리를 접어 든다
         20: '......o12oo34o',
-        21: '......o12oo34o',
-        22: '.....o12o..o34o',
-        23: '.....o12o..o34o',
-        24: '....o12o....o34o',
-        25: '....o12o....o34o',
-        26: '...o5566o...o6666o',
-        27: '...oooooo...oooooo',
-    }),
-    'pass2': part({    # 뒷다리로 딛고 앞다리를 뒤로 차올린다
-        20: '......o12oo34o',
-        21: '.....o12o.o34o',
-        22: '....o12o..o34o',
-        23: '...o12o...o34o',
-        24: '..o56o....o34o',
-        25: '..ooo.....o34o',
+        21: '...o..o12oo34o',
+        22: '..o56oo122oo34o',
+        23: '..o562222o.o34o',
+        24: '...ooooo..o34o',
+        25: '..........o34oo',
         26: '..........o6666o',
         27: '..........oooooo',
     }),
 }
 
 # 프레임 순서: 대기 4장 (숨쉬기로 윗몸 1칸, 장식 나풀거림) · 달리기 4장 (디딤-지나침, 지나칠 때 1칸 뜸).
+# 달리기 디딤은 대기의 벌린 자세가 아니라 앞발만 땅에 닿은 좁은 보폭이다.
 POSES = [
     dict(legs='stance', dy=0, flap='a', arm=0),
     dict(legs='stance', dy=0, flap='b', arm=1),
     dict(legs='stance', dy=1, flap='b', arm=1),
     dict(legs='stance', dy=1, flap='a', arm=0),
-    dict(legs='stance', dy=0, flap='b', arm=0),
+    dict(legs='stride', dy=0, flap='b', arm=0),
     dict(legs='pass', dy=-1, flap='a', arm=-1),
-    dict(legs='swap', dy=0, flap='b', arm=0),
+    dict(legs='stride2', dy=0, flap='b', arm=0),
     dict(legs='pass2', dy=-1, flap='a', arm=-1),
 ]
 
@@ -220,6 +231,47 @@ def knight_hit():
     return img
 
 
+# 공격 자세 (칼은 게임이 SwordStrike 로 따로 그리므로 여기서는 빈손으로 쥔 주먹만).
+# 예비 동작: 몸을 뒤로 젖히고 팔을 등 뒤 허리께로 당긴다.
+KNIGHT_ARM_BACK = part({
+    13: '.........ooo',
+    14: '........oWWSo',
+    15: '........oWSSDo',
+    16: '......ooSDDKo',
+    17: '....ooSDDooo',
+    18: '...oySDoo',
+    19: '...orDo',
+    20: '....oo',
+})
+# 내지름: 몸을 앞으로 싣고 팔을 쭉 뻗는다. 주먹 끝(금빛 코등이)에 칼이 붙는다.
+KNIGHT_ARM_OUT = part({
+    14: '.........ooo',
+    15: '........oWWSooooooo',
+    16: '........oSSDSSWSDySo',
+    17: '........oDDKDDDDKrDo',
+    18: '.........oooooooooo',
+})
+
+
+def knight_windup():
+    img = Image.new('RGBA', (FW, FH))
+    stamp(img, KNIGHT_PLUME['b'], -1, 0)
+    stamp(img, LEGS['stance'], recolor=KNIGHT_LEGS)
+    stamp(img, KNIGHT_TORSO, -1, 0)
+    stamp(img, KNIGHT_HELM, -1, 0)
+    stamp(img, KNIGHT_ARM_BACK, -1, 0)
+    return img
+
+
+def knight_strike():
+    img = Image.new('RGBA', (FW, FH))
+    stamp(img, KNIGHT_PLUME['a'], 1, 1)
+    stamp(img, LEGS['stride'], recolor=KNIGHT_LEGS)
+    stamp(img, KNIGHT_TORSO, 1, 1)
+    stamp(img, KNIGHT_HELM, 2, 1)
+    stamp(img, KNIGHT_ARM_OUT, 1, 1)
+    return img
+
 # ---------------------------------------------------------------- 잿불 사냥꾼
 # 초록 튜닉, 갈색 머리, 등에 화살통, 시위를 당긴 큰 나무 활과 화살.
 
@@ -288,15 +340,19 @@ def outline_around(img, pts):
                 px[ax, ay] = COLORS['o']
 
 
-def hunter_bow(img, dy, flash=False):
+def hunter_bow(img, dy, flash=False, released=False):
+    """[released] 면 쏜 직후: 시위가 곧게 펴지고 화살이 없다."""
     px = img.load()
     c = (lambda ch: COLORS[FLASH.get(ch, ch)]) if flash else (lambda ch: COLORS[ch])
     wood = [(x, y + dy) for x, y in BOW_WOOD]
-    for x, y in BOW_STRING:
+    string = [(15, y) for y in range(8, 25)] if released else BOW_STRING
+    for x, y in string:
         px[x, y + dy] = c('c')
     for x, y in wood:
         px[x, y] = c('B' if 15 <= y - dy <= 17 else ('T' if y - dy < 16 else 'L'))
     outline_around(img, wood)
+    if released:
+        return
     # 화살: 깃(왼쪽) · 대 · 강철 촉. 당기는 손 위로 지나간다.
     y = 15 + dy
     for x in range(12, 20):
@@ -343,6 +399,36 @@ def hunter(pose, hit=False):
     stamp(img, HUNTER_DRAW_HAND, hx, dy + pose['arm'], fl)
     return img
 
+
+
+def hunter_reload():
+    """쏜 뒤 다시 메기기: 웅크려 화살을 시위에 건다."""
+    img = Image.new('RGBA', (FW, FH))
+    dy = 1
+    stamp(img, HUNTER_QUIVER, 0, dy)
+    stamp(img, LEGS['stance'], recolor=HUNTER_LEGS)
+    stamp(img, HUNTER_TORSO, 0, dy)
+    stamp(img, HUNTER_HEAD['a'], 0, dy)
+    stamp(img, HUNTER_ARM, 0, dy)
+    hunter_bow(img, dy)
+    stamp(img, HUNTER_GRIP, 0, dy)
+    stamp(img, HUNTER_DRAW_HAND, -1, dy)
+    return img
+
+
+def hunter_release():
+    """쏜 순간: 시위가 펴지고 놓은 손이 앞으로 튕기며, 몸은 반동으로 뒤로 밀리고 활이 들린다."""
+    img = Image.new('RGBA', (FW, FH))
+    dx, dy = -1, -1
+    stamp(img, HUNTER_QUIVER, dx, 0)
+    stamp(img, LEGS['stance'], recolor=HUNTER_LEGS)
+    stamp(img, HUNTER_TORSO, dx, 0)
+    stamp(img, HUNTER_HEAD['b'], dx * 2, 0)
+    stamp(img, HUNTER_ARM, dx, dy)
+    hunter_bow(img, dy, released=True)
+    stamp(img, HUNTER_GRIP, 0, dy)
+    stamp(img, HUNTER_DRAW_HAND, dx + 2, dy)
+    return img
 
 # ---------------------------------------------------------------- 재의 마녀
 # 보라 두건 로브 (얼굴은 그늘 속, 눈 두 점만 빛난다), 살짝 굽은 등, 바닥까지 퍼지는 자락,
@@ -453,10 +539,36 @@ def witch(pose, hit=False):
     return img
 
 
+
+# 시전 순간 지팡이 끝에서 크게 터지는 잔불 (하얀 심 · 사방 섬광).
+EMBER_FLARE = part({
+    2: '...............oro',
+    3: '..............ooyoo',
+    4: '.............ooyHyoo',
+    5: '............orryHyrro',
+    6: '.............oorRroo',
+    7: '..............ooRoo',
+    8: '...............ooo',
+})
+
+
+def witch_cast(dx, staff_dy, ember):
+    """지팡이를 [staff_dy] 만큼 들고 몸을 [dx] 로 기울인 시전 자세."""
+    img = Image.new('RGBA', (FW, FH))
+    sx = 1 if dx > 0 else 0
+    rows = {y: '...............oTo' if y < 17 else '...............oLo' for y in range(9, 27)}
+    rows[27] = '...............ooo'
+    stamp(img, rows, sx, staff_dy)
+    stamp(img, ember, sx, staff_dy)
+    stamp(img, WITCH_ROBE['a'], 0, 0)
+    stamp(img, WITCH_HOOD['b' if dx > 0 else 'a'], dx, 0)
+    stamp(img, WITCH_ARM, dx, staff_dy)
+    return img
+
 # ---------------------------------------------------------------- 시트
 
-def sheet(draw, hit):
-    frames = [draw(p) for p in POSES] + [hit()]
+def sheet(draw, hit, windup, strike):
+    frames = [draw(p) for p in POSES] + [hit(), windup(), strike()]
     out = Image.new('RGBA', (FW * len(frames), FH), (0, 0, 0, 0))
     for i, f in enumerate(frames):
         out.paste(f, (i * FW, 0))
@@ -464,9 +576,19 @@ def sheet(draw, hit):
 
 
 HEROES = {
-    'knight': lambda: sheet(knight, knight_hit),
-    'witch': lambda: sheet(witch, lambda: witch(dict(POSES[0], legs='stance', flap='b', arm=0), hit=True)),
-    'hunter': lambda: sheet(hunter, lambda: hunter(dict(POSES[0], flap='b', arm=0), hit=True)),
+    'knight': lambda: sheet(knight, knight_hit, knight_windup, knight_strike),
+    'witch': lambda: sheet(
+        witch,
+        lambda: witch(dict(POSES[0], legs='stance', flap='b', arm=0), hit=True),
+        lambda: witch_cast(-1, -2, EMBER['b']),
+        lambda: witch_cast(1, -1, EMBER_FLARE),
+    ),
+    'hunter': lambda: sheet(
+        hunter,
+        lambda: hunter(dict(POSES[0], flap='b', arm=0), hit=True),
+        hunter_reload,
+        hunter_release,
+    ),
 }
 
 

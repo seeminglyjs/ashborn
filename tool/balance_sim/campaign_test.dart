@@ -70,13 +70,22 @@ void main() {
       var run = 0;
       while (total < budget) {
         run++;
-        // 최전선에서 시작하고, 아무것도 못 깨면 두 스테이지 앞에서 파밍한다.
-        final start = math.max(0, game.progress.unlocked.index - back);
+        // 열린 가장 높은 타락 단계로 출정하고, 첫 지역도 못 깨면 한 단계 낮춰 파밍한다.
+        // 낮춘 단계를 정복하면 다시 올라간다.
+        final corruption = math.max(
+          0,
+          game.progress.unlockedCorruption - back,
+        );
+        final start = Stage.start(corruption).index;
         game.restart(stage: Stage(start));
         await game.ready();
         final r = await bot.run(maxSeconds: budget - total + 1);
         total += r.seconds;
-        back = r.cleared == 0 ? back + 2 : math.max(0, back - 1);
+        if (r.cleared == 0) {
+          back++;
+        } else if (r.conquered) {
+          back = math.max(0, back - 1);
+        }
         if (_paidStones > 0) game.inventory.addLoot(stones: _paidStones);
         meta
           ..tidy()
@@ -89,7 +98,7 @@ void main() {
           '${start + 1},${r.deathStage + 1},${r.cleared},'
           '${r.diedToBoss ? 1 : 0},${r.deathStageTime.round()},${r.level},'
           '${r.kills},${r.gold},${r.stones},${r.ember},${r.transcendStones},'
-          '${game.progress.unlocked.index},${inv.gold},${inv.stones},'
+          '${game.progress.frontier.index},${inv.gold},${inv.stones},'
           '${inv.ember},${inv.transcendStones}',
         );
         note('run $run: ${meta.gearSummary()}');

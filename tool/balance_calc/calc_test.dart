@@ -28,14 +28,14 @@ import 'model.dart';
 const _mastery = int.fromEnvironment('MASTERY');
 const _stages = int.fromEnvironment('STAGES', defaultValue: 40);
 
-/// 마지막 시뮬레이터 측정 (2026-10-10, 시드 2 평균, 기사는 대검의 무게 반영 후): 4시간에 깬 스테이지.
-/// 시뮬레이터는 런이 끝날 때만 최전선을 기록하고 런 하나가 한 시간을 넘기도 해서,
-/// 짧은 시간 칸은 실제보다 낮게 나온다. 그래서 4시간 칸만 비교한다.
-/// 시뮬레이터를 다시 돌리면 여기를 고친다.
+/// 마지막 시뮬레이터 측정 (2026-10-10, 시드 2 평균, 런이 늘 타락 단계 첫 지역에서 시작하도록
+/// 바꾼 뒤 · 타락 체력 ×4.0 · 피해 ×2.5): 4시간에 깬 스테이지.
+/// 시뮬레이터는 런이 끝날 때만 최전선을 기록해서 짧은 시간 칸은 실제보다 낮게 나온다.
+/// 그래서 4시간 칸만 비교한다. 시뮬레이터를 다시 돌리면 여기를 고친다.
 const _sim = {
-  CharacterId.knight: {240: 30.5},
-  CharacterId.witch: {240: 34.0},
-  CharacterId.hunter: {240: 32.5},
+  CharacterId.knight: {240: 37.5},
+  CharacterId.witch: {240: 33.0},
+  CharacterId.hunter: {240: 38.0},
 };
 
 const _marks = [30, 60, 120, 240, 480];
@@ -54,7 +54,7 @@ void main() {
     };
 
     line(
-      '== 스테이지 (직업 패시브 Lv $_mastery, 장비 등급 ${Calibration.rarityMax}, 1스테이지부터 이어서 온 런) ==',
+      '== 스테이지 (직업 패시브 Lv $_mastery, 장비 등급 ${Calibration.rarityMax}, 그 타락 단계 첫 지역부터 온 런) ==',
     );
     line(
       '${'스테이지'.padRight(14)} 졸개체력      보스체력     보스피해  처치   강화석   골드    '
@@ -107,7 +107,7 @@ void main() {
     line('(값: 강화석 기준 판 수 / 골드 기준 판 수. 큰 쪽이 실제로 막는 재화)');
 
     line('');
-    line('== 기준 장비에서의 보스 상대 초당 피해 (스테이지 20 장비 +15, 런에서 19스테이지를 깬 뒤) ==');
+    line('== 기준 장비에서의 보스 상대 초당 피해 (스테이지 20 장비 +15, 런에서 지역 넷을 깬 뒤) ==');
     for (final c in Roster.all) {
       final gear = GearPower(
         level: 20,
@@ -117,7 +117,7 @@ void main() {
       final w = weapons[c.id]!;
       final cycle = w.cycle(1);
       line(
-        '${c.name.padRight(8)} DPS ${_n(w.bossDps(gear, depth: 19))}  '
+        '${c.name.padRight(8)} DPS ${_n(w.bossDps(gear, depth: 4))}  '
         '(한 번에 ${cycle.hits.toStringAsFixed(2)}타 × 기본 ${cycle.base.toStringAsFixed(1)}, '
         '${cycle.interval.toStringAsFixed(2)}초마다, 더해지는 피해 ${_n(gear.addedDamage)})',
       );

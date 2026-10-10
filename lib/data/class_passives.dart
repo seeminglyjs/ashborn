@@ -50,8 +50,8 @@ enum ClassPassive {
   ),
   swordMastery(
     CharacterId.knight,
-    '연격 숙련',
-    '대검 콤보 확률과 맹공 지속 시간이 는다',
+    '연격의 달인',
+    '대검 콤보 확률과 맹공 지속 시간이 늘어난다',
     Balance.swordMasteryCombo,
     Balance.swordMasteryComboPerLevel,
     Balance.swordMasteryOnslaught,
@@ -67,7 +67,7 @@ enum ClassPassive {
   affinity(
     CharacterId.witch,
     '원소 친화',
-    '화염 · 냉기 · 번개가 더 빨리 쌓이고 점화 피해가 는다',
+    '화염 · 냉기 · 번개가 더 빨리 쌓이고 점화 피해가 늘어난다',
     Balance.affinityBuildup,
     Balance.affinityBuildupPerLevel,
     Balance.affinityIgnite,
@@ -90,7 +90,7 @@ enum ClassPassive {
   envenom(
     CharacterId.hunter,
     '맹독 바르기',
-    '모든 공격에 중독 확률이 붙고 중독 피해가 는다',
+    '모든 공격에 중독 확률이 붙고 중독 피해가 늘어난다',
     Balance.envenomChance,
     Balance.envenomChancePerLevel,
     Balance.envenomDamage,
@@ -141,7 +141,7 @@ enum ClassPassive {
   rally.skill(
     CharacterId.knight,
     '불굴의 함성',
-    '전투 함성을 더 자주 외치고, 외친 뒤 받는 피해가 더 준다',
+    '전투 함성을 더 자주 외치고, 외친 뒤 받는 피해가 더 줄어든다',
     Balance.rallyCooldown,
     Balance.rallyCooldownPerLevel,
     Balance.rallyGuard,

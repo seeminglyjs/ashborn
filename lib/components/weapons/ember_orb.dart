@@ -37,6 +37,12 @@ class EmberOrb extends Weapon {
     );
     if (target == null) return false;
     final aim = target.position - origin;
+    // 지팡이를 내밀어 잔불을 터뜨리고 다시 거둔다.
+    world.player.attackPose(
+      strike: Balance.shotPoseTime,
+      recover: Balance.reloadPoseTime,
+      aimX: aim.x,
+    );
     final damage = Balance.emberOrbDamage * damageMultiplier;
     casts++;
     if (hasOverheat && casts % Balance.overheatEvery == 0) {

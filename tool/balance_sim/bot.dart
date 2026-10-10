@@ -40,6 +40,9 @@ class RunResult {
   int gold = 0, stones = 0, ember = 0, transcendStones = 0;
   int cleared = 0;
 
+  /// 마지막 지역 보스까지 잡아 한 바퀴를 정복했다.
+  bool conquered = false;
+
   /// 스테이지 → 클리어까지 걸린 시간, 클리어 때 남은 체력 비율.
   final stageTimes = <int, double>{};
   final hpAtClear = <int, double>{};
@@ -123,8 +126,16 @@ class Bot {
           'hp ${(w.player.hp / w.player.maxHp * 100).round()}% '
           'lv ${game.stats.level.value}',
         );
-        if (r.cleared >= maxStages) break;
-        game.chooseFate(_pickFate(game.fateOptions.value));
+        // 처음 클리어한 스테이지면 은총을 하나 고르고(영구), 다음 지역으로 간다.
+        // 마지막 지역이면 정복으로 런이 끝난다.
+        if (game.fateOptions.value.isNotEmpty) {
+          game.chooseFate(_pickFate(game.fateOptions.value));
+        }
+        if (r.cleared >= maxStages || w.stage.isFinal) {
+          r.conquered = w.stage.isFinal;
+          break;
+        }
+        game.continueToNextStage();
         continue;
       }
       if (w.stage.index != lastStage) {

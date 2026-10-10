@@ -25,9 +25,11 @@ abstract final class Calibration {
   /// 그리고 계산에 없는 죽을 위험까지 여기에 뭉쳐 있다 (시뮬레이터 4시간 결과에 맞춘 값).
   static const double uptime = 0.25;
 
-  /// 한 런은 스테이지를 이어서 가며 레벨업 · 은총 카드 · 보조 무기로 계속 강해진다.
-  /// 런 첫 스테이지 보스 때의 배율과, 그 런에서 스테이지를 하나 깰 때마다 더해지는 배율.
-  static const double runPower = 1.6;
+  /// 한 런은 고른 타락 단계의 첫 지역부터 다섯 지역을 이어서 가며 레벨업 · 보조 무기로
+  /// 계속 강해진다. 런 첫 지역 보스 때의 배율과, 그 런에서 지역을 하나 깰 때마다 더해지는 배율.
+  /// 런이 늘 레벨 1 로 시작하게 바뀐 뒤(2026-10-10, 타락 단계 선택) 시뮬레이터 4시간 결과에 맞췄다.
+  /// 계산기는 타락 단계(다섯 스테이지) 단위로 벽이 끊겨 시뮬레이터보다 2~5 스테이지 낮게 나온다.
+  static const double runPower = 3.0;
   static const double runGrowth = 0.15;
 
   /// 런 중에 얻는 보조 무기(공용 무기 · 다른 전용 무기)가 보스에게 넣는 초당 타격 수와 한 타 기본 피해.
@@ -348,7 +350,7 @@ class StageModel {
 }
 
 /// [stage] 보스를 제한 시간 안에 잡는 데 필요한 최소 강화 단계. 최대 강화로도 안 되면 null.
-/// 런에서 [depth] 스테이지를 깬 뒤 (기본: 1스테이지부터 쭉 올라온 경우), 장비 등급 [rarity].
+/// 런에서 [depth] 지역을 깬 뒤 (기본: 그 타락 단계 첫 지역부터 온 경우), 장비 등급 [rarity].
 int? requiredEnhance(
   WeaponModel weapon,
   Stage stage, {
@@ -358,14 +360,15 @@ int? requiredEnhance(
   final boss = StageModel(stage).bossHp;
   for (var e = 0; e <= Balance.maxEnhance; e++) {
     final gear = GearPower(level: stage.level, enhance: e, rarity: rarity);
-    final dps = weapon.bossDps(gear, depth: depth ?? stage.index);
+    final dps = weapon.bossDps(gear, depth: depth ?? stage.step);
     if (boss / dps <= Balance.bossTimeLimit) return e;
   }
   return null;
 }
 
-/// 플레이 시간에 따른 진행 예측. 시뮬레이터의 봇처럼 런마다 1스테이지부터 벽까지 오르고,
-/// 깰 때마다 · 런이 끝날 때마다 모은 강화석 · 골드로 장비 10칸을 고르게 강화한다.
+/// 플레이 시간에 따른 진행 예측. 시뮬레이터의 봇처럼 런마다 열린 가장 높은 타락 단계의
+/// 첫 지역부터 벽 또는 정복까지 가고, 깰 때마다 · 런이 끝날 때마다 모은 강화석 · 골드로
+/// 장비 10칸을 고르게 강화한다. 정복하면 다음 단계가 열린다.
 /// 돌려주는 것: 스테이지마다 그 스테이지를 처음 깬 누적 분.
 List<double> progression(
   WeaponModel weapon, {
@@ -402,10 +405,12 @@ List<double> progression(
     }
   }
 
+  final regions = Region.values.length;
   while (minutes < budget && reached.length < stages) {
     final before = reached.length;
-    // 한 런: 1스테이지부터 보스를 제한 시간 안에 못 잡는 곳까지.
-    for (var i = 0; i < stages && minutes < budget; i++) {
+    // 한 런: 열린 가장 높은 타락 단계 첫 지역부터, 보스를 제한 시간 안에 못 잡는 곳 또는 정복까지.
+    final first = Stage.start(reached.length ~/ regions).index;
+    for (var i = first; i < first + regions && minutes < budget; i++) {
       final stage = Stage(i);
       final model = StageModel(stage);
       final gear = GearPower(
@@ -413,7 +418,7 @@ List<double> progression(
         enhance: enhance,
         rarity: Calibration.rarity(bosses),
       );
-      final ttk = model.bossHp / weapon.bossDps(gear, depth: i);
+      final ttk = model.bossHp / weapon.bossDps(gear, depth: stage.step);
       if (ttk > Balance.bossTimeLimit) {
         // 벽: 보스 시간 동안 버티며 졸개만 잡고 끝난다.
         minutes += stageMinutes + Balance.bossTimeLimit / 60;

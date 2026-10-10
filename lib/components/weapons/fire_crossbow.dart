@@ -73,6 +73,12 @@ class FireCrossbow extends Weapon {
     shots++;
     final sniper = hasSniper && shots % Balance.sniperEvery == 0;
     final aim = target.position - origin;
+    // 쏜 반동으로 몸이 밀렸다가 다시 화살을 메긴다.
+    world.player.attackPose(
+      strike: Balance.shotPoseTime,
+      recover: Balance.reloadPoseTime,
+      aimX: aim.x,
+    );
     for (var i = 0; i < arrowCount; i++) {
       final offset = (i - (arrowCount - 1) / 2) * Balance.stormSpread;
       world.add(

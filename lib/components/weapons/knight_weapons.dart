@@ -13,7 +13,7 @@ import 'weapon_art.dart';
 import '../effects/sparks.dart';
 import 'weapon.dart';
 
-/// 대지 강타 (잿불 기사): 둘레 땅을 내려쳐 적을 다치게 하고 멀리 밀어낸다.
+/// 대지 강타 (잿불 기사): 주변 땅을 내려쳐 적에게 피해를 주고 멀리 밀어낸다.
 /// 각성(지진)하면 한 박자 뒤 더 넓은 여진이 한 번 더 퍼진다.
 class EarthSlam extends Weapon {
   EarthSlam() : super(baseCooldown: Balance.earthSlamCooldown);
@@ -47,10 +47,11 @@ class EarthSlam extends Weapon {
     world
       ..add(Ring(position: at, radius: radius, color: color, strokeWidth: 10))
       ..add(
-        EarthSpikes(
+        EarthBurst(
           position: at.clone(),
           radius: radius * 0.85,
           count: 12,
+          ringAt: 0.8,
           ember: color == _quakeColor,
         ),
       )

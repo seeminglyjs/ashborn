@@ -30,10 +30,12 @@ import 'package:ashborn/data/passives.dart';
 import 'package:ashborn/systems/level_system.dart';
 import 'package:ashborn/systems/loot_system.dart';
 import 'package:ashborn/ui/equipment/equipment_screen.dart';
+import 'package:ashborn/ui/grace/grace_screen.dart';
 import 'package:ashborn/ui/overlays/level_up_overlay.dart';
 import 'package:ashborn/ui/overlays/stage_clear_overlay.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/data/profile.dart';
+import 'package:ashborn/data/progress.dart';
 import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/game/world/obstacles.dart';
 import 'package:ashborn/game/world/region_theme.dart';
@@ -240,21 +242,18 @@ void main() {
               GroundCrack(position: center, radius: Balance.slamRadius * size),
             )
             ..add(
-              EarthSpikes(
+              EarthBurst(
                 position: center.clone(),
                 radius: Balance.slamRadius * size,
                 ember: true,
               ),
-            )
-            ..add(
-              Ring(
-                position: center.clone(),
-                radius: Balance.slamRadius * size * 1.15,
-                color: const Color(0xFFE8D2A8),
-                strokeWidth: 8,
-              ),
             );
         },
+      );
+      player.attackPose(
+        windup: strike.duration * strike.impactAt,
+        strike: strike.duration * (1 - strike.impactAt),
+        aimX: math.cos(0.5),
       );
       if (move == SwordMove.slam) {
         player.leap(strike.duration * strike.impactAt, Balance.slamLeap);
@@ -265,7 +264,7 @@ void main() {
       for (final f in switch (move) {
         SwordMove.thrust => [60, 120, 180],
         SwordMove.swing => [60, 120, 200],
-        SwordMove.slam => [120, 300, 430, 520],
+        SwordMove.slam => [120, 300, 430, 480, 560, 660, 800],
       }) {
         await tester.pump(Duration(milliseconds: f - elapsed));
         elapsed = f;
@@ -273,6 +272,61 @@ void main() {
       }
       await tester.pump(const Duration(milliseconds: 600));
     }
+    game.pauseEngine();
+  });
+
+  testWidgets('흙 분출', (tester) async {
+    // 내려찍기 분출(보통 · 잿불)과 대지 강타의 흙벽을 크게 놓고 시간 순서로 찍는다.
+    final (game, key) = await _arena(tester, Roster.knight, ratio: 2);
+    final world = game.world;
+    final at = world.player.position.clone();
+    world
+      ..add(
+        EarthBurst(
+          position: at + Vector2(-90, -70),
+          radius: Balance.slamRadius,
+        ),
+      )
+      ..add(
+        EarthBurst(
+          position: at + Vector2(90, -70),
+          radius: Balance.slamRadius,
+          ember: true,
+        ),
+      )
+      ..add(
+        EarthBurst(
+          position: at + Vector2(0, 170),
+          radius: Balance.earthSlamRadius * 0.85,
+          count: 12,
+          ringAt: 0.8,
+        ),
+      );
+    var elapsed = 0;
+    for (final f in [40, 90, 160, 260, 380, 520]) {
+      await tester.pump(Duration(milliseconds: f - elapsed));
+      elapsed = f;
+      await _shot(tester, key, 'earth_burst_$f');
+    }
+    game.pauseEngine();
+  });
+
+  testWidgets('정예', (tester) async {
+    final (game, key) = await _arena(tester, Roster.knight, ratio: 2);
+    final world = game.world;
+    final at = world.player.position.clone();
+    for (final (i, elite) in [(0, false), (1, true), (2, true)]) {
+      final e = _dummy(
+        [EnemyKind.ashWalker, EnemyKind.ashWalker, EnemyKind.ashRaider][i],
+        at + Vector2(-90.0 + i * 90, -110),
+      );
+      if (elite) e.makeElite();
+      world.add(e);
+    }
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await _shot(tester, key, 'elite');
     game.pauseEngine();
   });
 
@@ -539,6 +593,7 @@ void main() {
       WidgetTester tester,
       Widget child, {
       Size size = const Size(390, 844),
+      Progress? progress,
     }) async {
       tester.view
         ..physicalSize = size
@@ -576,7 +631,11 @@ void main() {
         RepaintBoundary(
           key: key,
           child: ProfileScope(
-            profile: Profile(mastery: mastery, inventory: inventory),
+            profile: Profile(
+              mastery: mastery,
+              inventory: inventory,
+              progress: progress,
+            ),
             child: MaterialApp(theme: ThemeData.dark(), home: child),
           ),
         ),
@@ -660,6 +719,67 @@ void main() {
       tester.view.physicalSize = const Size(390, 560);
       await tester.pump();
       await _shot(tester, key, 'ui_fate_4_short');
+    });
+
+    testWidgets('은총 받은 뒤 클리어 화면', (tester) async {
+      final game = AshbornGame(character: Roster.knight, profile: Profile());
+      final pick = Fate(FateCard.sharpEmber, Rarity.hero);
+      game.fateOptions.value = [pick, Fate(FateCard.newArms, Rarity.rare)];
+      game.chosenFate.value = pick;
+      final key = await screen(
+        tester,
+        Scaffold(
+          backgroundColor: const Color(0xFF2E2A28),
+          body: StageClearOverlay(game: game, onReturn: () {}),
+        ),
+      );
+      await _shot(tester, key, 'ui_fate_chosen');
+    });
+
+    testWidgets('은총 메뉴', (tester) async {
+      final progress = Progress(4, null, {
+        0: Fate(FateCard.sharpEmber, Rarity.rare),
+        1: Fate(FateCard.hardenedAsh, Rarity.normal),
+        2: Fate(FateCard.berserk, Rarity.legend),
+        3: Fate(FateCard.smithsTouch, Rarity.hero),
+      });
+      final key = await screen(tester, const GraceScreen(), progress: progress);
+      await _shot(tester, key, 'ui_grace');
+    });
+
+    testWidgets('정복 화면', (tester) async {
+      final game = AshbornGame(
+        character: Roster.knight,
+        profile: Profile(),
+        startStage: Stage.start(1).next.next.next.next,
+      );
+      game.world.unlockedCorruption = true;
+      final key = await screen(
+        tester,
+        Scaffold(
+          backgroundColor: const Color(0xFF2E2A28),
+          body: StageClearOverlay(game: game, onReturn: () {}),
+        ),
+      );
+      await _shot(tester, key, 'ui_conquest');
+    });
+
+    testWidgets('캐릭터 선택 (타락 단계)', (tester) async {
+      final key = await screen(
+        tester,
+        const CharacterSelectScreen(),
+        progress: Progress(Region.values.length * 4 + 2),
+      );
+      await _shot(tester, key, 'ui_select_corruption');
+    });
+
+    testWidgets('캐릭터 선택 (받을 은총)', (tester) async {
+      final key = await screen(
+        tester,
+        const CharacterSelectScreen(),
+        progress: Progress(2),
+      );
+      await _shot(tester, key, 'ui_select_grace');
     });
   });
 

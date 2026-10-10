@@ -157,7 +157,7 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '연격 숙련: 대검 콤보 확률이 오른다',
+      '연격의 달인: 대검 콤보 확률이 오른다',
       gameWith(
         Roster.knight,
         mastery: withPassive(ClassPassive.swordMastery, 5),

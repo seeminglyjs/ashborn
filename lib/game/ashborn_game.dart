@@ -85,8 +85,18 @@ class AshbornGame extends FlameGame<RunWorld>
   final levelUpOptions = ValueNotifier<List<LevelUpOption>>(const []);
   int _pendingLevelUps = 0;
 
-  /// 스테이지 클리어 때 고를 운명 카드.
+  /// 스테이지 클리어 때 고를 은총 카드. 이미 은총을 받은 스테이지면 비어 있다.
   final fateOptions = ValueNotifier<List<Fate>>(const []);
+
+  /// 이번 클리어에서 고른 은총. 고르기 전이거나 고를 것이 없으면 null.
+  final chosenFate = ValueNotifier<Fate?>(null);
+
+  /// 은총 카드를 다시 뽑을 수 있는 남은 횟수.
+  int get fateRerolls => progress.offerFor(world.stage)?.rerolls ?? 0;
+
+  /// 클리어 화면을 떠나도 되는가: 고를 은총이 없거나 이미 골랐다.
+  bool get canLeaveClear =>
+      fateOptions.value.isEmpty || chosenFate.value != null;
 
   final joystick = FloatingJoystick();
 
@@ -151,35 +161,47 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 보스를 제한 시간 안에 잡지 못하면 쓰러진 것과 같이 런이 끝난다.
   void onBossTimeout() => onPlayerDied();
 
-  /// 보스를 잡고 전리품을 주울 시간이 끝나면 운명 카드와 다음 지역 선택을 띄운다.
+  /// 보스를 잡고 전리품을 주울 시간이 끝나면 클리어 화면을 띄운다. 이 스테이지를 처음
+  /// 클리어했으면 은총 카드도 함께 (스테이지마다 한 번뿐, 다시 깨면 없다).
   void onStageCleared() {
-    fateOptions.value = FateSystem.roll(world.player, random);
+    chosenFate.value = null;
+    fateOptions.value =
+        FateSystem.offer(progress, upgrades, world.stage, random)?.hand ??
+        const [];
     GameAudio.play(Sfx.stageClear);
     if (overlays.add(stageClearOverlay)) pauseEngine();
   }
 
   void rerollFate() {
-    final fate = world.fate;
-    if (fate.rerolls <= 0) return;
-    fate.rerolls--;
-    fateOptions.value = FateSystem.roll(world.player, random);
+    if (chosenFate.value != null) return;
+    final stage = world.stage;
+    if (FateSystem.reroll(progress, upgrades, stage, random)) {
+      fateOptions.value = progress.offerFor(stage)!.hand;
+    }
   }
 
-  /// 운명을 고르면 다음 지역으로 간다. 레벨업 같은 효과가 바로 이어지도록
-  /// 게임을 다시 돌린 뒤에 적용한다.
+  /// 은총을 고르면 영구히 남는다. 효과는 다음 지역으로 갈 때 낸다 ([continueToNextStage]).
   void chooseFate(Fate fate) {
+    if (chosenFate.value != null) return;
+    if (!progress.takeGrace(world.stage, fate)) return;
     GameAudio.play(Sfx.select);
-    continueToNextStage();
-    FateSystem.apply(fate, world);
+    chosenFate.value = fate;
     notify(
       '신의 은총: ${fate.card.title} (${fate.rarity.label})',
       color: fate.rarity.color,
     );
   }
 
+  /// 다음 지역으로. 방금 받은 은총은 레벨업 같은 효과가 바로 이어지도록 게임을 다시
+  /// 돌린 뒤에 이 런에도 더한다.
   void continueToNextStage() {
+    // 마지막 지역이면 단계 클리어로 런이 끝난다. 화톳불로 돌아가는 것만 남는다.
+    if (world.stage.isFinal) return;
+    final fate = chosenFate.value;
+    chosenFate.value = null;
     world.advanceStage();
     if (overlays.remove(stageClearOverlay)) resumeEngine();
+    if (fate != null) FateSystem.apply(fate, world);
   }
 
   /// 일시정지 메뉴, 또는 거기서 연 설정 · 장비 화면이 떠 있다.

@@ -185,6 +185,12 @@ class Greatsword extends Weapon {
       awakened: awakened,
       onImpact: (strike) => _impact(move, strike.aimAngle),
     );
+    // 몸도 칼을 따라 움직인다: 칼이 닿기 전엔 예비 동작, 닿는 순간부터 몸을 실어 내지른다.
+    player.attackPose(
+      windup: strike.duration * strike.impactAt,
+      strike: strike.duration * (1 - strike.impactAt),
+      aimX: _aim.x,
+    );
     // 내려찍기는 뛰어올랐다가 칼과 함께 떨어진다. 착지하는 순간이 타격이다.
     if (move == SwordMove.slam) {
       player.leap(strike.duration * strike.impactAt, Balance.slamLeap);
@@ -225,18 +231,10 @@ class Greatsword extends Weapon {
       world
         ..add(GroundCrack(position: center, radius: Balance.slamRadius * size))
         ..add(
-          EarthSpikes(
+          EarthBurst(
             position: center.clone(),
             radius: Balance.slamRadius * size,
             ember: inOnslaught || awakened,
-          ),
-        )
-        ..add(
-          Ring(
-            position: center.clone(),
-            radius: Balance.slamRadius * size * 1.15,
-            color: const Color(0xFFE8D2A8),
-            strokeWidth: 8,
           ),
         )
         ..add(

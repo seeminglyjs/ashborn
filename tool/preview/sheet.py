@@ -5,7 +5,7 @@ python -I tool/preview/sheet.py [--frames] [--before 폴더] [--out 파일] <png
 - 기본은 시트마다 첫 프레임만, --frames 면 모든 프레임을 늘어놓는다.
 - --before 를 주면 같은 상대 경로의 예전 그림을 위 줄에, 지금 그림을 아래 줄에 놓아 비교한다
   (예: 스크립트를 고치기 전 assets 를 복사해 두고 --before 로 넘긴다).
-- 캐릭터 시트(knight · witch · hunter)는 24x28 프레임 9장, enemies/ 는 4장으로 잘라 본다.
+- 캐릭터 시트(knight · witch · hunter)는 24x28 프레임 11장, enemies/ 는 4장으로 잘라 본다.
 - 배경은 게임 바닥과 비슷한 어두운 색. 작은 그림일수록 크게 키운다 (짧은 변이 140px 쯤).
 - 결과 기본 위치는 build/preview/sheet.png. 이 파일을 열어 눈으로 확인한다.
 """

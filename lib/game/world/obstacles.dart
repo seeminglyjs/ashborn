@@ -148,7 +148,7 @@ class TrapSystem extends Component with HasWorldReference<RunWorld> {
         _ => null,
       };
 
-  /// [p] 를 지금 다치게 하는 함정. 없거나 들어가 있으면 null.
+  /// [p] 에게 지금 피해를 주는 함정. 없거나 들어가 있으면 null.
   static Object? hurting(Vector2 p, RegionTheme theme, double time) {
     final (gx, gy) = tileOf(p);
     switch (trapAt(gx, gy, theme)) {

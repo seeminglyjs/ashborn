@@ -725,9 +725,11 @@ void main() {
     expect(find.byType(HearthScreen), findsNothing);
   });
 
-  testWidgets('출정할 스테이지는 클리어한 다음 스테이지까지 고를 수 있다', (tester) async {
+  testWidgets('출정할 타락 단계는 클리어한 다음 단계까지 고르고, 그 단계 첫 지역에서 시작한다', (tester) async {
     useScreen(tester, phonePortrait);
-    final progress = Progress()..recordClear(const Stage(5));
+    // 타락 0 · 1 단계를 정복하고 2단계 중간까지 깼다.
+    final progress = Progress()
+      ..recordClear(Stage(Region.values.length * 2 + 1));
     await tester.pumpWidget(
       ProfileScope(
         profile: Profile(progress: progress),
@@ -737,25 +739,27 @@ void main() {
     await settle(tester, 300);
 
     String shown() =>
-        tester.widget<Text>(find.byKey(const Key('stage-name'))).data!;
-    expect(shown(), const Stage(6).name);
+        tester.widget<Text>(find.byKey(const Key('corruption-name'))).data!;
+    expect(shown(), '타락 2단계');
+    expect(find.byKey(const Key('corruption-rules')), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('stage-next')));
+    await tester.tap(find.byKey(const Key('corruption-next')));
     await tester.pump();
-    expect(shown(), const Stage(6).name);
+    expect(shown(), '타락 2단계');
 
-    for (var i = 0; i < 6; i++) {
-      await tester.tap(find.byKey(const Key('stage-prev')));
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byKey(const Key('corruption-prev')));
       await tester.pump();
     }
-    expect(shown(), Stage.first.name);
+    expect(shown(), '타락 없음 · 클리어');
+    expect(find.byKey(const Key('corruption-rules')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('stage-next')));
+    await tester.tap(find.byKey(const Key('corruption-next')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('depart')));
     await settle(tester);
 
     final screen = tester.widget<GameScreen>(find.byType(GameScreen));
-    expect(screen.stage, const Stage(1));
+    expect(screen.stage, Stage.start(1));
   });
 }

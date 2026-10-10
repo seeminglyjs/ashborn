@@ -100,8 +100,8 @@ class RunWorld extends World
   /// 초월 옵션으로 늘어난 골드 획득량.
   double get goldMultiplier => 1 + player.transcend(TranscendOption.goldFind);
 
-  /// 이번 런에서 고른 운명.
-  final fate = RunFate();
+  /// 이 런에 붙은 신의 은총: 영구히 받아 둔 은총으로 시작한다.
+  late final fate = RunFate(game.progress.graces);
 
   /// 보스가 나온 뒤 지난 시간.
   double bossTime = 0;
@@ -115,9 +115,15 @@ class RunWorld extends World
 
   @override
   Future<void> onLoad() async {
-    fate.rerolls += game.upgrades.value(Upgrade.fateRerolls).round();
     game.stats.reset(xpToNext: LevelSystem.xpToNext(1));
     _publishStage();
+    final rules = stage.rules;
+    if (rules.isNotEmpty) {
+      game.notify(
+        '타락 ${stage.corruption}단계: ${rules.map((r) => r.label).join(' · ')}',
+        color: const Color(0xFFE8463A),
+      );
+    }
     // 스프라이트는 기다리지 않는다. 다 읽기 전에 나온 적은 원으로 그려진다.
     unawaited(game.monsterSprites.load(game.images));
     unawaited(game.props.load(game.images));
@@ -250,10 +256,13 @@ class RunWorld extends World
   void onBossDefeated(Boss defeated) {
     boss = null;
     _clearTimer = Balance.stageClearDelay;
+    final firstClear = (game.progress.bestCleared?.index ?? -1) < stage.index;
     game.progress.recordClear(stage);
     _dropBossChest(defeated.position);
+    // 조공명의 금화 은총은 클리어 잔불을 스테이지 레벨만큼 더 준다.
     final reward =
-        (Balance.stageClearEmber * stage.level * stage.dropChanceMultiplier)
+        (Balance.stageClearEmber * stage.level * stage.dropChanceMultiplier +
+                fate.clearEmber * stage.level)
             .round();
     game.notify(
       '잔불 +${bankEmber(bonus: reward)}',
@@ -270,7 +279,7 @@ class RunWorld extends World
     );
     game.notify('골드 +$gold · 강화석 +$stones', color: const Color(0xFFE8C887));
     final mastery = bankMastery(bonus: Balance.masteryBossXp * stage.level);
-    game.notify('숙련 +$mastery', color: const Color(0xFFB8A6FF));
+    game.notify('특성 경험치 +$mastery', color: const Color(0xFFB8A6FF));
     if (game.random.nextDouble() <
         Balance.transcendStoneChance +
             Balance.transcendStoneChancePerCorruption * stage.corruption) {
@@ -278,6 +287,7 @@ class RunWorld extends World
       runTranscendStones++;
       game.notify('초월석 +1', color: TranscendOption.color);
     }
+    if (stage.isFinal) _conquer(firstClear: firstClear);
     for (final enemy in enemies.toList()) {
       // 상자는 그대로 둔다. 전리품을 주우며 부술 수 있다.
       if (enemy == defeated || enemy is Crate) continue;
@@ -287,6 +297,8 @@ class RunWorld extends World
     for (final hazard in children.whereType<Hazard>()) {
       hazard.removeFromParent();
     }
+    // 신농의 약초 은총: 클리어할 때마다 체력을 채운다.
+    if (fate.clearHeal > 0) player.heal(player.maxHp * fate.clearHeal);
     shake(0.6);
     // 배경음을 거두고 보스 처치음 · 클리어 팡파르가 들리게 한다. 다음 지역에서 다시 튼다.
     GameAudio.play(Sfx.bossDown);
@@ -295,6 +307,36 @@ class RunWorld extends World
       ..bossHealth.value = null
       ..stageCleared.value = true;
     game.notify('${stage.name} 클리어', color: const Color(0xFFE8C887));
+  }
+
+  /// 이번 런으로 단계를 클리어했는가 (마지막 지역 보스를 잡았다).
+  bool conquered = false;
+
+  /// 이번 클리어로 다음 타락 단계가 처음 열렸는가.
+  bool unlockedCorruption = false;
+
+  /// 그 단계의 마지막 보스를 잡으면 단계 클리어 보상을 준다. 그 단계를 처음 클리어하면
+  /// 초월석을 더 주고 다음 타락 단계가 열린다.
+  void _conquer({required bool firstClear}) {
+    conquered = true;
+    final c = stage.corruption;
+    final (:gold, :stones) = bankLoot(
+      gold: (Balance.conquestGold * stage.level * goldMultiplier).round(),
+      stones: Balance.conquestStones * (c + 1),
+    );
+    game.notify(
+      '${stage.corruption == 0 ? '마지막 지역' : '타락 ${stage.corruption}단계'} 클리어 보상: 골드 +$gold · 강화석 +$stones',
+      color: const Color(0xFFE8C887),
+    );
+    if (firstClear) {
+      unlockedCorruption = true;
+      game.inventory.addLoot(transcendStones: Balance.firstConquestTranscend);
+      runTranscendStones += Balance.firstConquestTranscend;
+      game.notify(
+        '첫 클리어! 초월석 +${Balance.firstConquestTranscend} · 타락 ${c + 1}단계 해금',
+        color: const Color(0xFFE8463A),
+      );
+    }
   }
 
   void _dropBossChest(Vector2 at) {
@@ -349,9 +391,9 @@ class RunWorld extends World
     return amount;
   }
 
-  /// 다음 스테이지로. 마지막 지역 다음이면 타락 단계가 오른다.
+  /// 다음 지역으로. 마지막 지역(단계 클리어)에서는 런이 끝나므로 넘어가지 않는다.
   void advanceStage() {
-    final previous = stage;
+    if (stage.isFinal) return;
     stage = stage.next;
     stageTime = 0;
     bossTime = 0;
@@ -359,17 +401,15 @@ class RunWorld extends World
     _clearTimer = null;
     _publishStage();
     GameAudio.music(Bgm.battle);
-    if (stage.corruption > previous.corruption) {
-      game.notify(
-        '타락 ${stage.corruption}단계: 적과 보상이 강해진다',
-        color: const Color(0xFFE8463A),
-      );
-    }
     game.notify(stage.name, color: const Color(0xFFE8C887));
   }
 
-  /// [xp] 는 떨어뜨릴 재의 결정 수 (거구는 여럿).
-  void onEnemyKilled(Vector2 position, {int xp = 1}) {
+  /// 깔려 있는 잿불 유해 수 ([DeathBlast] 가 스스로 센다).
+  int deathBlasts = 0;
+
+  /// [xp] 는 떨어뜨릴 재의 결정 수 (거구는 여럿). [elite] 면 강화석을 확정으로 주고
+  /// 장비 드랍 확률이 [Balance.eliteDropBonus] 배다.
+  void onEnemyKilled(Vector2 position, {int xp = 1, bool elite = false}) {
     game.stats.kills.value++;
     GameAudio.play(Sfx.kill);
     for (var i = 0; i < xp; i++) {
@@ -393,10 +433,11 @@ class RunWorld extends World
         Balance.stoneDropChance * stage.dropChanceMultiplier) {
       _pendingStones++;
     }
+    if (elite) _pendingStones += Balance.eliteStones;
     final item = LootSystem.rollDrop(
       game.random,
       stage,
-      fate.dropMultiplier,
+      fate.dropMultiplier * (elite ? Balance.eliteDropBonus : 1),
       character.id,
     );
     if (item != null) add(ItemDrop(position: position.clone(), item: item));

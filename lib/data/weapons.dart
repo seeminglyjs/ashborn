@@ -55,7 +55,7 @@ enum WeaponId {
   ),
   earthSlam(
     '대지 강타',
-    '주변 땅을 내려쳐 적을 날려 보내는 충격파',
+    '주변 땅을 내려쳐 적에게 피해를 주고 날려 보내는 충격파',
     '파동',
     DamageType.physical,
     owner: CharacterId.knight,
@@ -91,7 +91,7 @@ enum WeaponId {
   ),
   warCry(
     '전투 함성',
-    '둘레 적을 다치게 하고 느리게 묶는 함성. 외친 뒤 잠시 받는 피해가 준다',
+    '주변 적에게 피해를 주고 느리게 묶는 함성. 외친 뒤 잠시 받는 피해가 줄어든다',
     '함성',
     DamageType.physical,
     owner: CharacterId.knight,
@@ -164,7 +164,7 @@ enum WeaponId {
   ),
   emberSpirits(
     '잔불 정령',
-    '몸 둘레를 돌며 닿는 적을 태우는 불덩이 정령',
+    '몸 주변을 돌며 닿는 적을 태우는 불덩이 정령',
     '정령',
     DamageType.fire,
     owner: CharacterId.witch,
@@ -237,7 +237,7 @@ enum WeaponId {
   ),
   snareNet(
     '올가미 그물',
-    '가까운 적 무리에 그물을 던져 묶어 두고 조금씩 다치게 한다',
+    '가까운 적 무리에 그물을 던져 묶어 두고 지속 피해를 준다',
     '그물',
     DamageType.physical,
     owner: CharacterId.hunter,
@@ -255,7 +255,7 @@ enum WeaponId {
   ),
   ashAura(
     '잿불 고리',
-    '몸 둘레를 계속 태우는 잿불의 고리',
+    '몸 주변의 적을 계속 태우는 잿불의 고리',
     '고리',
     DamageType.fire,
     catalyst: PassiveId.regrowth,
@@ -389,7 +389,7 @@ enum WeaponId {
       cleave => '$damage, 앞뒤를 함께 베고 참격이 더 크다',
       warCry => '$damage, 함성이 적을 밀쳐 내고 더 오래 묶는다',
       emberSpirits => '$damage, 정령이 하나 더 늘고 닿은 적에게 불이 더 빨리 붙는다',
-      snareNet => '$damage, 그물에 가시가 돋아 묶인 적을 계속 벤다',
+      snareNet => '$damage, 그물에 가시가 돋아 묶인 적에게 계속 피해를 준다',
       emberOrb =>
         '$damage, 맞힌 자리에서 터져 주변 적에게 '
             '${(Balance.meteorRatio * 100).round()}% 피해',
@@ -398,7 +398,7 @@ enum WeaponId {
       fireCrossbow =>
         '$damage, 화살 ${Balance.stormArrows}발을 부채꼴로, '
             '관통 +${Balance.stormPierceBonus}',
-      emberMine => '$damage, 덫이 터지면 둘레에 작은 폭발이 이어진다',
+      emberMine => '$damage, 덫이 터지면 주변에 작은 폭발이 이어진다',
       throwingKnives => '$damage, 앞뒤 양옆 네 방향으로 함께 던진다',
       ashAura => '$damage, 고리가 넓어지고 닿은 적을 얼려 느리게 한다',
       thunder => '$damage, 벼락이 가까운 적 둘에게 튄다',
