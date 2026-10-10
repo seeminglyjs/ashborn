@@ -23,6 +23,7 @@ import '../../data/stages.dart';
 import '../../data/supplies.dart';
 import '../../data/transcend.dart';
 import '../../data/upgrades.dart';
+import '../../services/audio.dart';
 import '../../systems/crate_system.dart';
 import '../../systems/crowd_system.dart';
 import '../../systems/fate_system.dart';
@@ -240,6 +241,7 @@ class RunWorld extends World
     game.stats.bossHealth.value = 1;
     game.notify('${region.bossName} 등장', color: const Color(0xFFE8463A));
     shake(0.5);
+    GameAudio.play(Sfx.bossAppear);
   }
 
   /// 보스를 잡으면 남은 졸개는 재가 되어 흩어지고 웨이브가 멈춘다.
@@ -284,6 +286,7 @@ class RunWorld extends World
       hazard.removeFromParent();
     }
     shake(0.6);
+    GameAudio.play(Sfx.bossDown);
     game.stats
       ..bossHealth.value = null
       ..stageCleared.value = true;
@@ -363,6 +366,7 @@ class RunWorld extends World
   /// [xp] 는 떨어뜨릴 재의 결정 수 (거구는 여럿).
   void onEnemyKilled(Vector2 position, {int xp = 1}) {
     game.stats.kills.value++;
+    GameAudio.play(Sfx.kill);
     for (var i = 0; i < xp; i++) {
       add(
         AshShard(
@@ -400,6 +404,7 @@ class RunWorld extends World
   /// 상자가 부서졌을 때. 나무 상자는 보급품 하나, 보물 상자는 레어 이상 장비와 골드 주머니.
   void breakCrate(Crate crate) {
     final at = crate.position.clone();
+    GameAudio.play(Sfx.crate);
     final gold = (Balance.crateGold * stage.level * goldMultiplier).round();
     if (crate.chest) {
       add(
@@ -451,20 +456,24 @@ class RunWorld extends World
       case Supply.potion:
         final before = player.hp;
         player.heal(player.maxHp * Balance.potionHeal);
+        GameAudio.play(Sfx.heal);
         game.notify(
           '체력 +${(player.hp - before).round()}',
           color: const Color(0xFF7BD15A),
         );
       case Supply.gold:
         _pendingGold += amount;
+        GameAudio.play(Sfx.coin);
         game.notify('골드 +$amount', color: const Color(0xFFE8C887));
       case Supply.stone:
         _pendingStones += amount;
+        GameAudio.play(Sfx.gem);
         game.notify('강화석 +$amount', color: const Color(0xFF6FD8F0));
       case Supply.magnet:
         for (final shard in children.whereType<AshShard>()) {
           shard.attract();
         }
+        GameAudio.play(Sfx.magnet);
         game.notify('자석: 재의 결정을 모두 끌어당긴다', color: const Color(0xFF9FD8E8));
     }
   }

@@ -17,6 +17,7 @@ import '../data/progress.dart';
 import '../data/settings.dart';
 import '../data/stages.dart';
 import '../data/upgrades.dart';
+import '../services/audio.dart';
 import '../systems/fate_system.dart';
 import '../systems/level_system.dart';
 import 'floating_joystick.dart';
@@ -124,6 +125,7 @@ class AshbornGame extends FlameGame<RunWorld>
   }
 
   void onPlayerDied() {
+    GameAudio.play(Sfx.gameOver);
     world
       ..bankEmber()
       ..bankLoot()
@@ -138,6 +140,7 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 보스를 잡고 전리품을 주울 시간이 끝나면 운명 카드와 다음 지역 선택을 띄운다.
   void onStageCleared() {
     fateOptions.value = FateSystem.roll(world.player, random);
+    GameAudio.play(Sfx.stageClear);
     if (overlays.add(stageClearOverlay)) pauseEngine();
   }
 
@@ -151,6 +154,7 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 운명을 고르면 다음 지역으로 간다. 레벨업 같은 효과가 바로 이어지도록
   /// 게임을 다시 돌린 뒤에 적용한다.
   void chooseFate(Fate fate) {
+    GameAudio.play(Sfx.select);
     continueToNextStage();
     FateSystem.apply(fate, world);
     notify(
@@ -238,11 +242,13 @@ class AshbornGame extends FlameGame<RunWorld>
 
   /// 한꺼번에 여러 레벨이 오르면 한 장씩 차례로 고른다.
   void onLevelUp(int levels) {
+    GameAudio.play(Sfx.levelUp);
     _pendingLevelUps += levels;
     if (!overlays.isActive(levelUpOverlay)) _offerLevelUp();
   }
 
   void chooseLevelUp(LevelUpOption option) {
+    GameAudio.play(Sfx.select);
     option.apply(world.player);
     _pendingLevelUps--;
     _offerLevelUp();

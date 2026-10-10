@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^2.0.0
   flame: ^1.38.2
   shared_preferences: ^2.5.6
+  flutter_soloud: ^5.1.6
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +67,8 @@ flutter:
     - assets/images/sprites/scene/
     - assets/images/sprites/upcoming/
     - assets/images/sprites/items/
+    # 효과음 (tool/sound/sfx.py 가 만든다).
+    - assets/audio/sfx/
 
   # 픽셀 한글 글꼴 (OFL-1.1, assets/fonts/Galmuri-OFL.md). 제목 · 버튼에 쓴다.
   fonts:
