@@ -495,6 +495,19 @@ flutter run -d android   # 연결된 안드로이드 기기 / 에뮬레이터
 flutter test
 ```
 
+### ⚖️ 밸런스 확인
+
+```bash
+# 계산기: 공식만으로 몇 초 (스테이지별 벽 · 강화 경제 · 진행 예측)
+flutter test tool/balance_calc/calc_test.dart
+
+# 시뮬레이터: 봇이 실제로 플레이 (4시간 분량에 약 15분, 큰 변경의 최종 확인용)
+flutter test tool/balance_sim/campaign_test.dart --dart-define=CHAR=knight --dart-define=HOURS=4 --dart-define=SEED=1
+```
+
+계산기 결과는 `build/balance_calc.txt` 에도 남습니다. 계산기는 시뮬레이터 4시간 결과에 맞춰 보정되어 있습니다
+(`tool/balance_calc/model.dart` 의 `Calibration`).
+
 ---
 
 <div align="center">
