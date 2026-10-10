@@ -8,6 +8,7 @@ import '../../data/equipment.dart';
 import '../../data/inventory.dart';
 import '../../data/stats.dart';
 import '../../data/transcend.dart';
+import '../../services/audio.dart';
 import '../odds/odds_screen.dart';
 import '../routes.dart';
 import '../theme.dart';
@@ -78,6 +79,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
 
   void _enhance(Item item) => setState(() {
     _inventory.enhance(item);
+    GameAudio.enhance(item.enhance);
     _upgradeNotice = '강화 완료! +${item.enhance}';
   });
 
@@ -111,6 +113,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
     if (option == null || !mounted || !_inventory.canTranscend(item)) return;
     setState(() {
       _inventory.transcend(item, option);
+      GameAudio.play(Sfx.transcend);
       _upgradeNotice = '초월 완료! ${option.label}';
     });
   }

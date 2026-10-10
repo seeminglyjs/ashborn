@@ -17,6 +17,7 @@ import '../../data/transcend.dart';
 import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
+import '../../services/audio.dart';
 import '../effects/burst.dart';
 import '../effects/damage_number.dart';
 import '../effects/pixel_fx.dart';
@@ -591,10 +592,14 @@ class Player extends PositionComponent
             color: const Color(0xFFB8A6FF),
           ),
         );
+      GameAudio.play(Sfx.block);
       return false;
     }
     if (game.random.nextDouble() < evasion) return false;
-    if (_parry(amount, source)) return false;
+    if (_parry(amount, source)) {
+      GameAudio.play(Sfx.block);
+      return false;
+    }
 
     var damage =
         amount *
@@ -619,6 +624,7 @@ class Player extends PositionComponent
       _hitPose = Balance.playerHitPoseTime;
       game.hitVignette.flash();
       world.shake(damage >= maxHp * 0.15 ? 0.3 : 0.12);
+      GameAudio.play(Sfx.hurt);
       if (game.settings.vibration) HapticFeedback.lightImpact();
     }
     final revives = isDead ? reviveHps : const <double>[];
@@ -748,6 +754,7 @@ class Player extends PositionComponent
         ),
       );
       if (hit.crit && enemy is Boss) world.shake(0.08);
+      GameAudio.play(hit.crit ? Sfx.crit : Sfx.hit);
     }
     _applyAilments(enemy, hit, raw, random, secondary: secondary);
     if (!secondary) {

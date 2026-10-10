@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/inventory.dart';
 import '../../data/upgrades.dart';
+import '../../services/audio.dart';
 import '../profile_scope.dart';
 import '../theme.dart';
 
@@ -161,7 +162,10 @@ class _UpgradeRow extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
               ),
               onPressed: upgrades.canBuy(upgrade, inventory)
-                  ? () => upgrades.buy(upgrade, inventory)
+                  ? () {
+                      upgrades.buy(upgrade, inventory);
+                      GameAudio.enhance(upgrades.level(upgrade));
+                    }
                   : null,
               child: Text(max ? '최대' : '${upgrades.cost(upgrade)}'),
             ),

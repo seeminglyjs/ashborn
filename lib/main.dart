@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'data/profile.dart';
 import 'data/save_snapshot.dart';
+import 'services/audio.dart';
 import 'services/cloud_save.dart';
 import 'services/cloud_sync.dart';
 import 'ui/profile_scope.dart';
@@ -17,6 +18,8 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   final profile = await Profile.load();
+  // 효과음은 기다리지 않는다. 다 읽기 전에 난 소리는 건너뛴다.
+  unawaited(GameAudio.start(profile.settings));
   runApp(AshbornApp(profile: profile));
 }
 
@@ -56,6 +59,7 @@ class _AshbornAppState extends State<AshbornApp> {
     final profile = await Profile.restore(snapshot);
     if (!mounted) return profile;
     setState(() => _profile = profile);
+    GameAudio.settings = profile.settings;
     // 화면들이 예전 기록을 들고 있지 않게 첫 화면부터 다시 연다.
     await _navigator.currentState?.pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const SplashScreen()),

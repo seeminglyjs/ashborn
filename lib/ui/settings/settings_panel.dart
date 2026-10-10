@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/equipment.dart';
 import '../../data/settings.dart';
 import '../../data/save_snapshot.dart';
+import '../../services/audio.dart';
 import '../../services/cloud_sync.dart';
 import '../odds/odds_screen.dart';
 import '../routes.dart';
@@ -111,11 +112,13 @@ class SettingsPanel extends StatelessWidget {
       label: '효과음',
       value: settings.sfxVolume,
       onChanged: (v) => settings.sfxVolume = v,
+      // 놓으면 바뀐 크기로 한 번 들려준다.
+      onChangeEnd: (_) => GameAudio.play(Sfx.select),
     ),
     const Padding(
       padding: EdgeInsets.only(left: 16, bottom: 4),
       child: Text(
-        '사운드가 추가되면 이 볼륨이 적용됩니다.',
+        '배경음은 다음 업데이트에 추가됩니다.',
         style: TextStyle(color: AshColors.ash, fontSize: 11),
       ),
     ),
@@ -192,12 +195,14 @@ class _Volume extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.onChangeEnd,
   });
 
   final String keyName;
   final String label;
   final double value;
   final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChangeEnd;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -211,6 +216,7 @@ class _Volume extends StatelessWidget {
             value: value,
             activeColor: AshColors.ember,
             onChanged: onChanged,
+            onChangeEnd: onChangeEnd,
           ),
         ),
         SizedBox(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/audio.dart';
 import '../theme.dart';
 
 /// 청동 판에 금테를 두른 픽셀풍 버튼. 모서리가 각지고 그림자가 번지지 않는다.
@@ -25,6 +26,11 @@ class _AshButtonState extends State<AshButton> {
   bool _hover = false;
   bool _down = false;
 
+  void _tap() {
+    GameAudio.play(Sfx.tap);
+    widget.onPressed?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
@@ -41,7 +47,7 @@ class _AshButtonState extends State<AshButton> {
           onTapDown: enabled ? (_) => setState(() => _down = true) : null,
           onTapCancel: () => setState(() => _down = false),
           onTapUp: (_) => setState(() => _down = false),
-          onTap: widget.onPressed,
+          onTap: enabled ? _tap : null,
           child: AnimatedScale(
             scale: _down ? 0.96 : 1,
             duration: const Duration(milliseconds: 90),

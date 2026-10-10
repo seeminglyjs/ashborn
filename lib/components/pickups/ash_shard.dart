@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
+import '../../services/audio.dart';
 import 'pickup.dart';
 
 /// 재의 결정: 적이 떨어뜨리는 경험치.
@@ -14,8 +15,10 @@ class AshShard extends Pickup {
   static final _body = Paint()..color = const Color(0xFF9FD8E8);
 
   @override
-  void collect() =>
-      world.gainXp(Balance.ashShardXp * world.player.xpMultiplier);
+  void collect() {
+    GameAudio.play(Sfx.shard);
+    world.gainXp(Balance.ashShardXp * world.player.xpMultiplier);
+  }
 
   @override
   void render(Canvas canvas) {
