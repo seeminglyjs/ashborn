@@ -194,6 +194,8 @@ abstract final class GameAudio {
   /// 테스트용: 엔진과 시계를 바꿔 끼우고 기록을 비운다. [backend] 가 null 이면 소리를 끈다.
   @visibleForTesting
   static void debugReset({AudioBackend? backend, double Function()? now}) {
+    // 곡을 먼저 비워야 설정을 비우면서 새 엔진에 예전 곡 볼륨을 보내지 않는다.
+    _bgm = null;
     _backend = backend;
     _musicReady = backend != null;
     settings = null;
