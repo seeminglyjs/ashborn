@@ -393,6 +393,7 @@ flowchart TD
   그다음 [tool/assets/monsters.py](tool/assets/monsters.py) 로 지역 변종을 만들고, [tool/assets/polish.py](tool/assets/polish.py) 로 몬스터에 색조 이동 명암 · 윗면 빛 · 색 외곽선을 입힙니다 (이 순서로 한 번씩).
   새 몬스터 7종(까마귀 · 숫양 · 악어 · 식충 꽃 · 새끼용 · 전갈 · 도마뱀 전사)은 [tool/assets/new_monsters.py](tool/assets/new_monsters.py) 가 Endesga 32 로 처음부터 그리고,
   마지막에 [tool/assets/monster_polish2.py](tool/assets/monster_polish2.py) 가 적 시트의 어두운 몸통을 띄우고 외곽선 · 테두리 빛 · 눈빛을 다듬습니다 (PNG 표시로 두 번 칠하지 않음).
+  지역 보스 다섯(잿더미 거인 · 가라앉은 사제 · 불타는 수호목 · 녹슨 기사단장 · 꺼지지 않는 심장)은 [tool/assets/bosses.py](tool/assets/bosses.py) 가 48x48 판에 Endesga 32 로 처음부터 그립니다.
 - 플레이어 캐릭터 세 명은 [tool/assets/heroes.py](tool/assets/heroes.py) 가 Endesga 32 팔레트로 처음부터 그립니다 (24x28 프레임). 장비 아이콘은 [tool/assets/gear_icons.py](tool/assets/gear_icons.py).
 - 그림을 고치기 전에 [art_refs/README.md](art_refs/README.md) 의 참고 자료 목록과 규격을 봅니다 (참고 그림 자체는 저작권 때문에 커밋하지 않습니다).
 - 화톳불 픽셀 애니메이션(`scene/campfire.png`)은 원본 팩에 없어 같은 스크립트가 직접 그립니다.

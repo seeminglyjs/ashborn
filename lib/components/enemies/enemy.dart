@@ -107,6 +107,10 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
   /// 밀림 배율. 거구는 덜 밀리고 보스 · 상자는 밀리지 않는다.
   double get knockbackScale => 1;
 
+  /// 스프라이트 큰 변이 충돌 지름의 몇 배인지. 보스는 더 크게 그린다.
+  @protected
+  double get spriteSize => Balance.enemySpriteSize;
+
   /// 스프라이트를 비치게 그리는 정도 (1 = 불투명).
   double get spriteOpacity => 1;
 
@@ -265,10 +269,7 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
     }
     // 발이 충돌 원의 아래쪽 끝에 오도록 바닥 가운데에 맞춘다.
     final scale =
-        radius *
-        2 *
-        Balance.enemySpriteSize /
-        math.max(sheet.width, sheet.height * 0.75);
+        radius * 2 * spriteSize / math.max(sheet.width, sheet.height * 0.75);
     final pop = _pop > 0 ? 1 + Balance.hitPop * _pop / Balance.hitPopTime : 1;
     final w = sheet.width * scale * pop;
     final h = sheet.height * scale * pop;
