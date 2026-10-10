@@ -33,3 +33,8 @@
 `tool/balance_sim/` 에 실제 게임 코드를 자동으로 플레이하는 봇이 있다 (일반 `flutter test` 에는 포함되지 않음).
 밸런스 수치(`lib/data/balance.dart`)를 바꾸면 이것으로 측정한다. 사용법은 `campaign_test.dart` 맨 위 주석과
 `summarize.py` 참고. 캐릭터 3종 × 시드 2개 이상으로 돌려야 운에 의한 편차를 걸러낼 수 있다.
+
+## 도트 작업
+
+캐릭터 · 몬스터 스프라이트, 무기 픽셀 아트, 이펙트를 그리거나 고칠 때는 `.claude/skills/pixel-art/SKILL.md` 를 따른다.
+새 그림은 고정 팔레트(Endesga 32)만 쓰고, `tool/preview/` 로 PNG 를 찍어 눈으로 확인하며 고친다.
