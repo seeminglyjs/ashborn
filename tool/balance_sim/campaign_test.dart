@@ -72,10 +72,7 @@ void main() {
         run++;
         // 열린 가장 높은 타락 단계로 출정하고, 첫 지역도 못 깨면 한 단계 낮춰 파밍한다.
         // 낮춘 단계를 정복하면 다시 올라간다.
-        final corruption = math.max(
-          0,
-          game.progress.unlockedCorruption - back,
-        );
+        final corruption = math.max(0, game.progress.unlockedCorruption - back);
         final start = Stage.start(corruption).index;
         game.restart(stage: Stage(start));
         await game.ready();

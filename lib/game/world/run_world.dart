@@ -19,6 +19,7 @@ import '../../data/balance.dart';
 import '../../data/characters.dart';
 import '../../data/damage.dart';
 import '../../data/equipment.dart';
+import '../../data/run_save.dart';
 import '../../data/stages.dart';
 import '../../data/supplies.dart';
 import '../../data/transcend.dart';
@@ -42,10 +43,14 @@ import 'region_theme.dart';
 /// 보스를 잡으면 전리품을 주울 시간을 준 뒤 다음 지역을 고르게 한다.
 class RunWorld extends World
     with HasGameReference<AshbornGame>, HasCollisionDetection {
-  RunWorld(this.character, {this.stage = Stage.first})
+  RunWorld(this.character, {this.stage = Stage.first, this.resume})
     : player = Player(character);
 
   final CharacterDef character;
+
+  /// 이어 하는 런이면 그 기록. 레벨 · 카드를 여기서 되살리고 출정 때 은총 효과는 다시 내지 않는다
+  /// (이미 기록에 들어 있다).
+  final RunSave? resume;
   final Player player;
 
   /// 살아 있는 적 목록. [Enemy] 가 마운트/제거될 때 스스로 갱신한다.
@@ -116,6 +121,15 @@ class RunWorld extends World
   @override
   Future<void> onLoad() async {
     game.stats.reset(xpToNext: LevelSystem.xpToNext(1));
+    if (resume case final save?) {
+      game.stats
+        ..level.value = save.level
+        ..xpToNext.value = LevelSystem.xpToNext(save.level)
+        ..xp.value = save.xp;
+    } else {
+      // 새 런을 시작하면 이 캐릭터의 이어 할 런은 버린다.
+      game.profile.runs.clear(character.id);
+    }
     _publishStage();
     final rules = stage.rules;
     if (rules.isNotEmpty) {

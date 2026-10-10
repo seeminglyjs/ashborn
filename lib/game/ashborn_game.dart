@@ -14,6 +14,7 @@ import '../data/inventory.dart';
 import '../data/class_passives.dart';
 import '../data/profile.dart';
 import '../data/progress.dart';
+import '../data/run_save.dart';
 import '../data/settings.dart';
 import '../data/stages.dart';
 import '../data/upgrades.dart';
@@ -31,8 +32,16 @@ class AshbornGame extends FlameGame<RunWorld>
   AshbornGame({
     required this.character,
     required this.profile,
-    this.startStage = Stage.first,
-  }) : super(world: RunWorld(character, stage: startStage)) {
+    Stage startStage = Stage.first,
+    RunSave? resume,
+  }) : startStage = resume?.stage ?? startStage,
+       super(
+         world: RunWorld(
+           character,
+           stage: resume?.stage ?? startStage,
+           resume: resume,
+         ),
+       ) {
     camera.viewport.addAll([joystick, hitVignette]);
   }
 
@@ -65,7 +74,7 @@ class AshbornGame extends FlameGame<RunWorld>
 
   final CharacterDef character;
 
-  /// 이 런을 시작한 스테이지.
+  /// 이 런을 시작한 스테이지 (이어 하면 이어 시작한 스테이지).
   final Stage startStage;
 
   /// 런이 끝나도 유지되는 기록.
@@ -149,7 +158,9 @@ class AshbornGame extends FlameGame<RunWorld>
     GameAudio.duck(false);
   }
 
+  /// 쓰러지면 (시간 초과 포함) 이어 할 런이 사라진다: 다음에는 레벨 1, 카드 없이 시작한다.
   void onPlayerDied() {
+    profile.runs.clear(character.id);
     GameAudio.play(Sfx.gameOver);
     GameAudio.music(null);
     world
@@ -204,7 +215,34 @@ class AshbornGame extends FlameGame<RunWorld>
     world.advanceStage();
     if (overlays.remove(stageClearOverlay)) resumeEngine();
     if (fate != null) FateSystem.apply(fate, world);
+    // 이 지역 도중에 앱이 꺼져도 지역 처음부터 지금 레벨 · 카드로 이어 간다.
+    _checkpoint(world.stage);
   }
+
+  /// 클리어 화면에서 화톳불로 돌아간다. 다음 지역부터 지금 레벨 · 카드로 이어 할 수 있게
+  /// 남긴다 (방금 고른 은총의 효과도 넣어 둔다). 단계를 끝냈으면 런이 끝나 지운다.
+  /// 화면 이동은 부르는 쪽이 한다.
+  void returnToHearth() {
+    if (world.stage.isFinal) {
+      profile.runs.clear(character.id);
+      return;
+    }
+    if (chosenFate.value case final fate?) {
+      chosenFate.value = null;
+      FateSystem.apply(fate, world);
+    }
+    _checkpoint(world.stage.next);
+  }
+
+  /// 이어 할 런으로 지금 레벨 · 카드를 [stage] 처음부터로 남긴다.
+  void _checkpoint(Stage stage) => profile.runs.save(
+    character.id,
+    world.player.checkpoint(stage, levelUps: _pendingLevelUps),
+  );
+
+  /// 지금 런을 끝내면 이어 할 수 있는가: 보스를 잡은 뒤(다음 지역이 남았을 때)만.
+  /// 싸우는 도중에 나가면 포기로 보고 레벨 · 카드를 버린다.
+  bool get canKeepRun => world.stageCleared && !world.stage.isFinal;
 
   /// 일시정지 메뉴, 또는 거기서 연 설정 · 장비 화면이 떠 있다.
   bool get isPauseMenuOpen => _pauseMenuOverlays.any(overlays.isActive);
@@ -249,6 +287,11 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 런을 여기서 끝낸다. 쓰러졌을 때처럼 처치로 모은 잔불 · 골드 · 강화석을
   /// 정산하고 게임을 멈춘다. 메인 화면으로 가는 화면 이동은 부르는 쪽이 한다.
   void quitRun() {
+    if (canKeepRun) {
+      _checkpoint(world.stage.next);
+    } else {
+      profile.runs.clear(character.id);
+    }
     GameAudio.music(null);
     world
       ..bankEmber()
@@ -314,7 +357,7 @@ class AshbornGame extends FlameGame<RunWorld>
     if (overlays.add(levelUpOverlay)) pauseEngine();
   }
 
-  /// [stage] 부터 새 런을 시작한다. 기본은 이 런을 시작한 스테이지.
+  /// [stage] 부터 새 런을 시작한다 (레벨 1, 카드 없이). 기본은 이 런을 시작한 스테이지.
   void restart({Stage? stage}) {
     _pendingLevelUps = 0;
     _returnToPauseMenu = false;

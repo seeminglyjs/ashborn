@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/balance.dart';
 import '../../data/characters.dart';
+import '../../data/run_save.dart';
 import '../../data/stages.dart';
 import '../../services/audio.dart';
 import '../equipment/equipment_screen.dart';
@@ -44,20 +45,54 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
     GameAudio.music(Bgm.hearth);
   }
 
+  /// 새 런. 이어 할 런이 있으면 버려도 되는지 먼저 묻는다.
   Future<void> _depart() async {
     if (!_owned) return _unlock();
-    await Navigator.of(context).push(
-      fadeRoute(
-        GameScreen(
-          character: _selected,
-          stage: Stage.start(_currentCorruption),
-        ),
-      ),
+    final runs = ProfileScope.of(context).runs;
+    final saved = runs.of(_selected.id);
+    if (saved != null) {
+      if (await _confirmDiscard(saved) != true || !mounted) return;
+      runs.clear(_selected.id);
+    }
+    await _launch(
+      GameScreen(character: _selected, stage: Stage.start(_currentCorruption)),
     );
+  }
+
+  /// 클리어하고 돌아온 런을 다음 지역부터 지금 레벨 · 카드로 이어 간다.
+  Future<void> _resume(RunSave saved) =>
+      _launch(GameScreen(character: _selected, resume: saved));
+
+  Future<void> _launch(GameScreen screen) async {
+    await Navigator.of(context).push(fadeRoute(screen));
     GameAudio.music(Bgm.hearth);
     // 돌아오면 새로 열린 가장 높은 단계를 기본으로 보여 준다.
     if (mounted) setState(() => _corruption = null);
   }
+
+  Future<bool?> _confirmDiscard(RunSave saved) => showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AshColors.panel,
+      title: const Text('새로 출정할까요?', style: TextStyle(color: AshColors.gold)),
+      content: Text(
+        '이어 할 런(${saved.stage.name} · Lv ${saved.level})을 버리고 '
+        '레벨 1, 카드 없이 새로 시작합니다.',
+        style: const TextStyle(color: AshColors.parchment, height: 1.4),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          key: const Key('confirm-new-run'),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('새로 출정', style: TextStyle(color: AshColors.ember)),
+        ),
+      ],
+    ),
+  );
 
   /// 고른 캐릭터를 골드로 해금할지 묻고 해금한다.
   Future<void> _unlock() async {
@@ -134,6 +169,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                   profile.inventory,
                   profile.progress,
                   profile.mastery,
+                  profile.runs,
                 ]),
                 builder: (context, _) => Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -217,12 +253,15 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                     ),
                     const SizedBox(height: 10),
                     if (_owned)
-                      AshButton(
-                        key: const Key('depart'),
-                        label: '출정하기',
-                        fontSize: 20,
-                        onPressed: _depart,
-                      )
+                      switch (profile.runs.of(_selected.id)) {
+                        final saved? => _resumeRow(saved),
+                        null => AshButton(
+                          key: const Key('depart'),
+                          label: '출정하기',
+                          fontSize: 20,
+                          onPressed: _depart,
+                        ),
+                      }
                     else
                       AshButton(
                         key: const Key('unlock'),
@@ -243,6 +282,49 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 이어 할 런이 있을 때: 어디서 · 몇 레벨로 이어 가는지와, 이어 하기 · 새로 출정 버튼.
+  Widget _resumeRow(RunSave saved) {
+    final cards =
+        saved.weapons.length +
+        saved.passives.values.fold(0, (sum, _) => sum + 1);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '이어 하기: ${saved.stage.name} (지역 Lv ${saved.stage.level}) · '
+          '캐릭터 Lv ${saved.level} · 카드 $cards장',
+          key: const Key('resume-info'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AshColors.gold, fontSize: 12),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: AshButton(
+                key: const Key('depart'),
+                label: '새로 출정',
+                fontSize: 15,
+                onPressed: _depart,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 3,
+              child: AshButton(
+                key: const Key('resume-run'),
+                label: '이어 하기',
+                fontSize: 20,
+                onPressed: () => _resume(saved),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

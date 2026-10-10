@@ -85,18 +85,25 @@ class PauseOverlay extends StatelessWidget {
   }
 
   /// 런을 끝낼지 묻는다. 모은 재화는 정산된다는 걸 먼저 알려 준다.
+  /// 보스를 잡은 뒤면 이어 할 수 있고, 싸우는 도중이면 포기로 끝나 레벨 · 카드가 사라진다.
   Future<void> _confirmQuit(BuildContext context) async {
+    final keep =
+        '보스를 잡았으니 다음에 ${game.world.stage.next.name}부터 '
+        '지금 레벨과 무기 · 패시브 카드로 이어 할 수 있다.';
+    const abandon =
+        '싸우는 도중에 나가면 이번 런은 포기로 끝나 레벨과 무기 · 패시브 카드가 사라진다. '
+        '이어 하려면 보스를 잡고 클리어 화면에서 화톳불로 돌아가라.';
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AshColors.panel,
         title: const Text('런을 끝낼까?', style: TextStyle(color: AshColors.gold)),
-        content: const Text(
-          '메인 화면으로 돌아가면 이번 런은 여기서 끝난다.\n'
+        content: Text(
+          '${game.canKeepRun ? keep : abandon}\n'
           '지금까지 모은 잔불 · 골드 · 강화석은 정산되어 남고, '
-          '주운 장비도 가방에 그대로 있다.\n'
-          '런 안에서 올린 레벨과 무기 · 패시브 카드는 사라지고, 받은 은총은 남는다.',
-          style: TextStyle(color: AshColors.parchment, height: 1.4),
+          '주운 장비와 받은 은총도 그대로 있다.',
+          key: const Key('quit-message'),
+          style: const TextStyle(color: AshColors.parchment, height: 1.4),
         ),
         actions: [
           TextButton(

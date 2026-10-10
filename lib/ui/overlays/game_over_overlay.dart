@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/balance.dart';
+import '../../data/stages.dart';
 import '../../game/ashborn_game.dart';
 import '../format.dart';
 import '../theme.dart';
@@ -80,8 +81,10 @@ class GameOverOverlay extends StatelessWidget {
                   AshButton(
                     label: '다시 일어서기',
                     fontSize: 17,
-                    // 쓰러진 스테이지부터 다시.
-                    onPressed: () => game.restart(stage: game.world.stage),
+                    // 쓰러지면 레벨 · 카드가 사라지니 그 타락 단계 첫 지역부터 다시.
+                    onPressed: () => game.restart(
+                      stage: Stage.start(game.world.stage.corruption),
+                    ),
                   ),
                   AshButton(
                     key: const Key('game-over-choose-character'),
