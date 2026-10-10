@@ -34,6 +34,7 @@ import 'package:ashborn/ui/grace/grace_screen.dart';
 import 'package:ashborn/ui/overlays/level_up_overlay.dart';
 import 'package:ashborn/ui/overlays/stage_clear_overlay.dart';
 import 'package:ashborn/ui/screens/character_select_screen.dart';
+import 'package:ashborn/ui/screens/game_screen.dart';
 import 'package:ashborn/data/profile.dart';
 import 'package:ashborn/data/progress.dart';
 import 'package:ashborn/data/stages.dart';
@@ -678,6 +679,23 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 50));
       await _shot(tester, key, 'ui_equipment_locked');
+      // 가방 장비 하나를 골라 전투력 변화를 보고, 돌아와 자동 장착한다.
+      await tester.tap(find.byKey(const Key('close-equipment')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('bag-0')));
+      await tester.pump(const Duration(milliseconds: 50));
+      await _shot(tester, key, 'ui_equipment_compare');
+      await tester.tap(find.byKey(const Key('close-equipment')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('auto-equip')));
+      await tester.pump(const Duration(milliseconds: 50));
+      await _shot(tester, key, 'ui_equipment_auto');
+      await tester.tap(find.byKey(const Key('bulk-salvage')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const Key('auto-salvage')));
+      await tester.pump(const Duration(milliseconds: 50));
+      await _shot(tester, key, 'ui_bulk_salvage');
     });
 
     for (final n in [3, 4]) {
@@ -745,6 +763,64 @@ void main() {
       });
       final key = await screen(tester, const GraceScreen(), progress: progress);
       await _shot(tester, key, 'ui_grace');
+    });
+
+    testWidgets('카드 · 은총 (일시정지 · 자세히 · 레벨업)', (tester) async {
+      final progress = Progress(4, null, {
+        0: Fate(FateCard.sharpEmber, Rarity.rare),
+        1: Fate(FateCard.hardenedAsh, Rarity.normal),
+        2: Fate(FateCard.berserk, Rarity.legend),
+      });
+      final key = await screen(
+        tester,
+        const GameScreen(character: Roster.witch),
+        progress: progress,
+      );
+      final game = tester
+          .widget<GameWidget<AshbornGame>>(find.byType(GameWidget<AshbornGame>))
+          .game!;
+      final player = game.world.player;
+      for (final id in [
+        WeaponId.emberSpirits,
+        WeaponId.emberSpirits,
+        WeaponId.fireTornado,
+      ]) {
+        player.gainWeapon(id);
+      }
+      while (!player.weapons.first.isMaxLevel) {
+        player.gainWeapon(player.weapons.first.id);
+      }
+      for (final id in [
+        PassiveId.fury,
+        PassiveId.fury,
+        PassiveId.haste,
+        PassiveId.vitality,
+        PassiveId.vitality,
+        PassiveId.vitality,
+        PassiveId.vitality,
+        PassiveId.vitality,
+        player.weapons.first.id.catalyst,
+      ]) {
+        player.gainPassive(id);
+      }
+      Future<void> settle() async {
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.runAsync(
+          () => Future.delayed(const Duration(milliseconds: 300)),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      game.openPauseMenu();
+      await settle();
+      await _shot(tester, key, 'ui_pause_build');
+      game.openBuild();
+      await settle();
+      await _shot(tester, key, 'ui_build');
+      game.resumeFromPause();
+      game.world.gainXp(LevelSystem.xpToNext(game.stats.level.value));
+      await settle();
+      await _shot(tester, key, 'ui_levelup_build');
     });
 
     testWidgets('정복 화면', (tester) async {

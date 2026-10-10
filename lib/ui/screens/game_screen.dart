@@ -7,6 +7,7 @@ import '../../services/audio.dart';
 import '../hud/hud.dart';
 import '../../data/stages.dart';
 import '../profile_scope.dart';
+import '../overlays/build_overlay.dart';
 import '../overlays/equipment_overlay.dart';
 import '../overlays/game_over_overlay.dart';
 import '../overlays/level_up_overlay.dart';
@@ -73,6 +74,8 @@ class _GameScreenState extends State<GameScreen> {
                 EquipmentOverlay(game: game),
             AshbornGame.settingsOverlay: (context, game) =>
                 SettingsOverlay(game: game),
+            AshbornGame.buildOverlay: (context, game) =>
+                BuildOverlay(game: game),
             AshbornGame.stageClearOverlay: (context, game) => StageClearOverlay(
               game: game,
               onReturn: () => Navigator.of(context).pop(),

@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import '../../game/ashborn_game.dart';
 import '../../systems/level_system.dart';
 import '../theme.dart';
+import '../widgets/build_strip.dart';
 import '../widgets/card_row.dart';
 import '../widgets/pixel_sprite.dart';
 
 /// 레벨업 때 무기 또는 패시브 한 장을 고른다. 고르는 동안 게임은 멈춘다.
-/// 카드는 위에서 아래로 쌓고, 많아도 한 화면에 모두 보이게 한다.
+/// 카드는 위에서 아래로 쌓고, 많아도 한 화면에 모두 보이게 한다. 아래에 지금 가진 카드를 보인다.
 class LevelUpOverlay extends StatelessWidget {
   const LevelUpOverlay({super.key, required this.game});
 
@@ -27,13 +28,29 @@ class LevelUpOverlay extends StatelessWidget {
               const SizedBox(height: 14),
               ValueListenableBuilder(
                 valueListenable: game.levelUpOptions,
-                builder: (context, options, _) => CardColumn(
-                  count: options.length,
-                  itemBuilder: (context, i) => _OptionCard(
-                    key: Key('level-up-$i'),
-                    option: options[i],
-                    onTap: () => game.chooseLevelUp(options[i]),
-                  ),
+                builder: (context, options, _) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CardColumn(
+                      count: options.length,
+                      itemBuilder: (context, i) => _OptionCard(
+                        key: Key('level-up-$i'),
+                        option: options[i],
+                        onTap: () => game.chooseLevelUp(options[i]),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      '지금 가진 카드',
+                      style: TextStyle(color: AshColors.ash, fontSize: 12),
+                    ),
+                    const SizedBox(height: 6),
+                    BuildStrip(
+                      key: const Key('level-up-build-strip'),
+                      player: game.world.player,
+                      graces: game.progress.graceRecords.length,
+                    ),
+                  ],
                 ),
               ),
             ],

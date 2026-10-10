@@ -9,6 +9,7 @@ import 'inventory.dart';
 import 'progress.dart';
 import 'save_snapshot.dart';
 import 'settings.dart';
+import 'stats.dart';
 import 'upgrades.dart';
 
 /// 기기에 저장되는 플레이어 기록 전부.
@@ -44,6 +45,11 @@ class Profile {
 
   /// 직업 숙련과 직업 패시브.
   final Mastery mastery;
+
+  /// 장비 밖에서 영구히 오른 [stat]: 화톳불 강화와 받은 은총. 종합 전투력 계산에 쓴다.
+  double permanentBonus(StatType stat) =>
+      upgrades.bonus(stat) +
+      progress.graces.fold(0.0, (sum, fate) => sum + (fate.stats[stat] ?? 0));
 
   /// 클라우드에 함께 올리는 기록(재화 · 장비 · 진행도 · 화톳불)이 바뀔 때 알린다.
   /// 설정은 기기마다 다를 수 있어 빠진다.

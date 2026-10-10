@@ -1,9 +1,12 @@
 import 'package:ashborn/components/pickups/item_drop.dart';
+import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/profile.dart';
 import 'package:ashborn/data/settings.dart';
 import 'package:ashborn/game/ashborn_game.dart';
+import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/ui/equipment/equipment_panel.dart';
 import 'package:ashborn/ui/profile_scope.dart';
 import 'package:ashborn/ui/screens/game_screen.dart';
 import 'package:ashborn/ui/settings/settings_screen.dart';
@@ -57,6 +60,113 @@ void main() {
       expect(loaded.lootNoticeMinRarity, Rarity.epic);
       expect(loaded.musicVolume, Settings().musicVolume);
     });
+  });
+
+  group('분해 설정', () {
+    test('고른 분해 등급 · 강화 제외 · 자동 분해가 저장되고, 예전 세이브는 기본값으로 읽는다', () async {
+      SharedPreferences.setMockInitialValues({});
+      (await Profile.load()).settings
+        ..salvageRarities = {Rarity.normal, Rarity.hero}
+        ..salvageKeepUpgraded = false
+        ..autoSalvage = true;
+      await pumpEventQueue();
+
+      final loaded = (await Profile.load()).settings;
+      expect(loaded.salvageRarities, {Rarity.normal, Rarity.hero});
+      expect(loaded.salvageKeepUpgraded, isFalse);
+      expect(loaded.autoSalvage, isTrue);
+
+      final old = Settings().toJson()
+        ..remove('salvageRarities')
+        ..remove('salvageKeepUpgraded')
+        ..remove('autoSalvage');
+      final migrated = Settings.fromJson(old);
+      expect(migrated.salvageRarities, defaultSalvageRarities);
+      expect(migrated.salvageKeepUpgraded, isTrue);
+      expect(migrated.autoSalvage, isFalse);
+    });
+
+    testWidgets('일괄 분해 창에서 고른 등급은 창을 닫았다 열어도 남는다', (tester) async {
+      final settings = Settings();
+      final inventory = Inventory();
+      final gear = inventory.gear(CharacterId.knight);
+      gear.add(item(ItemType.ring));
+      gear.add(item(ItemType.ring));
+      gear.add(item(ItemType.ring));
+      Future<void> open() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: EquipmentPanel(
+              inventory: inventory,
+              character: Roster.knight,
+              settings: settings,
+              onClose: () {},
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const Key('bulk-salvage')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+
+      await open();
+      await tester.tap(find.byKey(const Key('bulk-rarity-hero')));
+      await tester.tap(find.byKey(const Key('bulk-rarity-rare')));
+      await tester.tap(find.byKey(const Key('auto-salvage')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('cancel-bulk-salvage')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // 화면을 새로 열어도 (취소했어도) 그대로다.
+      await tester.pumpWidget(const SizedBox());
+      await open();
+      expect(settings.salvageRarities, {Rarity.normal, Rarity.hero});
+      expect(settings.autoSalvage, isTrue);
+    });
+
+    testWithGame<AshbornGame>(
+      '자동 분해: 고른 등급은 주우면 바로 잔불이 되고, 빈 칸 · 전투력이 오르는 장비 · 다른 등급은 남긴다',
+      gameWithSettings(Settings()..autoSalvage = true),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        game.gear.add(item(ItemType.belt, value: 20));
+        final ember = game.inventory.ember;
+
+        final junk = item(ItemType.belt);
+        await pickUp(game, junk);
+        expect(game.inventory.bag, isEmpty);
+        expect(game.inventory.ember, ember + junk.salvageValue);
+
+        // 빈 칸에 끼는 장비, 지금보다 센 장비, 고르지 않은 등급은 남는다.
+        final helm = item(ItemType.head);
+        final better = item(ItemType.belt, value: 500);
+        final hero = item(ItemType.belt, rarity: Rarity.hero);
+        for (final i in [helm, better, hero]) {
+          await pickUp(game, i);
+        }
+        expect(game.gear.equipped.values, contains(helm));
+        expect(game.inventory.bag, containsAll([better, hero]));
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '자동 분해할 장비는 가방이 가득 차도 줍는다',
+      gameWithSettings(Settings()..autoSalvage = true),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        game.gear.add(item(ItemType.belt, value: 20));
+        for (var i = 0; i < Balance.bagCapacity; i++) {
+          game.gear.add(item(ItemType.belt, rarity: Rarity.hero));
+        }
+        final ember = game.inventory.ember;
+        await pickUp(game, item(ItemType.belt));
+        expect(game.inventory.ember, greaterThan(ember));
+        expect(game.inventory.bag, hasLength(Balance.bagCapacity));
+      },
+    );
   });
 
   group('알림 설정', () {

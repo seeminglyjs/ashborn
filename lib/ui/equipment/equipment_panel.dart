@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 
 import '../../data/balance.dart';
 import '../../data/characters.dart';
+import '../../data/combat_power.dart';
 import '../../data/equipment.dart';
 import '../../data/inventory.dart';
+import '../../data/settings.dart';
 import '../../data/stats.dart';
 import '../../data/transcend.dart';
 import '../../services/audio.dart';
+import '../../systems/auto_equip.dart';
+import '../format.dart';
 import '../odds/odds_screen.dart';
 import '../routes.dart';
 import '../theme.dart';
@@ -22,9 +26,6 @@ String _ownerName(CharacterId id) =>
 /// 이 등급 이상은 분해하기 전에 한 번 더 묻는다. 일괄 분해에 섞여 있으면 경고한다.
 const confirmSalvageFrom = Rarity.hero;
 
-/// 일괄 분해 다이얼로그가 처음 고르고 있는 등급.
-const defaultBulkSalvageRarities = {Rarity.normal, Rarity.rare};
-
 /// 한 캐릭터의 장착 칸, 공용 가방, 선택한 장비의 정보.
 /// 출발 전 장비 화면과 런 중 장비 오버레이가 함께 쓴다.
 class EquipmentPanel extends StatefulWidget {
@@ -33,11 +34,19 @@ class EquipmentPanel extends StatefulWidget {
     required this.inventory,
     required this.character,
     required this.onClose,
+    this.extra,
+    this.settings,
   });
 
   final Inventory inventory;
   final CharacterDef character;
   final VoidCallback onClose;
+
+  /// 장비 밖에서 오른 능력치 (화톳불 강화 · 은총). 종합 전투력에 함께 넣는다.
+  final double Function(StatType stat)? extra;
+
+  /// 일괄 분해 등급 · 자동 분해를 기억하는 설정. 없으면 이 화면 안에서만 기억한다.
+  final Settings? settings;
 
   @override
   State<EquipmentPanel> createState() => _EquipmentPanelState();
@@ -57,9 +66,8 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
   _TypeFilter? _typeFilter;
   _Sort _sort = _Sort.recent;
 
-  /// 일괄 분해 다이얼로그에서 마지막으로 고른 설정. 패널이 열려 있는 동안 기억한다.
-  Set<Rarity> _bulkRarities = defaultBulkSalvageRarities;
-  bool _bulkKeepUpgraded = true;
+  /// 일괄 분해 등급 · 자동 분해. 다이얼로그에서 바꾸면 바로 저장된다.
+  late final Settings _settings = widget.settings ?? Settings();
 
   /// 가방 위에 잠깐 띄우는 분해 결과. 다른 장비를 고르면 지운다.
   String? _bagNotice;
@@ -69,6 +77,44 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
 
   Inventory get _inventory => widget.inventory;
   late final Gear _gear = _inventory.gear(widget.character.id);
+
+  /// 지금 장비의 종합 전투력.
+  int get _power =>
+      AutoEquip.current(_gear, widget.character, extra: widget.extra);
+
+  /// [item] 을 [slot] 에 끼면 바뀌는 전투력 (강화 계승 반영).
+  int _powerChange(Item item, EquipSlot slot) {
+    final removed = _gear.displacedBy(item, slot);
+    final inherited = _gear.enhanceAfterEquip(item, slot);
+    return CombatPower.of(
+          widget.character,
+          [
+            for (final i in _gear.equipped.values)
+              if (!removed.contains(i)) i,
+            item,
+          ],
+          extra: widget.extra,
+          enhanceOf: (i) => identical(i, item) ? inherited : i.enhance,
+        ) -
+        _power;
+  }
+
+  /// 가방 장비로 전투력이 가장 높아지게 끼운다.
+  void _autoEquip() {
+    final before = _power;
+    final count = AutoEquip.run(
+      _gear,
+      _inventory,
+      widget.character,
+      extra: widget.extra,
+    );
+    if (count > 0) GameAudio.play(Sfx.equip);
+    setState(
+      () => _bagNotice = count == 0
+          ? '지금 장비가 가장 강합니다'
+          : '자동 장착 $count개 · 전투력 ${formatGold(before)} → ${formatGold(_power)}',
+    );
+  }
 
   void _select(Item? item, [EquipSlot? slot]) => setState(() {
     _selected = item;
@@ -154,25 +200,18 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
 
   /// 일괄 분해: 다이얼로그에서 등급 · 제외 조건을 고르고, 확인하면 한 번에 분해한다.
   Future<void> _bulkSalvage() async {
-    final choice = await showDialog<_BulkChoice>(
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => _BulkSalvageDialog(
-        inventory: _inventory,
-        rarities: _bulkRarities,
-        keepUpgraded: _bulkKeepUpgraded,
-      ),
+      builder: (context) =>
+          _BulkSalvageDialog(inventory: _inventory, settings: _settings),
     );
-    if (choice == null || !mounted) return;
+    if (confirmed != true || !mounted) return;
     final targets = _inventory.salvageTargets(
-      choice.rarities,
-      keepUpgraded: choice.keepUpgraded,
+      _settings.salvageRarities,
+      keepUpgraded: _settings.salvageKeepUpgraded,
     );
     final ember = _inventory.salvageAll(targets);
-    setState(() {
-      _bulkRarities = choice.rarities;
-      _bulkKeepUpgraded = choice.keepUpgraded;
-      _bagNotice = '${targets.length}개 일괄 분해 · 잔불 +$ember';
-    });
+    setState(() => _bagNotice = '${targets.length}개 일괄 분해 · 잔불 +$ember');
   }
 
   @override
@@ -196,6 +235,12 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
     ' · 초월석 ${_inventory.transcendStones}',
     key: const Key('materials'),
     style: _Text.heading.copyWith(color: AshColors.gold),
+  );
+
+  Widget get _powerText => Text(
+    '전투력 ${formatGold(_power)}',
+    key: const Key('combat-power'),
+    style: _Text.heading.copyWith(color: AshColors.parchment),
   );
 
   Widget get _ember => Text(
@@ -226,7 +271,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
           _close,
         ],
       ),
-      Wrap(spacing: 10, children: [_materials, _ember]),
+      Wrap(spacing: 10, children: [_powerText, _materials, _ember]),
       const SizedBox(height: 8),
       if (_selected case final item?)
         Expanded(child: _detail(item))
@@ -416,6 +461,17 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
               ),
             ],
             const Spacer(),
+            SizedBox(
+              width: 92,
+              child: _ActionButton(
+                key: const Key('auto-equip'),
+                label: '자동 장착',
+                tone: _Tone.primary,
+                height: 32,
+                onPressed: bag.isEmpty ? null : _autoEquip,
+              ),
+            ),
+            const SizedBox(width: 6),
             // 가방이 차면 일괄 분해를 눈에 띄게 해 자리를 비우도록 이끈다.
             SizedBox(
               width: 100,
@@ -600,6 +656,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                       item: item,
                       replaced: _gear.displacedBy(item, target),
                       enhance: _gear.enhanceAfterEquip(item, target),
+                      power: _powerChange(item, target),
                     ),
                   ],
                 const SizedBox(height: 8),
@@ -978,17 +1035,19 @@ class _OptionLine extends StatelessWidget {
 }
 
 /// [item] 을 끼면 [replaced] 대신 바뀌는 능력치. [item] 은 계승한 강화 단계
-/// [enhance] 로 계산한다.
+/// [enhance] 로 계산한다. 맨 위에 종합 전투력 변화 [power] 를 보인다.
 class _Comparison extends StatelessWidget {
   const _Comparison({
     required this.item,
     required this.replaced,
     required this.enhance,
+    required this.power,
   });
 
   final Item item;
   final List<Item> replaced;
   final int enhance;
+  final int power;
 
   static Map<StatType, double> _sum(Iterable<Item> items) {
     final total = <StatType, double>{};
@@ -1012,6 +1071,19 @@ class _Comparison extends StatelessWidget {
     }
     final loss = _sum(replaced);
     final lines = <Widget>[
+      Text(
+        power == 0
+            ? '전투력 변화 없음'
+            : '전투력 ${power > 0 ? '▲ +' : '▼ -'}${formatGold(power.abs())}',
+        key: const Key('power-change'),
+        style: _Text.heading.copyWith(
+          color: power > 0
+              ? _Text.up
+              : power < 0
+              ? _Text.down
+              : AshColors.ash,
+        ),
+      ),
       Text(
         replaced.isEmpty
             ? '빈 칸'
@@ -1529,29 +1601,24 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-/// 일괄 분해 다이얼로그에서 고른 설정.
-typedef _BulkChoice = ({Set<Rarity> rarities, bool keepUpgraded});
-
 /// 일괄 분해: 분해할 등급과 "강화 · 초월한 장비 제외" 를 고르면 대상 개수와
 /// 얻을 잔불을 바로 보여 준다. 확인하면 고른 설정을 돌려준다.
 class _BulkSalvageDialog extends StatefulWidget {
-  const _BulkSalvageDialog({
-    required this.inventory,
-    required this.rarities,
-    required this.keepUpgraded,
-  });
+  const _BulkSalvageDialog({required this.inventory, required this.settings});
 
   final Inventory inventory;
-  final Set<Rarity> rarities;
-  final bool keepUpgraded;
+
+  /// 고른 등급 · 강화 제외 · 자동 분해를 바로 저장한다 (다음에 열어도 그대로).
+  final Settings settings;
 
   @override
   State<_BulkSalvageDialog> createState() => _BulkSalvageDialogState();
 }
 
 class _BulkSalvageDialogState extends State<_BulkSalvageDialog> {
-  late final Set<Rarity> _rarities = {...widget.rarities};
-  late bool _keepUpgraded = widget.keepUpgraded;
+  Settings get _settings => widget.settings;
+  Set<Rarity> get _rarities => _settings.salvageRarities;
+  bool get _keepUpgraded => _settings.salvageKeepUpgraded;
 
   @override
   Widget build(BuildContext context) {
@@ -1575,8 +1642,43 @@ class _BulkSalvageDialogState extends State<_BulkSalvageDialog> {
       count: counts[r]!,
       selected: _rarities.contains(r),
       onTap: () => setState(() {
-        if (!_rarities.remove(r)) _rarities.add(r);
+        final rarities = {..._rarities};
+        if (!rarities.remove(r)) rarities.add(r);
+        _settings.salvageRarities = rarities;
       }),
+    );
+    Widget check({
+      required Key key,
+      required String label,
+      required bool value,
+      required VoidCallback onTap,
+      String? note,
+    }) => InkWell(
+      key: key,
+      onTap: () => setState(onTap),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              value ? Icons.check_box : Icons.check_box_outline_blank,
+              size: 20,
+              color: value ? AshColors.gold : AshColors.ash,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: _Text.body),
+                  if (note != null) Text(note, style: _Text.tag),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
     return Dialog(
       backgroundColor: const Color(0xFF1A1411),
@@ -1614,27 +1716,20 @@ class _BulkSalvageDialogState extends State<_BulkSalvageDialog> {
                   ),
                 ),
               const SizedBox(height: 2),
-              InkWell(
+              check(
                 key: const Key('bulk-keep-upgraded'),
-                onTap: () => setState(() => _keepUpgraded = !_keepUpgraded),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _keepUpgraded
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank,
-                        size: 20,
-                        color: _keepUpgraded ? AshColors.gold : AshColors.ash,
-                      ),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text('강화했거나 초월한 장비는 제외', style: _Text.body),
-                      ),
-                    ],
-                  ),
-                ),
+                label: '강화했거나 초월한 장비는 제외',
+                value: _keepUpgraded,
+                onTap: () => _settings.salvageKeepUpgraded = !_keepUpgraded,
+              ),
+              check(
+                key: const Key('auto-salvage'),
+                label: '주울 때 자동 분해',
+                note:
+                    '고른 등급 장비를 주우면 가방에 넣지 않고 바로 잔불로 바꿉니다. '
+                    '빈 칸에 낄 장비와 지금보다 전투력이 오르는 장비는 남깁니다',
+                value: _settings.autoSalvage,
+                onTap: () => _settings.autoSalvage = !_settings.autoSalvage,
               ),
               const SizedBox(height: 8),
               Container(
@@ -1690,10 +1785,7 @@ class _BulkSalvageDialogState extends State<_BulkSalvageDialog> {
                       tone: _Tone.danger,
                       onPressed: targets.isEmpty
                           ? null
-                          : () => Navigator.of(context).pop<_BulkChoice>((
-                              rarities: {..._rarities},
-                              keepUpgraded: _keepUpgraded,
-                            )),
+                          : () => Navigator.of(context).pop(true),
                     ),
                   ),
                 ],

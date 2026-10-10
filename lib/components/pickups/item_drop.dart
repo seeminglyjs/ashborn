@@ -7,6 +7,7 @@ import '../../data/balance.dart';
 import '../../data/equipment.dart';
 import '../../game/ashborn_game.dart';
 import '../../services/audio.dart';
+import '../../systems/auto_equip.dart';
 import 'pickup.dart';
 
 /// 바닥에 떨어진 장비. 부위 아이콘이 등급 색으로 빛나고, 높은 등급일수록 빛이 크다.
@@ -35,8 +36,22 @@ class ItemDrop extends Pickup with HasGameReference<AshbornGame> {
       item.rarity.color.withValues(alpha: 0),
     ]);
 
+  /// 가방이 차도 자동 분해할 장비는 줍는다 (자리를 차지하지 않는다).
   @override
-  bool get collectable => game.gear.canAdd(item);
+  bool get collectable => game.gear.canAdd(item) || _autoSalvages;
+
+  /// 자동 분해할 장비: 설정에서 고른 등급이고, 빈 칸에 낄 수도 없고 지금 캐릭터의
+  /// 전투력을 올리지도 않는다. 쓸 만한 장비를 실수로 잃지 않게 그런 것은 남긴다.
+  bool get _autoSalvages =>
+      game.settings.autoSalvages(item.rarity) &&
+      game.gear.freeSlotFor(item) == null &&
+      AutoEquip.gain(
+            game.gear,
+            item,
+            game.character,
+            extra: game.profile.permanentBonus,
+          ) <=
+          0;
 
   /// 떨어지는 순간 등급별 소리. 높은 등급일수록 길고 화려하다.
   @override
@@ -47,6 +62,11 @@ class ItemDrop extends Pickup with HasGameReference<AshbornGame> {
 
   @override
   void collect() {
+    if (_autoSalvages) {
+      game.inventory.addEmber(item.salvageValue);
+      game.notifyLoot(item, '${item.name} 자동 분해 · 잔불 +${item.salvageValue}');
+      return;
+    }
     GameAudio.play(Sfx.equip);
     final slot = game.gear.add(item);
     game.notifyLoot(item, '${item.name} 획득${slot == null ? '' : ' · 장착'}');

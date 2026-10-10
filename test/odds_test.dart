@@ -80,7 +80,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(OddsScreen), findsOneWidget);
-      for (final title in ['장비 강화 · 초월', '장비 드랍', '랜덤옵션', '재화', '신의 은총']) {
+      for (final title in [
+        '장비 강화 · 초월',
+        '장비 드랍',
+        '랜덤옵션',
+        '재화',
+        '타락 특수 규칙',
+        '신의 은총',
+      ]) {
         await tester.scrollUntilVisible(find.text(title), 200);
         expect(find.text(title), findsOneWidget);
       }
@@ -99,6 +106,36 @@ void main() {
       await tester.scrollUntilVisible(find.text('장비 드랍'), 200);
       await tester.pumpAndSettle();
       expect(find.text('타락 2'), findsWidgets);
+    });
+
+    testWidgets('타락 특수 규칙: 정예 · 잿불 유해 확률과 정예 처치 보상을 계산값 그대로 보여 준다', (
+      tester,
+    ) async {
+      const corruption = 3;
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: OddsList(corruption: corruption, fateLuck: 0)),
+        ),
+      );
+      final elite = find.text('웨이브 적 ${pct(Balance.eliteChance)}');
+      await tester.scrollUntilVisible(elite, 200);
+      expect(elite, findsOneWidget);
+      expect(
+        find.text('쓰러진 졸개 ${pct(Balance.deathBlastChance)}'),
+        findsOneWidget,
+      );
+      final dropNow =
+          Balance.itemDropChance *
+          (1 + Balance.corruptionDropBonus * corruption) *
+          Balance.eliteDropBonus;
+      expect(
+        find.textContaining('타락 $corruption: ${pct(dropNow)}'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('강화석 ${Balance.eliteStones}개가 확정'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('신의 은총: 모든 카드와 그 확률(기본 · 지금)을 계산값 그대로 보여 준다', (tester) async {
