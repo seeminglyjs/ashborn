@@ -79,7 +79,7 @@ class _GraceScreenState extends State<GraceScreen> {
                           children: [
                             if (pending.isNotEmpty) _offer(pending),
                             _Section('합계'),
-                            _Totals(graces: progress.graces),
+                            GraceTotals(graces: progress.graces),
                             _Section('받은 은총'),
                             if (records.isEmpty)
                               const Text(
@@ -90,7 +90,7 @@ class _GraceScreenState extends State<GraceScreen> {
                                 ),
                               ),
                             for (final (stage, fate) in records.reversed)
-                              _GraceRow(stage: stage, fate: fate),
+                              GraceRow(stage: stage, fate: fate),
                           ],
                         ),
                       ),
@@ -182,8 +182,8 @@ class _Section extends StatelessWidget {
 }
 
 /// 받은 은총을 모두 더한 능력치와, 능력치가 아닌 효과(출정 · 클리어 · 특수 효과) 목록.
-class _Totals extends StatelessWidget {
-  const _Totals({required this.graces});
+class GraceTotals extends StatelessWidget {
+  const GraceTotals({super.key, required this.graces});
 
   final List<Fate> graces;
 
@@ -244,8 +244,8 @@ class _Totals extends StatelessWidget {
 }
 
 /// 받은 은총 한 줄: 준 스테이지 · 등급 · 이름 · 효과.
-class _GraceRow extends StatelessWidget {
-  const _GraceRow({required this.stage, required this.fate});
+class GraceRow extends StatelessWidget {
+  const GraceRow({super.key, required this.stage, required this.fate});
 
   final Stage stage;
   final Fate fate;

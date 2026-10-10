@@ -43,6 +43,7 @@ class AshbornGame extends FlameGame<RunWorld>
   static const stageClearOverlay = 'stageClear';
   static const settingsOverlay = 'settings';
   static const pauseOverlay = 'pause';
+  static const buildOverlay = 'build';
 
   /// 각자 게임을 멈추고 자기 버튼으로만 닫히는 화면. 떠 있는 동안 일시정지 메뉴를 열지 않는다.
   static const _blockingOverlays = [
@@ -56,6 +57,7 @@ class AshbornGame extends FlameGame<RunWorld>
     pauseOverlay,
     settingsOverlay,
     equipmentOverlay,
+    buildOverlay,
   ];
 
   /// 화면 짧은 변에 보이는 월드 크기. 기기 해상도와 상관없이 시야를 고정한다.
@@ -207,7 +209,7 @@ class AshbornGame extends FlameGame<RunWorld>
   /// 일시정지 메뉴, 또는 거기서 연 설정 · 장비 화면이 떠 있다.
   bool get isPauseMenuOpen => _pauseMenuOverlays.any(overlays.isActive);
 
-  /// 설정 · 장비 화면을 일시정지 메뉴에서 열었으면 닫을 때 메뉴로 돌아간다.
+  /// 설정 · 장비 · 카드 화면을 일시정지 메뉴에서 열었으면 닫을 때 메뉴로 돌아간다.
   bool _returnToPauseMenu = false;
 
   /// 게임을 멈추고 일시정지 메뉴를 연다. 레벨업 · 클리어 · 사망 화면이 떠 있거나
@@ -228,13 +230,15 @@ class AshbornGame extends FlameGame<RunWorld>
     if (!_blockingOverlays.any(overlays.isActive)) resumeEngine();
   }
 
-  /// 안드로이드 뒤로 가기. 설정 · 장비는 닫고 일시정지 메뉴로, 일시정지 메뉴는
+  /// 안드로이드 뒤로 가기. 설정 · 장비 · 카드 화면은 닫고 일시정지 메뉴로, 일시정지 메뉴는
   /// 닫고 이어서 싸우고, 전투 중이면 일시정지 메뉴를 연다.
   void handleBack() {
     if (overlays.isActive(settingsOverlay)) {
       closeSettings();
     } else if (overlays.isActive(equipmentOverlay)) {
       closeEquipment();
+    } else if (overlays.isActive(buildOverlay)) {
+      closeBuild();
     } else if (overlays.isActive(pauseOverlay)) {
       resumeFromPause();
     } else {
@@ -260,6 +264,11 @@ class AshbornGame extends FlameGame<RunWorld>
   void openEquipment() => _openFromPauseMenu(equipmentOverlay);
 
   void closeEquipment() => _closeToPauseMenu(equipmentOverlay);
+
+  /// 이번 런에서 고른 카드와 받은 은총을 모아 보는 화면.
+  void openBuild() => _openFromPauseMenu(buildOverlay);
+
+  void closeBuild() => _closeToPauseMenu(buildOverlay);
 
   void _openFromPauseMenu(String overlay) {
     _returnToPauseMenu = overlays.remove(pauseOverlay);
@@ -317,6 +326,7 @@ class AshbornGame extends FlameGame<RunWorld>
       stageClearOverlay,
       settingsOverlay,
       pauseOverlay,
+      buildOverlay,
     ]);
     world = RunWorld(character, stage: stage ?? startStage);
     resumeEngine();

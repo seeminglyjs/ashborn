@@ -1,4 +1,8 @@
 import 'package:ashborn/data/characters.dart';
+import 'package:ashborn/data/fates.dart';
+import 'package:ashborn/data/passives.dart';
+import 'package:ashborn/data/stages.dart';
+import 'package:ashborn/data/weapons.dart';
 import 'package:ashborn/data/inventory.dart';
 import 'package:ashborn/data/profile.dart';
 import 'package:ashborn/game/ashborn_game.dart';
@@ -78,6 +82,7 @@ void main() {
     expect(find.text('일시정지'), findsOneWidget);
     for (final key in [
       'pause-resume',
+      'pause-build',
       'pause-equipment',
       'pause-settings',
       'pause-quit',
@@ -102,6 +107,57 @@ void main() {
     await tester.pump();
     expect(game.paused, isFalse);
     expect(pauseMenu, findsNothing);
+  });
+
+  testWidgets('카드 · 은총: 고른 무기 · 패시브와 받은 은총을 한눈에 보고, 닫으면 메뉴로 돌아온다', (
+    tester,
+  ) async {
+    final game = await openGame(tester);
+    final player = game.world.player;
+    final start = player.weapons.first.id;
+    player
+      ..gainWeapon(start)
+      ..gainPassive(PassiveId.fury)
+      ..gainPassive(PassiveId.fury);
+    final grace = Fate(FateCard.sharpEmber, FateCard.sharpEmber.minRarity);
+    game.progress
+      ..recordClear(Stage.first)
+      ..takeGrace(Stage.first, grace);
+
+    await tester.tap(find.byKey(const Key('open-pause')));
+    await tester.pump();
+    // 메뉴에도 아이콘 줄로 바로 보인다.
+    expect(find.byKey(const Key('pause-build-strip')), findsOneWidget);
+    expect(find.text('은총 1'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('pause-build')));
+    await tester.pump();
+    expect(pauseMenu, findsNothing);
+    expect(game.paused, isTrue);
+    expect(find.byKey(Key('build-weapon-${start.name}')), findsOneWidget);
+    expect(find.text('Lv 2 / ${WeaponId.maxLevel}'), findsOneWidget);
+    expect(find.byKey(const Key('build-passive-fury')), findsOneWidget);
+    expect(find.text('Lv 2 / ${PassiveId.maxLevel}'), findsOneWidget);
+    expect(find.text(grace.card.title), findsOneWidget);
+
+    await pressBack(tester);
+    expect(find.byKey(const Key('close-build')), findsNothing);
+    expect(pauseMenu, findsOneWidget);
+
+    // 아이콘 줄을 눌러도 열린다.
+    await tester.tap(find.byKey(const Key('pause-build-strip')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('close-build')));
+    await tester.pump();
+    expect(pauseMenu, findsOneWidget);
+    expect(game.paused, isTrue);
+  });
+
+  testWidgets('레벨업 화면 아래에 지금 가진 카드를 보인다', (tester) async {
+    final game = await openGame(tester);
+    game.world.gainXp(LevelSystem.xpToNext(1));
+    await tester.pump();
+    expect(find.byKey(const Key('level-up-build-strip')), findsOneWidget);
   });
 
   testWidgets('캐릭터 선택으로: 취소하면 그대로, 확인하면 재화를 정산하고 캐릭터 선택으로', (tester) async {

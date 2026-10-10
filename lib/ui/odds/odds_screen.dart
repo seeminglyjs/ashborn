@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../data/balance.dart';
+import '../../data/corruption.dart';
 import '../../data/equipment.dart';
 import '../../data/fates.dart';
 import '../../data/supplies.dart';
@@ -82,6 +85,7 @@ class OddsList extends StatelessWidget {
       ..._drops(),
       ..._affixes(),
       ..._currency(),
+      ..._corruptionRules(),
       ..._crates(),
       ..._fates(),
     ],
@@ -204,7 +208,53 @@ class OddsList extends StatelessWidget {
               Balance.transcendStoneChancePerCorruption,
             ),
           ],
+          ['단계 클리어 강화석 ${Balance.conquestStones} × (타락 단계 + 1)개', '100%'],
+          ['단계 첫 클리어 초월석 ${Balance.firstConquestTranscend}개', '100%'],
         ],
+      ),
+    ];
+  }
+
+  /// 타락 특수 규칙 중 확률이 있는 것 (정예 출현 · 잿불 유해)과 정예 처치 보상.
+  List<Widget> _corruptionRules() {
+    final now = corruption >= CorruptionRule.elite.from;
+    double eliteDrop(int c) => math.min(
+      1,
+      Balance.itemDropChance *
+          (1 + Balance.corruptionDropBonus * c) *
+          Balance.eliteDropBonus,
+    );
+    return [
+      const _Section('타락 특수 규칙'),
+      _Table(
+        header: const ['규칙', '붙는 단계', '확률'],
+        rows: [
+          [
+            CorruptionRule.elite.label,
+            '${CorruptionRule.elite.from}단계부터',
+            '웨이브 적 ${pct(Balance.eliteChance)}',
+          ],
+          [
+            CorruptionRule.deathBlast.label,
+            '${CorruptionRule.deathBlast.from}단계부터',
+            '쓰러진 졸개 ${pct(Balance.deathBlastChance)}',
+          ],
+        ],
+      ),
+      _Note(
+        '정예 출현: 한 번에 한 마리씩 나오는 웨이브 적이 ${pct(Balance.eliteChance)} 확률로 정예가 됩니다 '
+        '(무리로 나오는 적은 정예가 되지 않음). 정예를 잡으면 강화석 ${Balance.eliteStones}개가 '
+        '확정으로 나오고, 장비 드랍 확률이 ${Balance.eliteDropBonus.round()}배'
+        '(${pct(eliteDrop(CorruptionRule.elite.from))}, 타락 ${CorruptionRule.elite.from}단계 기준'
+        '${now ? ' · 타락 $corruption: ${pct(eliteDrop(corruption))}' : ''})가 되며, '
+        '재의 결정을 ${Balance.eliteXp}배로 떨어뜨립니다. 떨어진 장비의 등급 확률은 일반 드랍과 같습니다.',
+      ),
+      _Note(
+        '잿불 유해: 쓰러진 졸개 자리가 ${pct(Balance.deathBlastChance)} 확률로 '
+        '${Balance.deathBlastDelay}초 예고 뒤 터집니다 (한꺼번에 최대 ${Balance.maxDeathBlasts}개). '
+        '${[for (final r in CorruptionRule.values)
+          if (r != CorruptionRule.elite && r != CorruptionRule.deathBlast) '${r.label}(${r.from}단계)'].join(' · ')}'
+        '에는 확률이 없습니다.',
       ),
     ];
   }

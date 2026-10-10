@@ -4,9 +4,11 @@ import '../../game/ashborn_game.dart';
 import '../format.dart';
 import '../theme.dart';
 import '../widgets/ash_button.dart';
+import '../widgets/build_strip.dart';
 
 /// 전투 중 일시정지 메뉴. 여는 동안 게임은 멈추고 '계속하기'로만 다시 돈다.
-/// 장비 · 설정을 열었다 닫으면 이 메뉴로 돌아온다.
+/// 이번 런의 카드 · 은총을 아이콘으로 한눈에 보이고, 누르면 자세히 본다.
+/// 장비 · 설정 · 카드 화면을 열었다 닫으면 이 메뉴로 돌아온다.
 class PauseOverlay extends StatelessWidget {
   const PauseOverlay({super.key, required this.game, required this.onQuit});
 
@@ -45,9 +47,20 @@ class PauseOverlay extends StatelessWidget {
                   key: const Key('pause-status'),
                   style: statStyle,
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 360),
+                  child: BuildStrip(
+                    key: const Key('pause-build-strip'),
+                    player: game.world.player,
+                    graces: game.progress.graceRecords.length,
+                    onTap: game.openBuild,
+                  ),
+                ),
+                const SizedBox(height: 24),
                 for (final (key, label, onPressed) in [
                   ('pause-resume', '계속하기', game.resumeFromPause),
+                  ('pause-build', '카드 · 은총', game.openBuild),
                   ('pause-equipment', '장비', game.openEquipment),
                   ('pause-settings', '설정', game.openSettings),
                   ('pause-quit', '캐릭터 선택으로', () => _confirmQuit(context)),
@@ -82,7 +95,7 @@ class PauseOverlay extends StatelessWidget {
           '메인 화면으로 돌아가면 이번 런은 여기서 끝난다.\n'
           '지금까지 모은 잔불 · 골드 · 강화석은 정산되어 남고, '
           '주운 장비도 가방에 그대로 있다.\n'
-          '런 안에서 올린 레벨과 운명은 사라진다.',
+          '런 안에서 올린 레벨과 무기 · 패시브 카드는 사라지고, 받은 은총은 남는다.',
           style: TextStyle(color: AshColors.parchment, height: 1.4),
         ),
         actions: [

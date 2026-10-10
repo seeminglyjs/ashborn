@@ -13,6 +13,8 @@ class EquipmentOverlay extends StatelessWidget {
   Widget build(BuildContext context) => EquipmentPanel(
     inventory: game.inventory,
     character: game.character,
+    extra: game.profile.permanentBonus,
+    settings: game.settings,
     onClose: game.closeEquipment,
   );
 }
