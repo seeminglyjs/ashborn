@@ -4,6 +4,7 @@ import '../../data/characters.dart';
 import '../../data/stages.dart';
 import '../equipment/equipment_screen.dart';
 import '../hearth/hearth_screen.dart';
+import '../mastery/mastery_screen.dart';
 import '../profile_scope.dart';
 import '../routes.dart';
 import '../format.dart';
@@ -82,6 +83,10 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   void _openHearth() =>
       Navigator.of(context).push(fadeRoute(const HearthScreen()));
 
+  void _openMastery() =>
+      Navigator.of(context)
+          .push(fadeRoute(MasteryScreen(character: _selected)));
+
   @override
   Widget build(BuildContext context) {
     final profile = ProfileScope.of(context);
@@ -110,6 +115,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                 listenable: Listenable.merge([
                   profile.inventory,
                   profile.progress,
+                  profile.mastery,
                 ]),
                 builder: (context, _) => Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -154,6 +160,18 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                             icon: Icons.backpack,
                             fontSize: 15,
                             onPressed: _openEquipment,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: AshButton(
+                            key: const Key('open-mastery'),
+                            label: profile.mastery.points(_selected.id) > 0
+                                ? '숙련 •'
+                                : '숙련',
+                            icon: Icons.auto_graph,
+                            fontSize: 15,
+                            onPressed: _owned ? _openMastery : null,
                           ),
                         ),
                       ],

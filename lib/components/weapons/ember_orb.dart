@@ -21,6 +21,11 @@ class EmberOrb extends Weapon {
 
   int get boltCount => 1 + bonusCount + world.player.extraProjectiles;
 
+  bool get hasOverheat => level >= Balance.overheatLevel;
+
+  /// 지금까지 시전한 수. 과열 차례를 센다.
+  int casts = 0;
+
   @override
   bool fire() {
     final origin = world.player.position;
@@ -31,6 +36,22 @@ class EmberOrb extends Weapon {
     if (target == null) return false;
     final aim = target.position - origin;
     final damage = Balance.emberOrbDamage * damageMultiplier;
+    casts++;
+    if (hasOverheat && casts % Balance.overheatEvery == 0) {
+      world.add(
+        EmberBolt(
+          position: origin.clone(),
+          direction: aim.clone(),
+          damage: damage * Balance.overheatDamage,
+          type: id.damageType,
+          explodes: true,
+          pierce: bonusPierce,
+          speed: Balance.emberOrbSpeed * speedMultiplier * 0.8,
+          radius: Balance.overheatRadius * areaMultiplier,
+          bulk: Balance.overheatSize,
+        ),
+      );
+    }
     for (var i = 0; i < boltCount; i++) {
       final offset = (i - (boltCount - 1) / 2) * Balance.emberOrbSpread;
       world.add(
@@ -61,10 +82,14 @@ class EmberBolt extends Projectile {
     super.pierce,
     super.speed = Balance.emberOrbSpeed,
     this.radius = Balance.meteorRadius,
+    this.bulk = 1,
   }) : super(
          lifetime: Balance.emberOrbLifetime,
-         size: Vector2.all(Balance.emberOrbRadius * 2),
+         size: Vector2.all(Balance.emberOrbRadius * 2 * bulk),
        );
+
+  /// 크기 배율. 과열 화염구는 크다.
+  final double bulk;
 
   static final _glow = Paint()..color = const Color(0x55FF8C42);
   static final _core = Paint()..color = const Color(0xFFFFD27A);
@@ -101,12 +126,20 @@ class EmberBolt extends Projectile {
   @override
   void render(Canvas canvas) {
     final c = Offset(size.x / 2, size.y / 2);
+    final r = Balance.emberOrbRadius * bulk;
     canvas
       ..drawCircle(
         c,
-        Balance.emberOrbRadius * (explodes ? 2.4 : 1.8),
+        r * (explodes ? 2.4 : 1.8),
         explodes ? _meteorGlow : _glow,
       )
-      ..drawCircle(c, Balance.emberOrbRadius, explodes ? _meteorCore : _core);
+      ..drawCircle(c, r, explodes ? _meteorCore : _core);
+    if (bulk > 1) {
+      // 화염구: 뒤로 끌리는 불꼬리와 노란 속.
+      canvas
+        ..drawCircle(c.translate(-r * 1.2, 0), r * 0.7, _glow)
+        ..drawCircle(c.translate(-r * 2.1, 0), r * 0.45, _glow)
+        ..drawCircle(c, r * 0.55, _core);
+    }
   }
 }

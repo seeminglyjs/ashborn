@@ -262,6 +262,8 @@ class RunWorld extends World
       stones: Balance.bossStones + stage.corruption,
     );
     game.notify('골드 +$gold · 강화석 +$stones', color: const Color(0xFFE8C887));
+    final mastery = bankMastery(bonus: Balance.masteryBossXp * stage.level);
+    game.notify('숙련 +$mastery', color: const Color(0xFFB8A6FF));
     if (game.random.nextDouble() <
         Balance.transcendStoneChance +
             Balance.transcendStoneChancePerCorruption * stage.corruption) {
@@ -322,6 +324,19 @@ class RunWorld extends World
     runGold += loot.gold;
     runStones += loot.stones;
     return loot;
+  }
+
+  /// 이번 런에서 쌓은, 아직 넣지 않은 숙련 경험치와 넣은 양.
+  double _pendingMastery = 0;
+  int runMastery = 0;
+
+  /// 모아 둔 숙련 경험치와 [bonus] 를 이 캐릭터의 숙련에 넣고 넣은 양을 돌려준다.
+  int bankMastery({double bonus = 0}) {
+    final amount = (_pendingMastery + bonus).floor();
+    _pendingMastery = 0;
+    game.mastery.addXp(character.id, amount.toDouble());
+    runMastery += amount;
+    return amount;
   }
 
   /// 다음 스테이지로. 마지막 지역 다음이면 타락 단계가 오른다.
@@ -504,6 +519,7 @@ class RunWorld extends World
         );
 
   void gainXp(double amount) {
+    _pendingMastery += amount;
     final stats = game.stats;
     var xp = stats.xp.value + amount;
     var levels = 0;

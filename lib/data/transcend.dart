@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui';
 
 import 'balance.dart';
@@ -17,7 +16,7 @@ enum TranscendOption {
 
   final String label;
 
-  /// 기본 수치. [whole] 이 아니면 ±[Balance.statVariance] 안에서 굴린다.
+  /// 붙는 수치. 초월은 확률 없이 늘 이 값으로 붙는다.
   final double base;
 
   /// 정수로만 붙는 옵션 (투사체 수).
@@ -39,15 +38,13 @@ enum TranscendOption {
     };
   }
 
-  /// [have] 에 없는 초월 옵션 하나를 굴린다.
-  static TranscendRoll roll(math.Random random, Set<TranscendOption> have) {
-    final options = values.where((o) => !have.contains(o)).toList();
-    final option = options[random.nextInt(options.length)];
-    final variance = option.whole
-        ? 1
-        : 1 + (random.nextDouble() * 2 - 1) * Balance.statVariance;
-    return (option: option, value: option.base * variance);
-  }
+  /// [have] 에 없어서 새로 붙일 수 있는 초월 옵션.
+  static List<TranscendOption> available(Set<TranscendOption> have) =>
+      values.where((o) => !have.contains(o)).toList();
+
+  /// [option] 을 고정 수치로 붙인 초월 한 줄.
+  static TranscendRoll pick(TranscendOption option) =>
+      (option: option, value: option.base);
 }
 
 typedef TranscendRoll = ({TranscendOption option, double value});

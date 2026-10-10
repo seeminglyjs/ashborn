@@ -11,6 +11,7 @@ import '../data/characters.dart';
 import '../data/equipment.dart';
 import '../data/fates.dart';
 import '../data/inventory.dart';
+import '../data/class_passives.dart';
 import '../data/profile.dart';
 import '../data/progress.dart';
 import '../data/settings.dart';
@@ -71,6 +72,7 @@ class AshbornGame extends FlameGame<RunWorld>
   Progress get progress => profile.progress;
   Settings get settings => profile.settings;
   Upgrades get upgrades => profile.upgrades;
+  Mastery get mastery => profile.mastery;
 
   /// 이 캐릭터가 낀 장비.
   late final gear = inventory.gear(character.id);
@@ -124,7 +126,8 @@ class AshbornGame extends FlameGame<RunWorld>
   void onPlayerDied() {
     world
       ..bankEmber()
-      ..bankLoot();
+      ..bankLoot()
+      ..bankMastery();
     pauseEngine();
     overlays.add(gameOverOverlay);
   }
@@ -204,7 +207,8 @@ class AshbornGame extends FlameGame<RunWorld>
   void quitRun() {
     world
       ..bankEmber()
-      ..bankLoot();
+      ..bankLoot()
+      ..bankMastery();
     pauseEngine();
   }
 

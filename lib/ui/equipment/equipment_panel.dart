@@ -59,10 +59,8 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
   /// 가방 위에 잠깐 띄우는 분해 결과. 다른 장비를 고르면 지운다.
   String? _bagNotice;
 
-  /// 마지막 강화 · 초월 시도 결과. 다른 장비를 고르면 지운다.
-  bool? _enhanced;
-  bool? _transcended;
-  final _random = math.Random();
+  /// 마지막 강화 · 초월 결과 문구. 다른 장비를 고르면 지운다.
+  String? _upgradeNotice;
 
   Inventory get _inventory => widget.inventory;
   late final Gear _gear = _inventory.gear(widget.character.id);
@@ -70,20 +68,48 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
   void _select(Item? item, [EquipSlot? slot]) => setState(() {
     _selected = item;
     _selectedSlot = slot;
-    _enhanced = null;
-    _transcended = null;
+    _upgradeNotice = null;
     if (item != null) _bagNotice = null;
   });
 
   void _enhance(Item item) => setState(() {
-    _enhanced = _inventory.enhance(item, _random);
-    _transcended = null;
+    _inventory.enhance(item);
+    _upgradeNotice = '강화 완료! +${item.enhance}';
   });
 
-  void _transcend(Item item) => setState(() {
-    _transcended = _inventory.transcend(item, _random);
-    _enhanced = null;
-  });
+  /// 붙일 초월 옵션을 고르게 하고, 고르면 초월한다. 확률 없이 늘 성공한다.
+  Future<void> _transcend(Item item) async {
+    final options = TranscendOption.available({
+      for (final t in item.transcends) t.option,
+    });
+    final option = await showDialog<TranscendOption>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        key: const Key('transcend-picker'),
+        backgroundColor: AshColors.panel,
+        title: Text(
+          '초월 옵션 고르기 · ★${item.transcends.length + 1}',
+          style: const TextStyle(color: TranscendOption.color, fontSize: 16),
+        ),
+        children: [
+          for (final option in options)
+            SimpleDialogOption(
+              key: Key('transcend-option-${option.name}'),
+              onPressed: () => Navigator.of(context).pop(option),
+              child: Text(
+                option.format(option.base),
+                style: const TextStyle(color: AshColors.parchment),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (option == null || !mounted || !_inventory.canTranscend(item)) return;
+    setState(() {
+      _inventory.transcend(item, option);
+      _upgradeNotice = '초월 완료! ${option.label}';
+    });
+  }
 
   Future<void> _salvage(Item item) async {
     if (item.rarity.index >= confirmSalvageFrom.index &&
@@ -587,20 +613,8 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_enhanced case final success?)
-            _result(
-              'enhance-result',
-              success ? '강화 성공! +${item.enhance}' : '강화 실패: 재료만 사라졌습니다',
-              success,
-            ),
-          if (_transcended case final success?)
-            _result(
-              'transcend-result',
-              success
-                  ? '초월 성공! ${item.transcends.last.option.label}'
-                  : '초월 실패: 재료만 사라졌습니다',
-              success,
-            ),
+          if (_upgradeNotice case final notice?)
+            _result('upgrade-result', notice, true),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -617,16 +631,14 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                     else
                       _cost(
                         'enhance-cost',
-                        '강화석 ${item.enhanceStones} · 골드 ${item.enhanceGold} · '
-                            '성공 ${(item.enhanceChance * 100).round()}%',
+                        '강화석 ${item.enhanceStones} · 골드 ${item.enhanceGold}',
                         affordable: canEnhance,
                       ),
                     // 초월은 최대 강화한 영웅 이상 장비만 할 수 있다.
                     if (item.canTranscend)
                       _cost(
                         'transcend-cost',
-                        '초월석 ${item.transcendStones} · 골드 ${item.transcendGold}'
-                            ' · 성공 ${(item.transcendChance * 100).round()}%',
+                        '초월석 ${item.transcendStones} · 골드 ${item.transcendGold}',
                         affordable: canTranscend,
                         color: TranscendOption.color,
                       ),
@@ -639,7 +651,7 @@ class _EquipmentPanelState extends State<EquipmentPanel> {
                 onTap: () =>
                     Navigator.of(context).push(fadeRoute(const OddsScreen())),
                 child: const Text(
-                  '확률표',
+                  '확률 정보',
                   style: TextStyle(
                     color: _Text.ember,
                     fontSize: 11,

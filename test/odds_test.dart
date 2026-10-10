@@ -58,7 +58,9 @@ void main() {
   });
 
   group('확률 정보 화면', () {
-    testWidgets('설정에서 열고, 강화 · 초월 · 드랍 · 은총 확률을 보여 준다', (tester) async {
+    testWidgets('설정에서 열고, 드랍 · 은총 확률과 강화 · 초월은 확률이 없다는 안내를 보여 준다', (
+      tester,
+    ) async {
       tester.view
         ..physicalSize = const Size(390, 844)
         ..devicePixelRatio = 1;
@@ -78,7 +80,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(OddsScreen), findsOneWidget);
-      for (final title in ['장비 강화', '장비 초월', '장비 드랍', '랜덤옵션', '재화', '신의 은총']) {
+      for (final title in ['장비 강화 · 초월', '장비 드랍', '랜덤옵션', '재화', '신의 은총']) {
         await tester.scrollUntilVisible(find.text(title), 200);
         expect(find.text(title), findsOneWidget);
       }

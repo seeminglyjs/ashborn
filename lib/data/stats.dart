@@ -78,7 +78,9 @@ enum StatType {
     percent: true,
   ),
 
-  // 상태이상: 확률은 해당 속성 피해가 섞인 타격에만 적용된다 (중독은 모든 타격).
+  // 상태이상: 출혈 확률은 물리 피해가 섞인 타격에, 중독 확률은 모든 타격에 적용된다.
+  // 점화 · 냉각 · 감전은 확률이 아니라 그 속성 피해가 쌓여 걸린다. '축적'은 쌓이는 양을 늘린다
+  // (저장 이름은 예전 그대로 burnChance · chillChance · shockChance).
   bleedChance(
     '출혈 확률',
     StatGroup.ailment,
@@ -86,9 +88,9 @@ enum StatType {
     percent: true,
   ),
   burnChance(
-    '화상 확률',
+    '점화 축적',
     StatGroup.ailment,
-    roll: Balance.rollAilmentChance,
+    roll: Balance.rollAilmentBuildup,
     percent: true,
   ),
   poisonChance(
@@ -98,15 +100,15 @@ enum StatType {
     percent: true,
   ),
   shockChance(
-    '감전 확률',
+    '감전 축적',
     StatGroup.ailment,
-    roll: Balance.rollAilmentChance,
+    roll: Balance.rollAilmentBuildup,
     percent: true,
   ),
   chillChance(
-    '동상 확률',
+    '냉각 축적',
     StatGroup.ailment,
-    roll: Balance.rollAilmentChance,
+    roll: Balance.rollAilmentBuildup,
     percent: true,
   ),
   bleedDamage(
@@ -116,7 +118,7 @@ enum StatType {
     percent: true,
   ),
   burnDamage(
-    '화상 피해',
+    '점화 피해',
     StatGroup.ailment,
     roll: Balance.rollAilmentDamage,
     percent: true,
@@ -128,7 +130,7 @@ enum StatType {
     percent: true,
   ),
   shockEffect(
-    '감전 효과',
+    '연쇄 번개 피해',
     StatGroup.ailment,
     roll: Balance.rollAilmentDamage,
     percent: true,

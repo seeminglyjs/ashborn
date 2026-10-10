@@ -19,6 +19,7 @@ abstract class Projectile extends PositionComponent
     required double lifetime,
     required super.size,
     this.pierce = 0,
+    this.secondary = false,
   }) : velocity = (direction.isZero() ? Vector2(1, 0) : direction.normalized())
          ..scale(speed),
        _life = lifetime,
@@ -31,6 +32,9 @@ abstract class Projectile extends PositionComponent
   final double damage;
   final DamageType type;
   int pierce;
+
+  /// 효과로 생긴 투사체 (얼음 파편 · 바람 검기): 장비 속성 피해를 다시 더하지 않는다.
+  final bool secondary;
   double _life;
   final _hit = <Enemy>{};
 
@@ -57,7 +61,7 @@ abstract class Projectile extends PositionComponent
     super.onCollisionStart(intersectionPoints, other);
     if (isRemoving || other is! Enemy || other.isDead) return;
     if (!_hit.add(other)) return;
-    world.player.strike(other, damage, type);
+    world.player.strike(other, damage, type, secondary: secondary);
     onHit(other);
     if (pierce-- <= 0) removeFromParent();
   }

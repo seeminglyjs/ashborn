@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
@@ -82,16 +81,14 @@ class Inventory extends ChangeNotifier {
       _stones >= item.enhanceStones &&
       _gold >= item.enhanceGold;
 
-  /// 강화석과 골드를 써서 [item] 강화를 시도하고 성공했는지 돌려준다.
-  /// 실패하면 재료만 사라진다. 장착 중인 장비도 된다.
-  bool enhance(Item item, math.Random random) {
+  /// 강화석과 골드를 써서 [item] 을 한 단계 강화한다. 확률 없이 늘 성공한다.
+  /// 장착 중인 장비도 된다.
+  void enhance(Item item) {
     assert(canEnhance(item), '재료가 모자라거나 최대 강화다');
     _stones -= item.enhanceStones;
     _gold -= item.enhanceGold;
-    final success = random.nextDouble() < item.enhanceChance;
-    if (success) item.enhance++;
+    item.enhance++;
     notifyListeners();
-    return success;
   }
 
   bool canTranscend(Item item) =>
@@ -99,22 +96,15 @@ class Inventory extends ChangeNotifier {
       _transcendStones >= item.transcendStones &&
       _gold >= item.transcendGold;
 
-  /// 초월석과 골드를 써서 [item] 초월을 시도하고 성공했는지 돌려준다.
-  /// 성공하면 아직 없는 초월 옵션이 하나 붙는다. 실패하면 재료만 사라진다.
-  bool transcend(Item item, math.Random random) {
+  /// 초월석과 골드를 써서 [item] 에 [option] 초월 옵션을 붙인다. 확률 없이 늘 성공한다.
+  /// [option] 은 아직 그 장비에 없는 것이어야 한다 ([TranscendOption.available]).
+  void transcend(Item item, TranscendOption option) {
     assert(canTranscend(item), '재료가 모자라거나 초월할 수 없다');
+    assert(item.transcends.every((t) => t.option != option), '이미 붙은 초월 옵션이다');
     _transcendStones -= item.transcendStones;
     _gold -= item.transcendGold;
-    final success = random.nextDouble() < item.transcendChance;
-    if (success) {
-      item.transcends.add(
-        TranscendOption.roll(random, {
-          for (final t in item.transcends) t.option,
-        }),
-      );
-    }
+    item.transcends.add(TranscendOption.pick(option));
     notifyListeners();
-    return success;
   }
 
   /// 가방의 [item] 을 분해해 잔불로 바꾼다.

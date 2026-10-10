@@ -1,6 +1,6 @@
 import 'package:ashborn/components/weapons/ember_orb.dart';
 import 'package:ashborn/components/weapons/fire_crossbow.dart';
-import 'package:ashborn/components/weapons/flame_blade.dart';
+import 'package:ashborn/components/weapons/greatsword.dart';
 import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/weapons.dart';
@@ -58,13 +58,13 @@ void main() {
         await game.ready();
         final player = game.world.player;
         final weapons = player.children.where(
-          (w) => w is EmberOrb || w is FlameBlade || w is FireCrossbow,
+          (w) => w is EmberOrb || w is Greatsword || w is FireCrossbow,
         );
 
         expect(player.maxHp, c.maxHp);
         expect(game.stats.maxHp.value, c.maxHp);
         expect(weapons.single.runtimeType, switch (c.id) {
-          CharacterId.knight => FlameBlade,
+          CharacterId.knight => Greatsword,
           CharacterId.witch => EmberOrb,
           CharacterId.hunter => FireCrossbow,
         });
@@ -133,23 +133,91 @@ void main() {
       expect(weapon.fire(), isFalse);
     });
 
-    testWithGame<AshbornGame>('불꽃 대검이 궤도 위의 적을 벤다', gameWith(Roster.knight), (
+    testWithGame<AshbornGame>('강철 대검은 앞의 적을 꿰뚫어 찌른다', gameWith(Roster.knight), (
       game,
     ) async {
       await game.ready();
-      final enemy = await addEnemy(
-        game,
-        Vector2(Balance.flameBladeOrbitRadius, 0),
-      );
+      await clearEnemies(game);
+      final near = await addEnemy(game, Vector2(50, 0));
+      final far = await addEnemy(game, Vector2(110, 0));
+      final behind = await addEnemy(game, Vector2(-60, 0));
 
-      // 한 바퀴 돌면 칼날이 반드시 지나간다.
-      await advance(game, 2 * 3.1416 / Balance.flameBladeAngularSpeed);
+      final sword =
+          game.world.player.weapon(WeaponId.greatsword)! as Greatsword;
+      expect(sword.moves, [SwordMove.thrust]);
+      expect(sword.fire(), isTrue);
+      // 칼이 닿는 순간까지 진행한다. 적이 밀려나지 않게 자리를 지킨다.
+      for (var i = 0; i < 20; i++) {
+        game.update(1 / 60);
+        near.position.setFrom(game.world.player.position + Vector2(50, 0));
+      }
 
-      expect(enemy.hp, lessThan(enemy.maxHp));
+      expect(near.hp, near.maxHp - Balance.thrustDamage);
+      expect(far.hp, far.maxHp - Balance.thrustDamage, reason: '꿰뚫는다');
+      expect(behind.hp, behind.maxHp, reason: '뒤는 찌르지 않는다');
     });
 
     testWithGame<AshbornGame>(
-      '화염 석궁 화살은 일렬로 선 적을 여럿 꿰뚫는다',
+      '강철 대검은 레벨에 따라 휘두르기 · 내려찍기를 익혀 차례로 쓴다',
+      gameWith(Roster.knight),
+      (game) async {
+        await game.ready();
+        final player = game.world.player;
+        final sword = player.weapon(WeaponId.greatsword)! as Greatsword;
+        for (var i = 1; i < Balance.slamLevel; i++) {
+          player.gainWeapon(WeaponId.greatsword);
+        }
+        expect(sword.moves, [
+          SwordMove.thrust,
+          SwordMove.swing,
+          SwordMove.slam,
+        ]);
+        expect(
+          WeaponId.greatsword.upgradeText(Balance.swingLevel),
+          startsWith('휘두르기 습득'),
+        );
+        expect(
+          WeaponId.greatsword.upgradeText(Balance.slamLevel),
+          startsWith('내려찍기 습득'),
+        );
+        expect(
+          WeaponId.greatsword.upgradeText(Balance.onslaughtLevel),
+          startsWith('맹공 습득'),
+        );
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '콤보가 두 번 연달아 나면 맹공으로 쿨다운이 줄어든다',
+      gameWith(Roster.knight),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        final player = game.world.player;
+        final sword = player.weapon(WeaponId.greatsword)! as Greatsword;
+        while (sword.level < Balance.onslaughtLevel) {
+          player.gainWeapon(WeaponId.greatsword);
+        }
+        final enemy = await addEnemy(game, Vector2(60, 0), hp: 1e9);
+        final normal = sword.cooldown;
+
+        // 콤보가 날 때까지 휘두르게 둔다. 맞아서 밀려나도 제자리로 돌려놓는다.
+        for (var i = 0; i < 6000 && !sword.inOnslaught; i++) {
+          game.update(1 / 30);
+          enemy.position.setFrom(player.position + Vector2(60, 0));
+        }
+
+        expect(sword.combos, greaterThanOrEqualTo(Balance.onslaughtStreak));
+        expect(sword.inOnslaught, isTrue);
+        expect(
+          sword.cooldown,
+          closeTo(normal * Balance.onslaughtCooldown, 1e-9),
+        );
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '사냥 석궁 화살은 일렬로 선 적을 여럿 꿰뚫는다',
       gameWith(Roster.hunter),
       (game) async {
         await game.ready();
@@ -176,8 +244,11 @@ void main() {
     test('레벨업 효과 설명', () {
       expect(WeaponId.emberOrb.upgradeText(2), '구체 +1');
       expect(WeaponId.emberOrb.upgradeText(3), '피해 +20%');
-      expect(WeaponId.fireCrossbow.upgradeText(2), '관통 +1, 피해 +10%');
-      expect(WeaponId.flameBlade.upgradeText(5), '피해 +20%, 속도 +15%');
+      expect(
+        WeaponId.fireCrossbow.upgradeText(2),
+        '연사 습득, 연사 확률 +15%, 피해 +10%',
+      );
+      expect(WeaponId.greatsword.upgradeText(5), '피해 +25%');
       expect(WeaponId.fireTornado.upgradeText(2), '지속 시간 +25%');
       expect(WeaponId.earthSlam.upgradeText(4), '쿨다운 -12%');
     });
@@ -199,28 +270,30 @@ void main() {
       }
     });
 
-    testWithGame<AshbornGame>('레벨이 오르면 피해와 관통이 는다', gameWith(Roster.hunter), (
-      game,
-    ) async {
-      await game.ready();
-      await clearEnemies(game);
-      final player = game.world.player;
-      player
-        ..gainWeapon(WeaponId.fireCrossbow)
-        ..gainWeapon(WeaponId.fireCrossbow);
-      final weapon = player.children.whereType<FireCrossbow>().single;
-      expect(weapon.level, 3);
-      expect(weapon.pierce, Balance.crossbowPierce + 1);
+    testWithGame<AshbornGame>(
+      '레벨이 오르면 피해와 연사 확률이 는다',
+      gameWith(Roster.hunter),
+      (game) async {
+        await game.ready();
+        await clearEnemies(game);
+        final player = game.world.player;
+        player
+          ..gainWeapon(WeaponId.fireCrossbow)
+          ..gainWeapon(WeaponId.fireCrossbow);
+        final weapon = player.children.whereType<FireCrossbow>().single;
+        expect(weapon.level, 3);
+        expect(weapon.volleyChance, closeTo(0.15, 1e-9));
 
-      final enemy = await addEnemy(game, Vector2(120, 0));
-      weapon.fire();
-      await advance(game, 0.5);
+        final enemy = await addEnemy(game, Vector2(120, 0));
+        weapon.fire();
+        await advance(game, 0.5);
 
-      expect(
-        enemy.hp,
-        closeTo(enemy.maxHp - Balance.crossbowDamage * 1.1, 1e-9),
-      );
-    });
+        // 연사가 나면 한 발 더 맞는다.
+        final hits = (enemy.maxHp - enemy.hp) / (Balance.crossbowDamage * 1.1);
+        expect(hits.round(), anyOf(1, 2));
+        expect(hits, closeTo(hits.roundToDouble(), 1e-9));
+      },
+    );
 
     testWithGame<AshbornGame>('잔불 구체는 3레벨에 두 발을 쏜다', gameWith(Roster.witch), (
       game,
@@ -239,20 +312,20 @@ void main() {
       expect(game.world.children.whereType<EmberBolt>(), hasLength(2));
     });
 
-    testWithGame<AshbornGame>('불꽃 대검은 3레벨에 칼날이 셋', gameWith(Roster.knight), (
-      game,
-    ) async {
-      await game.ready();
-      final player = game.world.player;
-      player
-        ..gainWeapon(WeaponId.flameBlade)
-        ..gainWeapon(WeaponId.flameBlade);
-      await game.ready();
-
-      final blade = player.children.whereType<FlameBlade>().single;
-      expect(blade.bladeCount, 3);
-      expect(blade.children.whereType<PositionComponent>(), hasLength(3));
-    });
+    testWithGame<AshbornGame>(
+      '강철 대검은 레벨이 오를수록 콤보 확률이 오른다',
+      gameWith(Roster.knight),
+      (game) async {
+        await game.ready();
+        final player = game.world.player;
+        final sword = player.children.whereType<Greatsword>().single;
+        expect(sword.comboChance, 0);
+        player
+          ..gainWeapon(WeaponId.greatsword)
+          ..gainWeapon(WeaponId.greatsword);
+        expect(sword.comboChance, closeTo(0.2, 1e-9));
+      },
+    );
 
     testWithGame<AshbornGame>('다른 캐릭터의 무기도 얻을 수 있다', gameWith(Roster.knight), (
       game,
@@ -264,7 +337,7 @@ void main() {
       await game.ready();
 
       expect(player.weapons.map((w) => w.id), [
-        WeaponId.flameBlade,
+        WeaponId.greatsword,
         WeaponId.emberOrb,
       ]);
       expect(player.weapon(WeaponId.emberOrb)!.level, 1);

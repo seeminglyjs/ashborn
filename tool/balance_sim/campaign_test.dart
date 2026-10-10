@@ -81,6 +81,7 @@ void main() {
         meta
           ..tidy()
           ..hearth()
+          ..mastery()
           ..enhance();
         final inv = game.inventory;
         out(

@@ -12,6 +12,7 @@ import '../effects/burst.dart';
 import '../effects/sparks.dart';
 import 'projectile.dart';
 import 'weapon.dart';
+import 'weapon_art.dart';
 
 /// 불씨 덫 (불씨 사냥꾼): 발밑에 덫을 묻는다. 적이 밟으면 터진다.
 /// 각성(연쇄 폭뢰)하면 터진 둘레에 작은 폭발이 이어진다.
@@ -172,8 +173,6 @@ class Knife extends Projectile {
 
   final bool awakened;
 
-  static final _blade = Paint()..color = const Color(0xFFE8E4DC);
-  static final _hilt = Paint()..color = const Color(0xFF8A5A34);
   static final _glow = Paint()..color = const Color(0x664FC3FF);
 
   @override
@@ -184,15 +183,10 @@ class Knife extends Projectile {
     if (awakened) {
       canvas.drawRect(Rect.fromLTWH(-6, -1, size.x + 6, size.y + 2), _glow);
     }
-    canvas
-      ..drawRect(Rect.fromLTWH(0, 1, 4, 2), _hilt)
-      ..drawPath(
-        Path()
-          ..moveTo(4, 0)
-          ..lineTo(size.x, size.y / 2)
-          ..lineTo(4, size.y)
-          ..close(),
-        _blade,
-      );
+    knifeArt.draw(
+      canvas..translate(0, size.y / 2),
+      pivot: Offset(0, knifeArt.height / 2),
+      scale: size.x / knifeArt.width,
+    );
   }
 }

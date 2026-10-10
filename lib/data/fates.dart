@@ -394,7 +394,8 @@ enum FateCard {
   };
 }
 
-/// 원소 은총이 함께 올려 주는 상태이상 확률. 바람은 상태이상이 없어 이동 속도를 준다.
+/// 원소 은총이 함께 올려 주는 상태이상 능력치: 물리는 출혈 확률, 화염 · 냉기 · 번개는
+/// 점화 · 냉각 · 감전 축적. 바람은 이동 속도를 준다.
 StatType _elementBonus(DamageType element) => switch (element) {
   DamageType.fire => StatType.burnChance,
   DamageType.cold => StatType.chillChance,
@@ -450,8 +451,11 @@ class Fate {
     FateCard(element: DamageType.wind) => {
       StatType.moveSpeed: Balance.fateWindMoveSpeed * power,
     },
+    FateCard(element: DamageType.physical) => {
+      StatType.bleedChance: Balance.fateElementAilment * power,
+    },
     FateCard(element: final element?) => {
-      _elementBonus(element): Balance.fateElementAilment * power,
+      _elementBonus(element): Balance.fateElementBuildup * power,
     },
     _ => const {},
   };

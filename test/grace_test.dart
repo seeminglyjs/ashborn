@@ -105,31 +105,38 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '더해진 화염 피해로 물리 타격에도 화상이 걸린다',
-      gameWith(Roster.witch, inventory: wearing({StatType.burnChance: 1})),
+      '더해진 화염 피해가 물리 타격에도 쌓여 점화된다',
+      gameWith(Roster.witch),
       (game) async {
         await game.ready();
         await clearEnemies(game);
         final enemy = await addEnemy(game, Vector2(5000, 0));
         final player = game.world.player;
 
-        player.strike(enemy, 10, DamageType.physical);
-        expect(enemy.ailments.burning, isFalse);
+        player.strike(enemy, enemy.ailmentThreshold, DamageType.physical);
+        expect(enemy.ailments.fireBuildup, 0);
 
         FateSystem.apply(fate(FateCard.fireGrace), game.world);
         player.strike(enemy, 10, DamageType.physical);
-        expect(enemy.ailments.burning, isTrue);
+        expect(
+          enemy.ailments.fireBuildup,
+          closeTo(
+            10 * Balance.fateElementDamage * (1 + Balance.fateElementBuildup),
+            1e-6,
+          ),
+        );
       },
     );
 
     testWithGame<AshbornGame>(
-      '상태이상 확률은 속성에 맞게, 바람은 이동 속도를 준다',
+      '원소 은총은 출혈 확률 · 원소 축적을 속성에 맞게, 바람은 이동 속도를 준다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
         final player = game.world.player;
         final speed = player.speed;
         final ailment = Balance.fateElementAilment * grow(2);
+        final buildup = Balance.fateElementBuildup * grow(2);
         for (final card in [
           FateCard.fireGrace,
           FateCard.coldGrace,
@@ -140,9 +147,9 @@ void main() {
           FateSystem.apply(fate(card, Rarity.legend), game.world);
         }
 
-        expect(player.bonus(StatType.burnChance), closeTo(ailment, 1e-9));
-        expect(player.bonus(StatType.chillChance), closeTo(ailment, 1e-9));
-        expect(player.bonus(StatType.shockChance), closeTo(ailment, 1e-9));
+        expect(player.bonus(StatType.burnChance), closeTo(buildup, 1e-9));
+        expect(player.bonus(StatType.chillChance), closeTo(buildup, 1e-9));
+        expect(player.bonus(StatType.shockChance), closeTo(buildup, 1e-9));
         expect(player.bonus(StatType.bleedChance), closeTo(ailment, 1e-9));
         expect(
           player.speed,

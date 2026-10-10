@@ -10,6 +10,7 @@ import '../effects/burst.dart';
 import '../effects/sparks.dart';
 import '../enemies/enemy.dart';
 import 'weapon.dart';
+import 'weapon_art.dart';
 
 /// 잿불 고리 (공용): 몸 둘레를 계속 태운다. 쿨다운마다 고리 안의 적 모두에게 피해.
 /// 각성(지옥불 고리)하면 넓어지고 닿은 적을 느리게 한다.
@@ -182,10 +183,8 @@ class _Disc extends PositionComponent with HasWorldReference<RunWorld> {
   double _t = 0;
   final _lastHit = <Enemy, double>{};
 
-  static final _rim = Paint()..color = const Color(0xFFE8C887);
-  static final _hole = Paint()..color = const Color(0xFF241A12);
-  static final _blur = Paint()..color = const Color(0x44E8C887);
-  static final _awakenRim = Paint()..color = const Color(0xFF8FE3FF);
+  static final _blur = Paint()..color = const Color(0x33E8C887);
+  static final _awakenBlur = Paint()..color = const Color(0x668FE3FF);
 
   @override
   void update(double dt) {
@@ -220,18 +219,19 @@ class _Disc extends PositionComponent with HasWorldReference<RunWorld> {
   @override
   void render(Canvas canvas) {
     final spin = _t * 30;
+    canvas.drawCircle(
+      Offset.zero,
+      radius * 1.5,
+      weapon.awakened ? _awakenBlur : _blur,
+    );
     canvas
-      ..drawCircle(Offset.zero, radius * 1.4, _blur)
-      ..drawCircle(Offset.zero, radius, weapon.awakened ? _awakenRim : _rim)
-      ..drawCircle(Offset.zero, radius * 0.45, _hole);
-    // 도는 날 네 개.
-    for (var i = 0; i < 4; i++) {
-      final a = spin + math.pi / 2 * i;
-      canvas.drawCircle(
-        Offset(math.cos(a), math.sin(a)) * radius,
-        2.5,
-        weapon.awakened ? _awakenRim : _rim,
-      );
-    }
+      ..save()
+      ..rotate(spin);
+    chakramArt.draw(
+      canvas,
+      pivot: Offset(chakramArt.width / 2, chakramArt.height / 2),
+      scale: radius * 2.4 / chakramArt.width,
+    );
+    canvas.restore();
   }
 }

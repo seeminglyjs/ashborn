@@ -259,7 +259,7 @@ void main() {
         rare = item(ItemType.head, rarity: Rarity.rare);
         enhanced = item(ItemType.ring)..enhance = 2;
         transcended = item(ItemType.belt, rarity: Rarity.rare)
-          ..transcends.add(TranscendOption.roll(math.Random(1), {}));
+          ..transcends.add(TranscendOption.pick(TranscendOption.thorns));
         hero = item(ItemType.gloves, rarity: Rarity.hero);
         worn = item(ItemType.boots);
         final gear = inv.gear(CharacterId.witch);
@@ -602,7 +602,7 @@ void main() {
   group('장비 강화', () {
     Inventory rich() => Inventory()..addLoot(gold: 1 << 30, stones: 1 << 20);
 
-    test('성공하면 강화석과 골드를 쓰고 모든 옵션이 오른다', () {
+    test('강화석과 골드를 쓰면 반드시 한 단계 오르고 모든 옵션이 오른다', () {
       final inv = rich();
       final gear = inv.gear(CharacterId.witch);
       final helm = item(
@@ -614,8 +614,7 @@ void main() {
       final (stones, gold) = (helm.enhanceStones, helm.enhanceGold);
       final (haveStones, haveGold) = (inv.stones, inv.gold);
 
-      expect(helm.enhanceChance, 1);
-      expect(inv.enhance(helm, _Roll(0.99)), isTrue);
+      inv.enhance(helm);
 
       expect(inv.stones, haveStones - stones);
       expect(inv.gold, haveGold - gold);
@@ -633,19 +632,17 @@ void main() {
       expect(helm.enhanceGold, greaterThan(gold));
     });
 
-    test('실패하면 재료만 사라지고 단계는 그대로다', () {
+    test('확률 없이 높은 단계에서도 재료만 있으면 오른다', () {
       final inv = rich();
-      final helm = item(ItemType.head)..enhance = 10;
+      final helm = item(ItemType.head)..enhance = 25;
       final (stones, gold) = (inv.stones, inv.gold);
+      final (needStones, needGold) = (helm.enhanceStones, helm.enhanceGold);
 
-      expect(inv.enhance(helm, _Roll(helm.enhanceChance)), isFalse);
+      inv.enhance(helm);
 
-      expect(helm.enhance, 10);
-      expect(inv.stones, stones - helm.enhanceStones);
-      expect(inv.gold, gold - helm.enhanceGold);
-
-      expect(inv.enhance(helm, _Roll(helm.enhanceChance - 0.01)), isTrue);
-      expect(helm.enhance, 11);
+      expect(helm.enhance, 26);
+      expect(inv.stones, stones - needStones);
+      expect(inv.gold, gold - needGold);
     });
 
     test('재료가 모자라거나 최대 강화면 할 수 없다', () {
@@ -675,13 +672,19 @@ void main() {
       expect(Balance.transcendEnhance, lessThan(Balance.maxEnhance));
     });
 
-    test('단계마다 성공 확률이 있고, 높을수록 낮아진다', () {
-      const chances = Balance.enhanceChances;
-      expect(chances.length, Balance.maxEnhance);
-      for (var i = 1; i < chances.length; i++) {
-        expect(chances[i], lessThanOrEqualTo(chances[i - 1]));
+    test('단계가 오를수록 강화석이 가파르게 는다', () {
+      for (var step = 1; step < Balance.maxEnhance; step++) {
+        expect(
+          Item.enhanceStonesAt(step),
+          greaterThan(Item.enhanceStonesAt(step - 1)),
+        );
       }
-      expect(chances.last, greaterThan(0));
+      expect(Item.enhanceStonesAt(0), Balance.enhanceStones);
+      // 뒤쪽 한 단계는 앞쪽 한 단계보다 훨씬 비싸다 (확률 강화의 기대 비용 수준).
+      expect(
+        Item.enhanceStonesAt(Balance.maxEnhance - 1),
+        greaterThan(Item.enhanceStonesAt(10) * 4),
+      );
     });
 
     test('높은 등급, 높은 레벨일수록 분해 잔불도 강화 골드도 크다', () {
@@ -718,20 +721,4 @@ void main() {
       expect((fromOld.gold, fromOld.stones), (0, 0));
     });
   });
-}
-
-/// 늘 [value] 를 내는 난수. 강화 성공 여부를 정해 둔다.
-class _Roll implements math.Random {
-  _Roll(this.value);
-
-  final double value;
-
-  @override
-  double nextDouble() => value;
-
-  @override
-  bool nextBool() => value < 0.5;
-
-  @override
-  int nextInt(int max) => (value * max).floor();
 }
