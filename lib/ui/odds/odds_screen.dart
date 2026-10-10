@@ -14,14 +14,14 @@ import '../theme.dart';
 /// 밸런스를 바꿔도 표가 어긋나지 않는다.
 ///
 /// 타락 단계 · 깊은 신앙(화톳불 강화)으로 확률이 바뀌는 표는 기본 확률과 지금 플레이어가
-/// 받는 확률(최전선 스테이지 기준)을 나란히 보여 준다.
+/// 받는 확률(열린 가장 높은 타락 단계 기준)을 나란히 보여 준다.
 class OddsScreen extends StatelessWidget {
   const OddsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final profile = ProfileScope.of(context);
-    final stage = profile.progress.unlocked;
+    final corruption = profile.progress.unlockedCorruption;
     return Scaffold(
       backgroundColor: AshColors.night,
       body: SafeArea(
@@ -46,7 +46,7 @@ class OddsScreen extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 560),
                     child: OddsList(
-                      corruption: stage.corruption,
+                      corruption: corruption,
                       fateLuck: profile.upgrades.value(Upgrade.fateLuck),
                     ),
                   ),
@@ -234,11 +234,12 @@ class OddsList extends StatelessWidget {
     return [
       const _Section('신의 은총'),
       _Note(
-        '보스를 잡으면 은총 카드 $choices장(화톳불 강화 ${Upgrade.fateChoices.title}: '
+        '스테이지를 처음 클리어하면 은총 카드 $choices장(화톳불 강화 ${Upgrade.fateChoices.title}: '
         '$moreChoices장)이 나옵니다. 카드마다 같은 종류 상한'
         '(${[for (final t in FateType.values) '${t.label} ${t.limit}장'].join(' · ')})이 '
         '차지 않은 종류 중 하나를 같은 확률로 고르고, 그 종류 안에서 아래 순서로 한 장을 뽑습니다. '
-        '한 번에 같은 카드는 나오지 않습니다.',
+        '한 번에 같은 카드는 나오지 않습니다. 은총은 스테이지마다 한 번만 받고, '
+        '고를 때까지 같은 카드가 남습니다 (나갔다 와도 바뀌지 않음).',
       ),
       _Table(
         header: ['종류', '카드 수', '$choices장 중 평균', '$moreChoices장 중 평균', '저주 확률'],
@@ -267,7 +268,7 @@ class OddsList extends StatelessWidget {
         '아니면 저주가 아닌 카드 중에서 고릅니다. '
         '2) 등급을 위 확률로 뽑고, 고를 수 있는 카드의 최소 등급보다 낮으면 그 최소 등급으로 올립니다. '
         '3) 최소 등급이 그 등급 이하인 카드 중 하나를 같은 확률로 고릅니다. '
-        '등급 운은 타락 단계마다 +${(Balance.corruptionRarityLuck * 100).round()}%, '
+        '등급 운은 클리어한 스테이지의 타락 단계마다 +${(Balance.corruptionRarityLuck * 100).round()}%, '
         '화톳불 강화 ${Upgrade.fateLuck.title} 레벨마다 '
         '+${(Balance.upgradeFateLuck * 100).round()}% 입니다.',
       ),
@@ -289,10 +290,10 @@ class OddsList extends StatelessWidget {
       ],
       _Note(
         '위 카드별 확률은 빠지는 카드가 없을 때 기준입니다. 이미 손에 든 카드, '
-        '같거나 더 높은 세기로 이미 가진 효과'
-        '(${gods(FateCard.values.where((c) => c.effect != null))}), '
-        '더 올리거나 새로 얻을 무기가 없는 무기 카드'
-        '(${gods([FateCard.smithsTouch, FateCard.newArms])})는 빠지고, '
+        '겹쳐 쌓이지 않는 카드를 같거나 더 높은 등급으로 이미 받은 경우'
+        '(${gods(FateCard.values.where((c) => c.single))}), '
+        '이미 받은 저주'
+        '(${gods(FateCard.values.where((c) => c.curse))})는 빠지고, '
         '남은 카드끼리 같은 확률로 나눕니다.',
       ),
     ];

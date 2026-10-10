@@ -6,8 +6,8 @@ import '../format.dart';
 import '../profile_scope.dart';
 import '../theme.dart';
 
-/// 특성: [character] 의 숙련 레벨 · 경험치와 특성 여섯 개 (공통 셋 · 고유 스킬 셋).
-/// 숙련 레벨 하나마다 포인트 하나를 얻어 특성을 올리고, 골드를 내면 되돌릴 수 있다.
+/// 특성: [character] 의 특성 레벨 · 경험치와 특성 여섯 개 (공통 셋 · 고유 스킬 셋).
+/// 특성 레벨 하나마다 포인트 하나를 얻어 특성을 올리고, 골드를 내면 되돌릴 수 있다.
 class MasteryScreen extends StatelessWidget {
   const MasteryScreen({super.key, required this.character});
 
@@ -58,7 +58,7 @@ class MasteryScreen extends StatelessWidget {
                     ],
                   ),
                   Text(
-                    '숙련 Lv ${progress.level}',
+                    '특성 레벨 ${progress.level}',
                     key: const Key('mastery-level'),
                     style: const TextStyle(
                       color: AshColors.parchment,
@@ -79,14 +79,14 @@ class MasteryScreen extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     maxed
-                        ? '최대 숙련'
+                        ? '최대 레벨'
                         : '경험치 ${progress.into.floor()} / ${progress.next.floor()}',
                     style: const TextStyle(color: AshColors.ash, fontSize: 11),
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    '이 캐릭터로 모은 경험치가 숙련 경험치로 쌓이고, 보스를 잡으면 더 많이 쌓입니다. '
-                    '숙련 레벨이 오를 때마다 특성 포인트 1을 얻습니다. 스킬 특성은 런에서 그 스킬을 '
+                    '이 캐릭터로 모은 경험치가 특성 경험치로 쌓이고, 보스를 잡으면 더 많이 쌓입니다. '
+                    '특성 레벨이 오를 때마다 특성 포인트 1을 얻습니다. 스킬 특성은 런에서 그 스킬을 '
                     '얻었을 때 힘을 냅니다.',
                     style: TextStyle(color: AshColors.ash, fontSize: 12),
                   ),

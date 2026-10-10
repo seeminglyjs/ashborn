@@ -231,7 +231,11 @@ void main() {
         final first = <FateCard, int>{};
         final types = <FateType, int>{};
         for (var i = 0; i < rolls; i++) {
-          final hand = FateSystem.roll(game.world.player, random);
+          final hand = FateSystem.roll(
+            stage: game.world.stage,
+            upgrades: game.upgrades,
+            random: random,
+          );
           first.update(hand.first.card, (n) => n + 1, ifAbsent: () => 1);
           for (final f in hand) {
             types.update(f.card.type, (n) => n + 1, ifAbsent: () => 1);

@@ -217,6 +217,29 @@ class GroundBlast extends Hazard {
   }
 }
 
+/// 타락 특수 규칙 "잿불 유해": 쓰러진 졸개 자리에 남아 예고 뒤 터지는 작은 장판.
+/// 한꺼번에 너무 많이 깔리지 않도록 월드가 수를 센다 ([RunWorld.deathBlasts]).
+class DeathBlast extends GroundBlast {
+  DeathBlast({
+    required super.position,
+    required super.damage,
+    required super.type,
+    required super.color,
+  }) : super(radius: Balance.deathBlastRadius, delay: Balance.deathBlastDelay);
+
+  @override
+  void onMount() {
+    super.onMount();
+    world.deathBlasts++;
+  }
+
+  @override
+  void onRemove() {
+    world.deathBlasts--;
+    super.onRemove();
+  }
+}
+
 /// [from] 에서 바깥으로 퍼지는 고리. 고리 앞쪽이 지나가는 순간 플레이어에게 한 번 피해.
 /// 고리를 뛰어넘을 수는 없으니 멀리 떨어지거나 고리가 지나간 안쪽으로 파고들어야 한다.
 class Shockwave extends Hazard {

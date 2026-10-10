@@ -10,11 +10,13 @@ import '../../data/damage.dart';
 import '../../data/enemies.dart';
 import '../../data/monster_sprites.dart';
 import '../../game/world/run_world.dart';
+import '../../data/corruption.dart';
 import '../effects/burst.dart';
 import '../effects/sparks.dart';
 import 'ailment_fx.dart';
 import 'ailments.dart';
 import 'death_puff.dart';
+import 'hazards.dart';
 
 /// 재의 무리(Hollow). 기본은 플레이어를 향해 곧장 걸어온다.
 /// 지역에 따라 색, 속도, 닿았을 때 주는 피해의 속성이 다르고,
@@ -48,6 +50,17 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
 
   /// 웨이브가 낸 졸개 종류. 테스트나 상자처럼 직접 만든 적은 null.
   final EnemyKind? kind;
+
+  /// 정예 (타락 특수 규칙 "정예 출현"). 크고 단단하며 발밑에 금빛 기운이 돈다.
+  /// 체력 · 피해는 만들 때 이미 키워서 넘긴다 ([makeElite] 는 크기와 표시만 바꾼다).
+  bool get elite => _elite;
+  bool _elite = false;
+
+  /// 정예로 만든다: 몸을 [Balance.eliteSize] 배로 키우고 표시를 켠다.
+  void makeElite() {
+    _elite = true;
+    radius *= Balance.eliteSize;
+  }
 
   /// [CrowdSystem] 이 매 프레임 채워 주는 밀어내기 속도.
   final separation = Vector2.zero();
@@ -258,6 +271,7 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
     final h = sheet.height * scale * pop;
     final feet = radius * 2;
     renderUnder(canvas);
+    if (_elite) _renderElite(canvas, feet, w);
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(radius, feet),
@@ -314,6 +328,29 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
       ..translate(-radius, -feet);
   }
 
+  static final _eliteGlow = Paint();
+  static final _eliteRim = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2;
+
+  /// 정예 표시: 발밑에서 맥박치는 검붉은 기운과 금빛 테두리. 적 공격의 빨간 테두리와
+  /// 헷갈리지 않게 금빛으로 두른다.
+  void _renderElite(Canvas canvas, double feet, double width) {
+    final pulse = 0.5 + 0.5 * math.sin(_fxTime * 5);
+    final rect = Rect.fromCenter(
+      center: Offset(radius, feet),
+      width: width * (1.05 + 0.1 * pulse),
+      height: radius * (0.75 + 0.1 * pulse),
+    );
+    _eliteGlow.color = const Color(0xFFA22633)
+        .withValues(alpha: 0.35 + 0.2 * pulse);
+    _eliteRim.color = const Color(0xFFFEAE34)
+        .withValues(alpha: 0.6 + 0.4 * pulse);
+    canvas
+      ..drawOval(rect, _eliteGlow)
+      ..drawOval(rect, _eliteRim);
+  }
+
   /// 그림자 · 스프라이트 아래에 그릴 것 (돌진 방향, 폭발 범위 같은 예고).
   @protected
   void renderUnder(Canvas canvas) {}
@@ -349,11 +386,32 @@ class Enemy extends CircleComponent with HasWorldReference<RunWorld> {
       ..add(Sparks(position: position.clone(), color: color, count: 7));
     onKilled();
     onDeath();
+    _leaveRemains();
     removeFromParent();
   }
 
+  /// 타락 특수 규칙 "잿불 유해": 웨이브 졸개가 쓰러지면 확률로 그 자리가 예고 뒤 터진다.
+  void _leaveRemains() {
+    if (kind == null || !world.stage.has(CorruptionRule.deathBlast)) return;
+    if (world.deathBlasts >= Balance.maxDeathBlasts) return;
+    if (world.game.random.nextDouble() >= Balance.deathBlastChance) return;
+    world.add(
+      DeathBlast(
+        position: position.clone(),
+        damage: contactDamage * Balance.deathBlastDamage,
+        type: damageType,
+        color: color,
+      ),
+    );
+  }
+
   /// 처치 보상 (처치 수 · 경험치 · 잔불 · 장비). 상자는 자기 보상을 따로 준다.
-  void onKilled() => world.onEnemyKilled(position.clone(), xp: kind?.xp ?? 1);
+  /// 정예는 재의 결정을 [Balance.eliteXp] 배로, 강화석과 장비를 더 준다.
+  void onKilled() => world.onEnemyKilled(
+    position.clone(),
+    xp: (kind?.xp ?? 1) * (_elite ? Balance.eliteXp : 1),
+    elite: _elite,
+  );
 
   /// 쓰러질 때 추가로 할 일.
   void onDeath() {}

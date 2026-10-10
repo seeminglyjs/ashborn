@@ -1,10 +1,11 @@
 import 'dart:math' as math;
 
-import '../components/player/player.dart';
 import '../data/balance.dart';
 import '../data/damage.dart';
 import '../data/equipment.dart';
 import '../data/fates.dart';
+import '../data/progress.dart';
+import '../data/stages.dart';
 import '../data/stats.dart';
 import '../data/upgrades.dart';
 import '../data/weapons.dart';
@@ -12,12 +13,11 @@ import '../game/world/run_world.dart';
 import 'level_system.dart';
 import 'loot_system.dart';
 
-/// 이번 런에서 받은 신의 은총. 런이 끝나면 사라진다.
+/// 이 런에 붙은 신의 은총: 영구히 받아 둔 은총으로 시작하고, 런 중에 새로 받으면 더해진다.
 class RunFate {
-  final taken = <Fate>[];
+  RunFate([Iterable<Fate> graces = const []]) : taken = [...graces];
 
-  /// 남은 다시 뽑기 횟수.
-  int rerolls = Balance.fateRerolls;
+  final List<Fate> taken;
 
   Iterable<Fate> _of(FateCard card) => taken.where((f) => f.card == card);
 
@@ -38,10 +38,17 @@ class RunFate {
       .where((f) => f.card.element == type)
       .fold(0, (sum, f) => sum + f.extraDamage);
 
-  /// 오시리스의 부활마다 한 번씩 되살아날 때의 체력 비율.
+  /// 오시리스의 부활로 되살아날 때의 체력 비율. 겹쳐 쌓이지 않아 가장 높은 등급 한 번뿐이다.
   List<double> get reviveHps => [
-    for (final fate in _of(FateCard.phoenixFeather)) fate.reviveHp,
+    if (_of(FateCard.phoenixFeather).isNotEmpty)
+      _of(FateCard.phoenixFeather).map((f) => f.reviveHp).reduce(math.max),
   ];
+
+  /// 스테이지를 클리어할 때 회복하는 체력 비율 (신농의 약초, 겹치면 더한다).
+  double get clearHeal => math.min(1, _sum(FateCard.breather));
+
+  /// 스테이지를 클리어할 때 더 받는 잔불의 스테이지 레벨 배수 (조공명의 금화).
+  double get clearEmber => _sum(FateCard.emberGather);
 
   double get enemyHpMultiplier =>
       math.pow(Balance.curseEnemyHp, _of(FateCard.thickAsh).length).toDouble();
@@ -62,28 +69,33 @@ class RunFate {
 
 /// 신의 은총 카드 추첨과 적용.
 abstract final class FateSystem {
-  /// 지금 고를 의미가 있는 카드인지. 이미 가진 효과는 더 높은 등급으로만 다시 나온다.
-  static bool available(Fate fate, Player player) => switch (fate.card) {
-    FateCard.smithsTouch => player.weapons.any(
-      (w) => w.level < WeaponId.maxLevel,
-    ),
-    FateCard.newArms => WeaponId.poolFor(
-      player.character.id,
-    ).any((id) => player.weapon(id) == null),
-    FateCard(effect: final effect?) => player.effectPower(effect) < fate.power,
-    _ => true,
-  };
+  /// 이미 받은 은총 [owned] 를 두고 지금 고를 의미가 있는 카드인지. 겹쳐 쌓이지 않는 카드는
+  /// 더 높은 등급으로만 다시 나오고, 저주는 영구라 한 번만 나온다.
+  static bool available(Fate fate, Iterable<Fate> owned) {
+    final card = fate.card;
+    if (card.curse) return owned.every((f) => f.card != card);
+    if (card.single) {
+      return owned
+          .where((f) => f.card == card)
+          .every((f) => f.power < fate.power);
+    }
+    return true;
+  }
 
-  /// 카드 [Balance.fateChoices] 장 (화톳불 강화로 늘어난다). 종류는 같은 종류
-  /// 상한 안에서 고르게 뽑고, 그 종류에서 등급과 카드를 뽑는다. 한 번에 같은 카드는 없다.
-  static List<Fate> roll(Player player, math.Random random) {
-    final upgrades = player.game.upgrades;
+  /// [stage] 클리어로 받을 은총 카드 [Balance.fateChoices] 장 (화톳불 강화로 늘어난다).
+  /// 종류는 같은 종류 상한 안에서 고르게 뽑고, 그 종류에서 등급과 카드를 뽑는다.
+  /// 한 번에 같은 카드는 없다. 등급 운은 그 스테이지의 타락 단계와 화톳불 강화를 따른다.
+  static List<Fate> roll({
+    required Stage stage,
+    required Upgrades upgrades,
+    Iterable<Fate> owned = const [],
+    required math.Random random,
+  }) {
     final count = math.min(
       Balance.fateChoices + upgrades.value(Upgrade.fateChoices).round(),
       Balance.maxCardChoices,
     );
-    final luck =
-        player.world.stage.rarityLuck + upgrades.value(Upgrade.fateLuck);
+    final luck = stage.rarityLuck + upgrades.value(Upgrade.fateLuck);
     final hand = <Fate>[];
     while (hand.length < count) {
       final types =
@@ -95,7 +107,7 @@ abstract final class FateSystem {
             ..shuffle(random);
       Fate? fate;
       for (final type in types) {
-        fate = _draw(type, hand, player, random, luck);
+        fate = _draw(type, hand, owned, random, luck);
         if (fate != null) break;
       }
       if (fate == null) break;
@@ -103,6 +115,53 @@ abstract final class FateSystem {
     }
     return hand;
   }
+
+  /// 은총 한 번에 주는 다시 뽑기 횟수 (화톳불 강화로 늘어난다).
+  static int rerolls(Upgrades upgrades) =>
+      Balance.fateRerolls + upgrades.value(Upgrade.fateRerolls).round();
+
+  /// [stage] 클리어로 받을 은총의 카드 패. 이미 받았거나 아직 클리어하지 않았으면 null.
+  /// 남겨 둔 패가 있으면 그대로 돌려주고, 없으면 새로 뽑아 [progress] 에 남긴다 — 고르지 않고
+  /// 나갔다 들어와도 같은 패라, 나가기로 패를 바꿀 수 없다.
+  static GraceOffer? offer(
+    Progress progress,
+    Upgrades upgrades,
+    Stage stage,
+    math.Random random,
+  ) {
+    if (progress.hasGrace(stage) || !progress.pendingGraces.contains(stage)) {
+      return null;
+    }
+    final saved = progress.offerFor(stage);
+    if (saved != null) return saved;
+    progress.offerGrace(
+      stage,
+      roll(
+        stage: stage,
+        upgrades: upgrades,
+        owned: progress.graces,
+        random: random,
+      ),
+      rerolls: rerolls(upgrades),
+    );
+    return progress.offerFor(stage);
+  }
+
+  /// [stage] 의 남은 패를 다시 뽑는다. 남은 횟수가 없으면 그대로 두고 false.
+  static bool reroll(
+    Progress progress,
+    Upgrades upgrades,
+    Stage stage,
+    math.Random random,
+  ) => progress.rerollGrace(
+    stage,
+    roll(
+      stage: stage,
+      upgrades: upgrades,
+      owned: progress.graces,
+      random: random,
+    ),
+  );
 
   /// [type] 카드 한 장을 뽑을 때 저주 카드끼리, 또는 저주 아닌 카드끼리 고르는 무리.
   /// 저주가 없는 종류는 저주 추첨과 상관없이 모든 카드다.
@@ -165,7 +224,7 @@ abstract final class FateSystem {
   static Fate? _draw(
     FateType type,
     List<Fate> hand,
-    Player player,
+    Iterable<Fate> owned,
     math.Random random,
     double luck,
   ) {
@@ -192,31 +251,54 @@ abstract final class FateSystem {
     final fates = [
       for (final card in cards)
         if (card.minRarity.index <= rarity.index) Fate(card, rarity),
-    ].where((f) => available(f, player)).toList();
+    ].where((f) => available(f, owned)).toList();
     return fates.isEmpty ? null : fates[random.nextInt(fates.length)];
   }
 
+  /// 이 런에 [fate] 를 더하고, 받는 순간의 효과를 바로 낸다: 출정 때 효과(무기 · 레벨)와
+  /// 클리어 때 효과(회복 · 잔불)를 한 번 바로 받는다. 능력치는 [RunFate] 를 거쳐 늘 붙는다.
   static void apply(Fate fate, RunWorld world) {
     world.fate.taken.add(fate);
+    _trigger(fate, world, depart: true, clear: true);
+    world.player.syncMaxHp();
+  }
+
+  /// 출정할 때: 받아 둔 은총 중 출정 때 효과를 모두 낸다.
+  static void depart(RunWorld world) {
+    for (final fate in world.fate.taken.toList()) {
+      _trigger(fate, world, depart: true);
+    }
+    world.player.syncMaxHp();
+  }
+
+  static void _trigger(
+    Fate fate,
+    RunWorld world, {
+    bool depart = false,
+    bool clear = false,
+  }) {
     final player = world.player;
     final random = world.game.random;
     switch (fate.card) {
-      case FateCard.breather:
-        player.heal(player.maxHp * fate.amount);
-      case FateCard.emberGather:
+      case FateCard.breather when clear:
+        player.heal(player.maxHp * math.min(1, fate.amount));
+      case FateCard.emberGather when clear:
         world.bankEmber(bonus: (fate.amount * world.stage.level).round());
-      case FateCard.smithsTouch:
+      case FateCard.smithsTouch when depart:
         final weapons = player.weapons
             .where((w) => w.level < WeaponId.maxLevel)
             .toList();
+        if (weapons.isEmpty) return;
+        // 출정 때는 기본 무기 하나뿐이고, 런 중에 받으면 가진 무기 중 하나.
         final weapon = weapons[random.nextInt(weapons.length)];
         for (var i = 0; i < fate.weaponLevels; i++) {
           if (weapon.level < WeaponId.maxLevel) weapon.levelUp();
         }
-      case FateCard.newArms:
+      case FateCard.newArms when depart:
         final missing = WeaponId.poolFor(player.character.id)
             .where((id) => player.weapon(id) == null)
             .toList();
+        if (missing.isEmpty) return;
         final id = missing[random.nextInt(missing.length)];
         for (
           var i = 0;
@@ -225,7 +307,7 @@ abstract final class FateSystem {
         ) {
           player.gainWeapon(id);
         }
-      case FateCard.ashFlood:
+      case FateCard.ashFlood when depart:
         final stats = world.game.stats;
         var xp = stats.xpToNext.value - stats.xp.value;
         for (var i = 1; i < fate.levels; i++) {
@@ -235,6 +317,5 @@ abstract final class FateSystem {
       default:
         break;
     }
-    player.syncMaxHp();
   }
 }

@@ -62,7 +62,7 @@ class GameOverOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '숙련  +${game.world.runMastery}',
+                '특성 경험치  +${game.world.runMastery}',
                 key: const Key('run-mastery'),
                 style: statStyle,
               ),

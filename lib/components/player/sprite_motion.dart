@@ -23,8 +23,8 @@ class SpriteMotion {
 
   // 달리기: 한 걸음마다 뜨고(늘어나고) 디딜 때 눌린다. 걸음은 달리기 프레임 2장마다 한 번.
   // 뜨는 높이는 도트 칸 수 (실제 높이는 [pixel] 을 곱한다).
-  static const hopHeight = 1.4;
-  static const stepSquash = 0.06;
+  static const hopHeight = 1.0;
+  static const stepSquash = 0.04;
 
   // 가는 쪽으로 기우는 정도 (라디안). 멈추면 반대로 살짝 넘쳤다 돌아온다.
   static const leanMax = 0.09;
@@ -37,6 +37,9 @@ class SpriteMotion {
   static const startKick = 1.2;
   static const stopKick = -1.6;
   static const hitKick = -3.2;
+
+  // 공격을 내지를 때 기울기 용수철에 주는 충격 (라디안/초).
+  static const lungeKick = 2.4;
 
   final _lean = _Spring(stiffness: 260, damping: 14);
   final _squash = _Spring(stiffness: 420, damping: 16);
@@ -58,6 +61,12 @@ class SpriteMotion {
 
   /// 도약해 있는 높이 (월드). 내려찍기 칼이 몸을 따라 올라가는 데 쓴다.
   double get leapLift => _leapLeft > 0 ? _leapCurve * _leapHeight : 0;
+
+  /// 공격을 내지를 때: [dirX] 쪽(1 오른쪽, -1 왼쪽)으로 몸을 확 싣고 눌렸다 펴진다.
+  void lunge(double dirX) {
+    _lean.velocity += dirX * lungeKick;
+    _squash.velocity += hitKick * 0.5;
+  }
 
   /// 뛰어올라 [time] 초 뒤에 착지한다. 빨리 솟았다가 정점에서 잠깐 머물고 세게 떨어진다.
   void leap(double time, double height) {

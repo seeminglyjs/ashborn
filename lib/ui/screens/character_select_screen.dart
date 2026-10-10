@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../data/balance.dart';
 import '../../data/characters.dart';
 import '../../data/stages.dart';
 import '../../services/audio.dart';
 import '../equipment/equipment_screen.dart';
+import '../grace/grace_screen.dart';
 import '../hearth/hearth_screen.dart';
 import '../mastery/mastery_screen.dart';
 import '../profile_scope.dart';
@@ -25,11 +27,11 @@ class CharacterSelectScreen extends StatefulWidget {
 class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   CharacterDef _selected = Roster.all.first;
 
-  /// 고른 스테이지. 처음엔 도전할 수 있는 가장 먼 스테이지.
-  Stage? _stage;
+  /// 고른 타락 단계. 처음엔 열린 가장 높은 단계.
+  int? _corruption;
 
-  Stage get _currentStage =>
-      _stage ?? ProfileScope.of(context).progress.unlocked;
+  int get _currentCorruption =>
+      _corruption ?? ProfileScope.of(context).progress.unlockedCorruption;
 
   /// 아직 공개하지 않은 캐릭터 자리. 앞으로 더 늘어난다는 느낌을 준다.
   static const upcoming = 3;
@@ -44,12 +46,17 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
   Future<void> _depart() async {
     if (!_owned) return _unlock();
-    await Navigator.of(
-      context,
-    ).push(fadeRoute(GameScreen(character: _selected, stage: _currentStage)));
+    await Navigator.of(context).push(
+      fadeRoute(
+        GameScreen(
+          character: _selected,
+          stage: Stage.start(_currentCorruption),
+        ),
+      ),
+    );
     GameAudio.music(Bgm.hearth);
-    // 돌아오면 새로 열린 가장 먼 스테이지를 기본으로 보여 준다.
-    if (mounted) setState(() => _stage = null);
+    // 돌아오면 새로 열린 가장 높은 단계를 기본으로 보여 준다.
+    if (mounted) setState(() => _corruption = null);
   }
 
   /// 고른 캐릭터를 골드로 해금할지 묻고 해금한다.
@@ -90,6 +97,9 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
   void _openHearth() =>
       Navigator.of(context).push(fadeRoute(const HearthScreen()));
+
+  void _openGrace() =>
+      Navigator.of(context).push(fadeRoute(const GraceScreen()));
 
   void _openMastery() =>
       Navigator.of(context)
@@ -143,10 +153,11 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                     const SizedBox(height: 10),
                     _picks(),
                     const SizedBox(height: 6),
-                    _StagePicker(
-                      stage: _currentStage,
-                      unlocked: profile.progress.unlocked,
-                      onChanged: (stage) => setState(() => _stage = stage),
+                    _CorruptionPicker(
+                      corruption: _currentCorruption,
+                      unlocked: profile.progress.unlockedCorruption,
+                      conquered: profile.progress.conquered(_currentCorruption),
+                      onChanged: (c) => setState(() => _corruption = c),
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -166,6 +177,25 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                             label: '장비',
                             fontSize: 15,
                             onPressed: _openEquipment,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // 버튼 넷을 한 줄에 두면 글자가 너무 작아져 두 줄로 나눈다.
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AshButton(
+                            key: const Key('open-grace'),
+                            // 아직 고르지 않은 은총이 있으면 개수를 붙여 알린다.
+                            label:
+                                switch (profile.progress.pendingGraces.length) {
+                                  > 0 && final n => '은총 +$n',
+                                  _ => '은총',
+                                },
+                            fontSize: 15,
+                            onPressed: _openGrace,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -242,29 +272,34 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   }
 }
 
-/// 출정할 스테이지 고르기. 클리어한 다음 스테이지까지 고를 수 있다.
-class _StagePicker extends StatelessWidget {
-  const _StagePicker({
-    required this.stage,
+/// 출정할 타락 단계 고르기. 런은 늘 그 단계의 첫 지역에서 시작해 마지막 지역까지 간다.
+/// 클리어한 단계의 다음 단계까지 고를 수 있고, 단계마다 보상과 특수 규칙을 보여 준다.
+class _CorruptionPicker extends StatelessWidget {
+  const _CorruptionPicker({
+    required this.corruption,
     required this.unlocked,
+    required this.conquered,
     required this.onChanged,
   });
 
-  final Stage stage;
-  final Stage unlocked;
-  final ValueChanged<Stage> onChanged;
+  final int corruption;
+  final int unlocked;
+  final bool conquered;
+  final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final canPrev = stage.index > 0;
-    final canNext = stage.index < unlocked.index;
+    final start = Stage.start(corruption);
+    final rules = start.rules;
+    final drop = (Balance.corruptionDropBonus * corruption * 100).round();
+    final luck = (Balance.corruptionRarityLuck * corruption * 100).round();
     // 가운데 이름 칸이 남는 폭을 모두 써서 화살표가 양 끝에, 이름이 정가운데 온다.
     return Row(
       children: [
         IconButton(
-          key: const Key('stage-prev'),
-          tooltip: '이전 스테이지',
-          onPressed: canPrev ? () => onChanged(Stage(stage.index - 1)) : null,
+          key: const Key('corruption-prev'),
+          tooltip: '낮은 타락 단계',
+          onPressed: corruption > 0 ? () => onChanged(corruption - 1) : null,
           icon: const Icon(Icons.chevron_left),
           color: AshColors.gold,
         ),
@@ -272,28 +307,40 @@ class _StagePicker extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                stage.name,
-                key: const Key('stage-name'),
+                '${corruption == 0 ? '타락 없음' : '타락 $corruption단계'}'
+                '${conquered ? ' · 클리어' : ''}',
+                key: const Key('corruption-name'),
                 style: TextStyle(
-                  color: stage.corruption > 0
-                      ? AshColors.ember
-                      : AshColors.parchment,
+                  color: corruption > 0 ? AshColors.ember : AshColors.parchment,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                'Lv ${stage.level}'
-                '${stage == unlocked ? ' · 최전선' : ''}',
+                [
+                  '장비 Lv ${start.level}~${start.level + Region.values.length - 1}',
+                  if (corruption > 0) '드랍 +$drop% · 등급 운 +$luck%',
+                ].join(' · '),
+                key: const Key('corruption-rewards'),
+                textAlign: TextAlign.center,
                 style: const TextStyle(color: AshColors.ash, fontSize: 11),
               ),
+              if (rules.isNotEmpty)
+                Text(
+                  rules.map((r) => r.label).join(' · '),
+                  key: const Key('corruption-rules'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AshColors.ember, fontSize: 11),
+                ),
             ],
           ),
         ),
         IconButton(
-          key: const Key('stage-next'),
-          tooltip: '다음 스테이지',
-          onPressed: canNext ? () => onChanged(stage.next) : null,
+          key: const Key('corruption-next'),
+          tooltip: '높은 타락 단계',
+          onPressed: corruption < unlocked
+              ? () => onChanged(corruption + 1)
+              : null,
           icon: const Icon(Icons.chevron_right),
           color: AshColors.gold,
         ),

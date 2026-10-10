@@ -17,6 +17,10 @@ abstract final class Balance {
   static const double playerSpriteScale = 2;
   static const double playerHitPoseTime = 0.15;
 
+  /// 원거리 기본 무기(석궁 · 잔불 구체)를 쏜 뒤 발사 자세와 장전 · 거두기 자세를 보여 주는 시간.
+  static const double shotPoseTime = 0.12;
+  static const double reloadPoseTime = 0.14;
+
   /// 바닥 아이템이 끌려오기 시작하는 거리.
   static const double magnetRange = 70;
 
@@ -145,12 +149,55 @@ abstract final class Balance {
   static const double hitPop = 0.18;
   static const double hitPopTime = 0.12;
 
-  // 스테이지: 레벨(1부터)이 오를 때마다 적 체력과 피해가 이 배율로 는다.
+  // 스테이지: 런 안에서 지역을 하나 지날 때마다 적 체력과 피해가 이 배율로 는다.
   static const double stageHpGrowth = 1.35;
   static const double stageDamageGrowth = 1.2;
 
-  /// 첫 스테이지들의 적 체력 · 피해 배율. 그 뒤는 1.
+  /// 타락 단계가 하나 오를 때마다 적 체력 · 피해 배율. 런은 늘 레벨 1 로 시작하므로 예전처럼
+  /// 스테이지 다섯 개만큼(체력 1.35^5 ≈ 4.5배) 키우지 않고, 장비 · 은총으로 따라갈 만큼만 키운다.
+  /// 체력 3.3 · 피해 2.2 에서는 시뮬레이터 봇이 4시간에 타락 11단계까지 막힘 없이 올라가
+  /// (예전 진행은 약 6단계) 올렸다.
+  static const double corruptionHpGrowth = 4.0;
+  static const double corruptionDamageGrowth = 2.5;
+
+  /// 타락 0단계 첫 지역들의 적 체력 · 피해 배율. 그 뒤는 1.
   static const List<double> earlyStageEase = [0.35, 0.55, 0.75, 0.9];
+
+  // 타락 특수 규칙 (CorruptionRule).
+  /// 정예 출현: 웨이브 적이 정예일 확률, 체력 · 피해 · 크기 배율, 장비 드랍 확률 배율,
+  /// 경험치(재의 결정) 배율. 잡으면 강화석 [eliteStones] 개를 확정으로 준다.
+  static const double eliteChance = 0.04;
+  static const double eliteHp = 4;
+  static const double eliteDamage = 1.5;
+  static const double eliteSize = 1.35;
+  static const double eliteDropBonus = 6;
+  static const int eliteXp = 3;
+  static const int eliteStones = 1;
+
+  /// 보스 재생: 이 시간(초) 동안 맞지 않으면 초당 최대 체력의 [bossRegenRate] 만큼 회복한다.
+  static const double bossRegenDelay = 3;
+  static const double bossRegenRate = 0.015;
+
+  /// 잿불 유해: 쓰러진 졸개가 터질 확률, 예고 시간, 반지름, 접촉 피해 대비 피해.
+  /// 한꺼번에 깔리는 유해는 [maxDeathBlasts] 개까지.
+  static const double deathBlastChance = 0.2;
+  static const double deathBlastDelay = 0.9;
+  static const double deathBlastRadius = 34;
+  static const double deathBlastDamage = 0.8;
+  static const int maxDeathBlasts = 12;
+
+  /// 무리 습격: 적 이동 속도 증가율과 스폰 한 번에 더 나오는 수.
+  static const double frenzySpeed = 0.12;
+  static const int frenzyBatch = 1;
+
+  /// 이른 격노: 보스가 격노하는 체력 비율.
+  static const double earlyEnrageHp = 0.75;
+
+  /// 정복 (마지막 지역 보스 처치): 강화석 [conquestStones] × (타락 단계 + 1) 과
+  /// 스테이지 레벨 × [conquestGold] 골드. 그 단계를 처음 정복하면 초월석 [firstConquestTranscend] 개.
+  static const int conquestStones = 5;
+  static const double conquestGold = 150;
+  static const int firstConquestTranscend = 1;
 
   /// 스테이지 시작 후 이 시간(초)이 지나면 보스가 나온다.
   static const double stageDuration = 180;
@@ -328,7 +375,7 @@ abstract final class Balance {
   /// 탄 · 장판을 튕겨 낼 때 되돌려 줄 적을 찾는 거리.
   static const double parryRange = 220;
 
-  /// 연격 숙련 (기사): 대검 콤보 확률과 맹공 지속 시간(초).
+  /// 연격의 달인 (기사): 대검 콤보 확률과 맹공 지속 시간(초).
   static const double swordMasteryCombo = 0.03;
   static const double swordMasteryComboPerLevel = 0.03;
   static const double swordMasteryOnslaught = 0.25;
@@ -612,18 +659,20 @@ abstract final class Balance {
   static const double rollMagnetRange = 0.1;
   static const double rollXpGain = 0.05;
 
-  // 신의 은총 (코드 이름 fate): 스테이지를 클리어하면 카드 몇 장 중 하나를 고른다.
+  // 신의 은총 (코드 이름 fate): 스테이지를 처음 클리어할 때마다 카드 몇 장 중 하나를 골라
+  // 영구히 받는다. 스테이지마다 하나씩 끝없이 쌓이므로, 노말 한 장이 장비 옵션 한 줄
+  // (roll* 값) 정도가 되게 잡았다 (런마다 사라지던 때의 약 40%).
   static const int fateChoices = 3;
 
   /// 한 번에 나오는 같은 종류 카드 수 상한. 보상 카드는 더 적다.
   static const int fateTypeLimit = 2;
   static const int fateRewardLimit = 1;
 
-  /// 런마다 은총 카드를 다시 뽑을 수 있는 횟수.
+  /// 은총 한 번(스테이지 하나)마다 카드를 다시 뽑을 수 있는 횟수.
   static const int fateRerolls = 1;
 
   /// 카드 등급은 장비와 같은 6등급. 한 등급 오를 때마다 나올 가중치가 이 배율로 준다
-  /// (장비보다 완만하다). 타락 단계의 등급 운도 똑같이 붙는다.
+  /// (장비보다 완만하다). 그 스테이지 타락 단계의 등급 운도 똑같이 붙는다.
   static const double fateRarityRatio = 0.4;
 
   /// 카드 최소 등급 위로 한 등급마다 수치가 이 배율로 는다.
@@ -632,55 +681,58 @@ abstract final class Balance {
   /// 카드 한 장이 저주로 나올 확률 (저주가 있는 종류에서만).
   static const double fateCurseChance = 0.1;
 
-  // 은총 카드 수치
-  static const double fateMaxHp = 20;
-  static const double fateMoveSpeed = 0.08;
-  static const double fateDamage = 0.1;
-  static const double fateMagnetRange = 0.4;
-  static const double fateArmor = 15;
+  // 은총 카드 수치 (노말 또는 카드 최소 등급 기준)
+  static const double fateMaxHp = 8;
+  static const double fateMoveSpeed = 0.03;
+  static const double fateDamage = 0.04;
+  static const double fateMagnetRange = 0.15;
+  static const double fateArmor = 6;
 
-  /// 숨 고르기: 최대 체력의 이 비율을 회복한다.
-  static const double fateHeal = 0.5;
+  /// 신농의 약초: 스테이지를 클리어할 때마다 최대 체력의 이 비율을 회복한다.
+  static const double fateHeal = 0.3;
 
-  /// 잔불 줍기: 스테이지 레벨마다 이만큼.
-  static const double fateEmber = 10;
-  static const double fateXpGain = 0.2;
-  static const double fateEmberGain = 0.3;
-  static const double fateDropGain = 0.3;
-  static const int fateWeaponLevels = 2;
-  static const double fateAttackSpeed = 0.15;
-  static const double fateCritChance = 0.08;
+  /// 조공명의 금화: 스테이지를 클리어할 때마다 스테이지 레벨마다 이만큼 잔불.
+  static const double fateEmber = 6;
+  static const double fateXpGain = 0.08;
+  static const double fateEmberGain = 0.12;
+  static const double fateDropGain = 0.12;
 
-  /// 재의 홍수: 이만큼 레벨이 오른다.
-  static const int fateLevels = 2;
-  static const double fateLifeSteal = 0.03;
-  static const double fateLordDamage = 0.3;
-  static const double fateLordMaxHp = 50;
+  /// 헤파이스토스의 망치: 출정할 때 기본 무기가 이만큼 레벨이 높다.
+  static const int fateWeaponLevels = 1;
+  static const double fateAttackSpeed = 0.05;
+  static const double fateCritChance = 0.03;
+
+  /// 다그다의 가마솥: 출정할 때 이만큼 레벨이 높다.
+  static const int fateLevels = 1;
+  static const double fateLifeSteal = 0.01;
+  static const double fateLordDamage = 0.12;
+  static const double fateLordMaxHp = 20;
 
   // 신의 은총 2차: 영역마다 3장 이상이 되도록 더한 카드. 노말 기준 수치.
-  static const double fateHpRegen = 1;
-  static const double fateEnergyShield = 20;
-  static const double fateCritDamage = 0.25;
-  static const double fateEvasion = 0.05;
-  static const double fatePhysicalReduction = 0.06;
+  static const double fateHpRegen = 0.4;
+  static const double fateEnergyShield = 8;
+  static const double fateCritDamage = 0.1;
+  static const double fateEvasion = 0.02;
+  static const double fatePhysicalReduction = 0.025;
 
   /// 원소 은총 (레어 기준): 모든 공격에 무기 기본 피해의 이 비율만큼 그 속성 피해를 더한다.
-  static const double fateElementDamage = 0.15;
+  static const double fateElementDamage = 0.06;
 
   /// 원소 은총의 출혈 확률 (물리), 그리고 점화 · 냉각 · 감전 축적 증가.
-  static const double fateElementAilment = 0.1;
-  static const double fateElementBuildup = 0.3;
+  static const double fateElementAilment = 0.04;
+  static const double fateElementBuildup = 0.12;
 
   /// 바람 은총은 상태이상 대신 이동 속도를 준다.
-  static const double fateWindMoveSpeed = 0.05;
+  static const double fateWindMoveSpeed = 0.02;
 
-  // 저주: 고정 페널티와 등급만큼 커지는 보상을 함께 준다. 같은 저주를 또 고르면 곱해진다.
-  static const double curseEnemyHp = 1.3;
-  static const double curseEmberGain = 1;
-  static const double curseEnemyDamage = 1.3;
-  static const double curseDropGain = 1;
-  static const double curseMaxHp = -30;
-  static const double curseDamage = 0.4;
+  // 저주: 고정 페널티와 등급만큼 커지는 보상을 함께 준다. 영구라 같은 저주는 한 번만 나오고,
+  // 런마다 사라지던 때보다 페널티 · 보상을 모두 줄였다 (잔불 · 드랍 배율이 영구로 남는다).
+  static const double curseEnemyHp = 1.2;
+  static const double curseEmberGain = 0.5;
+  static const double curseEnemyDamage = 1.2;
+  static const double curseDropGain = 0.5;
+  static const double curseMaxHp = -20;
+  static const double curseDamage = 0.2;
 
   // 화톳불 영구 강화: 레벨마다 오르는 양. 다음 레벨 비용은 이 배율씩 는다.
   static const double upgradeCostGrowth = 1.5;
@@ -842,7 +894,7 @@ abstract final class Balance {
   static const double tornadoHitInterval = 0.4;
 
   // 고유 스킬 (레벨업 카드로 얻는 직업 전용 무기).
-  /// 전투 함성 (기사): 둘레 적을 다치게 하고 느리게 묶으며, 잠시 받는 피해가 준다.
+  /// 전투 함성 (기사): 주변 적에게 피해를 주고 느리게 묶으며, 잠시 받는 피해가 줄어든다.
   static const double warCryCooldown = 5;
   static const double warCryDamage = 18;
   static const double warCryRadius = 120;
@@ -859,7 +911,7 @@ abstract final class Balance {
   static const double spiritTurnSpeed = 2.6;
   static const double spiritHitInterval = 0.45;
 
-  /// 올가미 그물 (사냥꾼): 가까운 적 무리에 그물을 던져 묶어 두고 조금 다치게 한다.
+  /// 올가미 그물 (사냥꾼): 가까운 적 무리에 그물을 던져 묶어 두고 지속 피해를 준다.
   static const double netCooldown = 3.2;
   static const double netDamage = 16;
   static const double netRadius = 58;
@@ -884,10 +936,11 @@ abstract final class Balance {
   static const double knifeLifetime = 0.7;
   static const double knifeSpread = 0.12;
 
-  // 무기: 잿불 고리 (공용)
-  static const double auraDamage = 5;
-  static const double auraRadius = 60;
-  static const double auraTick = 0.6;
+  // 무기: 잿불 고리 (공용). 몸에 붙은 적만 태우던 좁은 고리(반지름 60, 초당 약 8)가 다른 무기보다
+  // 확실히 약해서 넓히고 세게 했다: 초당 14, 반지름 80 (대지 강타 95 보다는 좁게).
+  static const double auraDamage = 7;
+  static const double auraRadius = 80;
+  static const double auraTick = 0.5;
 
   /// 지옥불 고리(각성): 반지름 배율과 닿은 적에게 거는 둔화.
   static const double infernoAuraScale = 1.3;

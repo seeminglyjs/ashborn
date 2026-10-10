@@ -109,8 +109,12 @@ void main() {
       (game) async {
         await game.ready();
 
-        expect(game.world.fate.rerolls, Balance.fateRerolls + 2);
-        final hand = FateSystem.roll(game.world.player, math.Random(1));
+        expect(FateSystem.rerolls(game.upgrades), Balance.fateRerolls + 2);
+        final hand = FateSystem.roll(
+          stage: game.world.stage,
+          upgrades: game.upgrades,
+          random: math.Random(1),
+        );
         expect(hand.length, Balance.fateChoices + 1);
       },
     );
@@ -123,7 +127,11 @@ void main() {
         final random = math.Random(4);
         final all = [
           for (var i = 0; i < 3000; i++)
-            ...FateSystem.roll(game.world.player, random),
+            ...FateSystem.roll(
+              stage: game.world.stage,
+              upgrades: game.upgrades,
+              random: random,
+            ),
         ];
         return all.fold(0, (s, f) => s + f.rarity.index) / all.length;
       }

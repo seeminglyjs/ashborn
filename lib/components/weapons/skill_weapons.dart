@@ -14,7 +14,7 @@ import '../enemies/enemy.dart';
 import 'weapon.dart';
 import 'weapon_art.dart';
 
-/// 전투 함성 (잿불 기사): 둘레 적을 다치게 하고 느리게 묶으며, 외친 뒤 잠시 받는 피해가 준다.
+/// 전투 함성 (잿불 기사): 주변 적에게 피해를 주고 느리게 묶으며, 외친 뒤 잠시 받는 피해가 줄어든다.
 /// 각성(전쟁의 포효)하면 적을 밀쳐 내고 더 오래 묶는다. 특성 '불굴의 함성' 이 쿨다운과 방어를 더한다.
 class WarCry extends Weapon {
   WarCry() : super(baseCooldown: Balance.warCryCooldown);
@@ -331,7 +331,7 @@ class ThrownNet extends PositionComponent with HasWorldReference<RunWorld> {
   }
 }
 
-/// 땅에 펼쳐진 그물. 안의 적을 묶어 두고, 펼쳐지는 순간 다치게 한다. 가시 그물은 계속 벤다.
+/// 땅에 펼쳐진 그물. 안의 적을 묶어 두고, 펼쳐지는 순간 피해를 준다. 가시 그물은 계속 피해를 준다.
 class NetTrap extends PositionComponent with HasWorldReference<RunWorld> {
   NetTrap({
     required super.position,

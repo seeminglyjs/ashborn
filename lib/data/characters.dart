@@ -6,7 +6,7 @@ import 'weapons.dart';
 enum CharacterId { knight, witch, hunter }
 
 /// 캐릭터 스프라이트 한 프레임의 픽셀 크기. 발은 맨 아랫줄에 닿고, 무기가 몸 밖으로
-/// 뻗을 수 있게 몸통보다 넓다. 시트는 이 크기 프레임 9장을 가로로 잇는다.
+/// 뻗을 수 있게 몸통보다 넓다. 시트는 이 크기 프레임 11장을 가로로 잇는다.
 const heroFrame = Size(24, 28);
 
 /// 플레이 가능한 애쉬본 정의.
@@ -33,8 +33,8 @@ class CharacterDef {
   final WeaponId startWeapon;
   final String trait;
 
-  /// 게임 안 스프라이트 시트 (`assets/images/` 기준). [heroFrame] 크기 프레임 9장:
-  /// 대기 4 · 달리기 4 · 피격 1.
+  /// 게임 안 스프라이트 시트 (`assets/images/` 기준). [heroFrame] 크기 프레임 11장:
+  /// 대기 4 · 달리기 4 · 피격 1 · 공격 예비 1 · 공격 1.
   final String sprite;
   final Color color;
 

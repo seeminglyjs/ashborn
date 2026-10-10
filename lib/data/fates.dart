@@ -67,7 +67,8 @@ class God {
   final String lore;
 }
 
-/// 스테이지를 클리어하면 고르는 신의 은총 카드. 효과는 그 런이 끝날 때까지 간다.
+/// 스테이지를 처음 클리어할 때 하나 고르는 신의 은총 카드. 고른 은총은 영구히 남아
+/// 모든 캐릭터의 모든 런에 붙는다 ([Progress.graces]).
 ///
 /// 카드는 뽑힐 때마다 장비와 같은 등급을 갖는다 ([Fate]). [minRarity] 보다 낮은
 /// 등급으로는 나오지 않고, 그 위로 한 등급마다 수치가 커진다.
@@ -341,6 +342,17 @@ enum FateCard {
   bool get curse =>
       this == burningPrice || this == thickAsh || this == bloodOath;
 
+  /// 겹쳐 쌓이지 않는 카드: 이미 가졌으면 더 높은 등급으로만 다시 나오고, 받으면 낮은 쪽은
+  /// 힘을 잃는다 (효과 카드 · 부활). 저주는 영구라 한 번만 받는다 ([FateSystem.available]).
+  bool get single => effect != null || this == phoenixFeather;
+
+  /// 출정할 때마다 한 번 발동하는 카드 (무기 레벨 · 새 무기 · 시작 레벨).
+  bool get onDepart =>
+      this == smithsTouch || this == newArms || this == ashFlood;
+
+  /// 스테이지를 클리어할 때마다 발동하는 카드 (체력 회복 · 잔불).
+  bool get onClear => this == breather || this == emberGather;
+
   /// 고유 장비와 같은 특수 효과. 등급이 높을수록 세다.
   UniqueEffect? get effect => switch (this) {
     emberBurst => UniqueEffect.emberBurst,
@@ -424,7 +436,7 @@ class Fate {
   /// 원소 은총이 더하는 속성 피해 비율. 원소 은총이 아니면 0.
   double get extraDamage => card.element == null ? 0 : amount;
 
-  /// 런 동안 오르는 능력치.
+  /// 모든 런에서 오르는 능력치.
   Map<StatType, double> get stats => switch (card) {
     FateCard.hardenedAsh => {StatType.maxHp: amount},
     FateCard.ashWind => {StatType.moveSpeed: amount},
@@ -468,13 +480,13 @@ class Fate {
   double get reviveHp => math.min(1, Balance.phoenixHp * power);
 
   String get description => switch (card) {
-    FateCard.breather => '체력 ${_p(math.min(1, amount))} 회복',
-    FateCard.emberGather => '잔불을 바로 얻는다 (스테이지 레벨 × ${amount.round()})',
+    FateCard.breather => '스테이지를 클리어할 때마다 체력 ${_p(math.min(1, amount))} 회복',
+    FateCard.emberGather => '스테이지를 클리어할 때마다 잔불 + 스테이지 레벨 × ${amount.round()}',
     FateCard.emberCollector => '잔불 획득량 +${_p(amount)}',
     FateCard.treasureHunter => '장비 드랍 확률 +${_p(amount)}',
-    FateCard.smithsTouch => '가진 무기 하나가 바로 +$weaponLevels레벨',
-    FateCard.newArms => '아직 없는 무기 하나를 $newWeaponLevel레벨로 얻는다',
-    FateCard.ashFlood => '바로 $levels레벨 오른다',
+    FateCard.smithsTouch => '출정할 때 기본 무기가 +$weaponLevels레벨',
+    FateCard.newArms => '출정할 때 아직 없는 무기 하나를 $newWeaponLevel레벨로 얻는다',
+    FateCard.ashFlood => '출정할 때 $levels레벨 높게 시작한다',
     FateCard.phoenixFeather => '쓰러지면 한 번 더, 체력 ${_p(reviveHp)}로 되살아난다',
     FateCard.emberBurst =>
       '처치 시 ${_p(Balance.emberBurstChance)} 확률로 주변에 '
@@ -499,6 +511,17 @@ class Fate {
   };
 
   static String _p(double v) => '${(v * 100).round()}%';
+
+  Map<String, dynamic> toJson() => {'card': card.name, 'rarity': rarity.name};
+
+  /// 저장된 은총. 카드나 등급 이름을 모르면 (예전 · 앞선 버전 기록) null.
+  static Fate? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final card = FateCard.values.asNameMap()[json['card']];
+    final rarity = Rarity.values.asNameMap()[json['rarity']];
+    if (card == null || rarity == null) return null;
+    return rarity.index < card.minRarity.index ? null : Fate(card, rarity);
+  }
 
   @override
   bool operator ==(Object other) =>

@@ -4,8 +4,10 @@ import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/equipment.dart';
 import 'package:ashborn/data/fates.dart';
+import 'package:ashborn/data/progress.dart';
 import 'package:ashborn/data/stages.dart';
 import 'package:ashborn/data/stats.dart';
+import 'package:ashborn/data/upgrades.dart';
 import 'package:ashborn/data/weapons.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/systems/fate_system.dart';
@@ -41,7 +43,12 @@ double grow(int steps) => math.pow(Balance.fateRarityGrowth, steps).toDouble();
 List<List<Fate>> rollMany(AshbornGame game, int rolls, int seed) {
   final random = math.Random(seed);
   return [
-    for (var i = 0; i < rolls; i++) FateSystem.roll(game.world.player, random),
+    for (var i = 0; i < rolls; i++)
+      FateSystem.roll(
+        stage: game.world.stage,
+        upgrades: game.upgrades,
+        random: random,
+      ),
   ];
 }
 
@@ -134,42 +141,50 @@ void main() {
       expect(curses, lessThan(Balance.fateCurseChance));
     });
 
-    testWithGame<AshbornGame>(
-      '가진 효과는 더 높은 등급으로만, 더 얻을 수 없는 무기 카드는 나오지 않는다',
-      gameWith(Roster.witch, inventory: withEffect(UniqueEffect.emberBurst)),
-      (game) async {
-        await game.ready();
-        final player = game.world.player;
-        for (final id in WeaponId.values) {
-          while ((player.weapon(id)?.level ?? 0) < WeaponId.maxLevel) {
-            player.gainWeapon(id);
+    test('받은 은총 기준: 겹치지 않는 카드는 더 높은 등급으로만, 저주는 한 번만 나온다', () {
+      final owned = [
+        fate(FateCard.emberBurst, Rarity.legend),
+        fate(FateCard.phoenixFeather),
+        fate(FateCard.thickAsh, Rarity.rare),
+        fate(FateCard.sharpEmber),
+      ];
+
+      expect(FateSystem.available(fate(FateCard.emberBurst), owned), isFalse);
+      expect(
+        FateSystem.available(fate(FateCard.emberBurst, Rarity.legend), owned),
+        isFalse,
+      );
+      expect(
+        FateSystem.available(fate(FateCard.emberBurst, Rarity.epic), owned),
+        isTrue,
+      );
+      expect(
+        FateSystem.available(fate(FateCard.phoenixFeather), owned),
+        isFalse,
+      );
+      expect(
+        FateSystem.available(fate(FateCard.thickAsh, Rarity.legend), owned),
+        isFalse,
+      );
+      // 능력치 · 출정 카드는 몇 번이고 쌓인다.
+      expect(FateSystem.available(fate(FateCard.sharpEmber), owned), isTrue);
+      expect(FateSystem.available(fate(FateCard.newArms), owned), isTrue);
+
+      final random = math.Random(2);
+      for (var i = 0; i < 2000; i++) {
+        for (final f in FateSystem.roll(
+          stage: Stage.first,
+          upgrades: Upgrades(),
+          owned: owned,
+          random: random,
+        )) {
+          expect(f.card, isNot(FateCard.thickAsh));
+          if (f.card == FateCard.phoenixFeather) {
+            expect(f.rarity.index, greaterThan(Rarity.legend.index));
           }
         }
-        await game.ready();
-
-        // 고유 장비 효과는 영웅 등급 카드와 같은 세기다.
-        expect(
-          FateSystem.available(fate(FateCard.emberBurst), player),
-          isFalse,
-        );
-        expect(
-          FateSystem.available(
-            fate(FateCard.emberBurst, Rarity.legend),
-            player,
-          ),
-          isTrue,
-        );
-        expect(
-          FateSystem.available(fate(FateCard.smithsTouch), player),
-          isFalse,
-        );
-        expect(FateSystem.available(fate(FateCard.newArms), player), isFalse);
-        expect(
-          FateSystem.available(fate(FateCard.hardenedAsh), player),
-          isTrue,
-        );
-      },
-    );
+      }
+    });
   });
 
   group('선택', () {
@@ -182,7 +197,7 @@ void main() {
     }
 
     testWithGame<AshbornGame>(
-      '보스를 잡으면 은총 카드가 나오고, 고르면 다음 지역으로 간다',
+      '처음 클리어하면 은총 카드가 나오고, 고르면 영구히 남고 다음 지역에서 효과를 낸다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
@@ -191,25 +206,73 @@ void main() {
         await clearStage(game);
         expect(game.overlays.isActive(AshbornGame.stageClearOverlay), isTrue);
         expect(game.fateOptions.value.length, Balance.fateChoices);
+        expect(game.canLeaveClear, isFalse);
 
-        final pick = fate(FateCard.sharpEmber, Rarity.hero);
+        final pick = game.fateOptions.value.first;
         game.chooseFate(pick);
+        expect(game.progress.graces, [pick]);
+        expect(game.canLeaveClear, isTrue);
+        expect(game.notices.value.last.text, contains('신의 은총'));
+        expect(game.notices.value.last.text, contains(pick.card.title));
+        // 한 번 고르면 끝: 다른 카드를 또 고를 수 없다.
+        game.chooseFate(game.fateOptions.value.last);
+        expect(game.progress.graces, [pick]);
 
+        game.continueToNextStage();
         expect(game.world.stage, const Stage(1));
         expect(game.overlays.isActive(AshbornGame.stageClearOverlay), isFalse);
         expect(game.paused, isFalse);
         expect(game.world.fate.taken, [pick]);
-        expect(
-          game.world.player.bonus(StatType.damage),
-          closeTo(Balance.fateDamage * grow(2), 1e-9),
-        );
-        expect(game.notices.value.last.text, contains(Rarity.hero.label));
-        expect(game.notices.value.last.text, contains('신의 은총'));
-        expect(game.notices.value.last.text, contains(pick.card.title));
       },
     );
 
-    testWithGame<AshbornGame>('다시 뽑기는 런마다 정해진 횟수만큼', gameWith(Roster.witch), (
+    testWithGame<AshbornGame>(
+      '이미 은총을 받은 스테이지는 다시 깨도 카드가 없고 바로 떠날 수 있다',
+      gameWith(
+        Roster.witch,
+        progress: Progress(0, null, {0: fate(FateCard.sharpEmber)}),
+      ),
+      (game) async {
+        await game.ready();
+        stubOverlays(game);
+
+        await clearStage(game);
+        expect(game.overlays.isActive(AshbornGame.stageClearOverlay), isTrue);
+        expect(game.fateOptions.value, isEmpty);
+        expect(game.canLeaveClear, isTrue);
+        expect(game.progress.graces.length, 1);
+      },
+    );
+
+    testWithGame<AshbornGame>(
+      '안 고르고 나가도 은총은 남고, 다시 들어와도 같은 패다',
+      gameWith(Roster.witch),
+      (game) async {
+        await game.ready();
+        stubOverlays(game);
+        await clearStage(game);
+        final hand = game.fateOptions.value;
+
+        // 화톳불로 돌아가 다른 캐릭터로 다시 시작해도 같은 패가 기다린다.
+        game.quitRun();
+        final again = AshbornGame(
+          character: Roster.knight,
+          profile: game.profile,
+        );
+        expect(again.progress.pendingGraces, [Stage.first]);
+        expect(
+          FateSystem.offer(
+            again.progress,
+            again.upgrades,
+            Stage.first,
+            math.Random(99),
+          )!.hand,
+          hand,
+        );
+      },
+    );
+
+    testWithGame<AshbornGame>('다시 뽑기는 은총마다 정해진 횟수만큼', gameWith(Roster.witch), (
       game,
     ) async {
       await game.ready();
@@ -222,11 +285,38 @@ void main() {
         expect(game.fateOptions.value, isNot(same(hand)));
         hand = game.fateOptions.value;
       }
-      expect(game.world.fate.rerolls, 0);
+      expect(game.fateRerolls, 0);
 
       game.rerollFate();
       expect(game.fateOptions.value, same(hand));
     });
+
+    testWithGame<AshbornGame>(
+      '받아 둔 은총은 새 런에 처음부터 붙고, 출정 효과는 시작할 때 낸다',
+      gameWith(
+        Roster.witch,
+        progress: Progress(2, null, {
+          0: fate(FateCard.sharpEmber, Rarity.hero),
+          1: fate(FateCard.smithsTouch),
+          2: fate(FateCard.newArms),
+        }),
+      ),
+      (game) async {
+        await game.ready();
+        final player = game.world.player;
+
+        expect(game.world.fate.taken.length, 3);
+        expect(
+          player.bonus(StatType.damage),
+          closeTo(Balance.fateDamage * grow(2), 1e-9),
+        );
+        expect(
+          player.weapon(Roster.witch.startWeapon)!.level,
+          1 + Balance.fateWeaponLevels,
+        );
+        expect(player.weapons.length, 2);
+      },
+    );
   });
 
   group('등급별 효과', () {
@@ -280,7 +370,7 @@ void main() {
         expect(player.hp, closeTo(1 + player.maxHp * Balance.fateHeal, 1e-9));
 
         player.hp = 1;
-        FateSystem.apply(fate(FateCard.breather, Rarity.legend), game.world);
+        FateSystem.apply(fate(FateCard.breather, Rarity.unique), game.world);
         expect(player.hp, player.maxHp);
         expect(game.stats.hp.value, player.maxHp);
       },
@@ -441,16 +531,14 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '믹틀란테쿠틀리의 피의 맹세: 적 피해가 늘고 장비 드랍 확률이 커진다. 여러 장이면 곱해진다',
+      '믹틀란테쿠틀리의 피의 맹세: 적 피해가 늘고 장비 드랍 확률이 커진다',
       gameWith(Roster.witch),
       (game) async {
         await game.ready();
         await clearEnemies(game);
         FateSystem.apply(fate(FateCard.bloodOath), game.world);
-        FateSystem.apply(fate(FateCard.bloodOath), game.world);
 
-        final drop = 1 + Balance.curseDropGain;
-        expect(game.world.fate.dropMultiplier, drop * drop);
+        expect(game.world.fate.dropMultiplier, 1 + Balance.curseDropGain);
         await advance(game, Balance.baseSpawnInterval + 0.1);
         final enemy = game.world.enemies.first;
         expect(
@@ -458,7 +546,6 @@ void main() {
           closeTo(
             Balance.enemyContactDamage *
                 game.world.stage.enemyDamageMultiplier *
-                Balance.curseEnemyDamage *
                 Balance.curseEnemyDamage *
                 enemy.kind!.damage,
             1e-9,
@@ -489,14 +576,15 @@ void main() {
   testWidgets('클리어 화면에 은총 · 신 · 영역 · 등급, 저주, 종류, 남은 다시 뽑기 횟수가 보인다', (
     tester,
   ) async {
-    final game = gameWith(Roster.witch)();
+    final game = gameWith(Roster.witch, progress: Progress(0))();
     final curse = fate(FateCard.thickAsh, Rarity.epic);
-    game.fateOptions.value = [
+    final hand = [
       fate(FateCard.hardenedAsh, Rarity.unique),
       curse,
       fate(FateCard.ashLord),
     ];
-    game.world.fate.rerolls = 0;
+    game.progress.offerGrace(Stage.first, hand, rerolls: 0);
+    game.fateOptions.value = hand;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -527,6 +615,7 @@ void main() {
     expect(find.text(keepWords(curse.description)), findsOneWidget);
     expect(find.text(FateType.reward.label), findsOneWidget);
     expect(find.text('다시 뽑기 (0)'), findsOneWidget);
+    expect(find.text('고른 은총은 영구히 남아 모든 캐릭터에 붙습니다'), findsOneWidget);
   });
 
   test('모든 카드는 나올 수 있는 모든 등급에서 설명이 있다', () {

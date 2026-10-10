@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'balance.dart';
+import 'corruption.dart';
 import 'damage.dart';
 import 'enemies.dart';
 import 'monster_sprites.dart';
@@ -134,19 +135,38 @@ enum Region {
   final double hp;
 }
 
-/// 스테이지 하나 = 타락 단계 하나의 지역 하나. [index] 0 이 첫 지역이고,
-/// 마지막 지역 다음은 첫 지역으로 돌아가며 타락 단계가 하나 오른다 (끝없음).
+/// 스테이지 하나 = 타락 단계 하나의 지역 하나. [index] = 타락 단계 × 지역 수 + 지역 순서.
+///
+/// 런은 늘 고른 타락 단계의 첫 지역([Stage.start])에서 시작해 다섯 지역을 차례로 지나고,
+/// 마지막 지역 보스를 잡으면 그 단계 클리어로 끝난다. 클리어하면 다음 타락 단계가 열린다.
+/// 적 강도는 런 안의 지역 순서([step])만큼 오르고, 타락 단계마다 [Balance.corruptionHpGrowth]
+/// 배가 된다 — 런은 늘 레벨 1 에서 시작하므로, 단계를 올리는 힘은 장비 · 은총 · 화톳불 · 특성이다.
 class Stage {
   const Stage(this.index) : assert(index >= 0);
 
   static const first = Stage(0);
+
+  /// 타락 [corruption] 단계 런의 첫 스테이지.
+  factory Stage.start(int corruption) =>
+      Stage(corruption * Region.values.length);
 
   final int index;
 
   int get corruption => index ~/ Region.values.length;
   Region get region => Region.values[index % Region.values.length];
 
-  /// 스테이지 레벨. 적 강도와 떨어지는 장비 레벨을 정한다.
+  /// 런 안의 지역 순서 (0 이 첫 지역).
+  int get step => index % Region.values.length;
+
+  /// 그 단계의 마지막 지역. 이 보스를 잡으면 단계 클리어다.
+  bool get isFinal => step == Region.values.length - 1;
+
+  /// 이 스테이지에 붙는 타락 특수 규칙.
+  List<CorruptionRule> get rules => CorruptionRule.at(corruption);
+
+  bool has(CorruptionRule rule) => corruption >= rule.from;
+
+  /// 스테이지 레벨. 보상(잔불 · 골드)과 떨어지는 장비 레벨을 정한다. 타락 단계가 오를수록 높다.
   int get level => index + 1;
 
   Stage get next => Stage(index + 1);
@@ -155,12 +175,17 @@ class Stage {
       corruption == 0 ? region.label : '타락 $corruption · ${region.label}';
 
   double get enemyHpMultiplier =>
-      math.pow(Balance.stageHpGrowth, index) * region.hp * _ease;
+      math.pow(Balance.stageHpGrowth, step) *
+      math.pow(Balance.corruptionHpGrowth, corruption) *
+      region.hp *
+      _ease;
 
   double get enemyDamageMultiplier =>
-      math.pow(Balance.stageDamageGrowth, index) * _ease;
+      math.pow(Balance.stageDamageGrowth, step) *
+      math.pow(Balance.corruptionDamageGrowth, corruption) *
+      _ease;
 
-  /// 처음 몇 스테이지는 적이 약하다. 처음 하는 사람도 바로바로 넘어가도록.
+  /// 타락 0단계 처음 몇 지역은 적이 약하다. 처음 하는 사람도 바로바로 넘어가도록.
   double get _ease =>
       index < Balance.earlyStageEase.length ? Balance.earlyStageEase[index] : 1;
 

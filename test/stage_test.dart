@@ -2,6 +2,7 @@ import 'package:ashborn/components/enemies/boss.dart';
 import 'package:ashborn/components/enemies/enemy.dart';
 import 'package:ashborn/components/pickups/item_drop.dart';
 import 'package:ashborn/data/balance.dart';
+import 'package:ashborn/data/corruption.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/damage.dart';
 import 'package:ashborn/data/stages.dart';
@@ -240,21 +241,69 @@ void main() {
     );
 
     testWithGame<AshbornGame>(
-      '마지막 지역을 깨면 첫 지역으로 돌아가며 타락 단계가 오른다',
+      '마지막 지역 보스를 잡으면 그 단계 클리어: 다음 지역은 없고, 클리어 보상과 다음 타락 단계가 열린다',
       gameWith(Roster.witch, stage: Stage(Region.values.length - 1)),
       (game) async {
         await game.ready();
+        game.overlays.addEntry(
+          AshbornGame.stageClearOverlay,
+          (_, _) => const SizedBox(),
+        );
+        final stones = game.inventory.stones;
+        game.world.spawnBoss();
+        await game.ready();
+        game.world.boss!.takeDamage(double.infinity);
+        await game.ready();
 
-        game.world.advanceStage();
-
-        expect(game.world.stage.region, Region.ashPlains);
-        expect(game.world.stage.corruption, 1);
+        expect(game.world.conquered, isTrue);
+        expect(game.world.unlockedCorruption, isTrue);
+        expect(game.progress.unlockedCorruption, 1);
+        expect(
+          game.inventory.stones - stones,
+          greaterThanOrEqualTo(Balance.bossStones + Balance.conquestStones),
+        );
         expect(
           game.notices.value.map((n) => n.text),
-          contains(startsWith('타락 1단계')),
+          contains(startsWith('첫 클리어')),
         );
+
+        game.world.advanceStage();
+        game.continueToNextStage();
+        expect(game.world.stage, Stage(Region.values.length - 1));
       },
     );
+
+    test('타락 단계는 런 안의 지역 순서와 따로 적을 키운다', () {
+      final regions = Region.values.length;
+      // 같은 지역 순서면 타락 한 단계마다 정해진 배율.
+      final a = Stage.start(2);
+      final b = Stage.start(3);
+      expect(
+        b.enemyHpMultiplier / a.enemyHpMultiplier,
+        closeTo(Balance.corruptionHpGrowth, 1e-9),
+      );
+      expect(
+        b.enemyDamageMultiplier / a.enemyDamageMultiplier,
+        closeTo(Balance.corruptionDamageGrowth, 1e-9),
+      );
+      // 타락 단계의 첫 지역은 이전 단계 마지막 지역보다 약할 수 있다 (런은 레벨 1 부터).
+      expect(Stage.start(3).step, 0);
+      expect(Stage(regions * 3 + 4).isFinal, isTrue);
+      // 보상 쪽 레벨은 계속 오른다.
+      expect(Stage.start(3).level, regions * 3 + 1);
+    });
+
+    test('특수 규칙은 정해진 단계부터 붙고 위 단계에도 남는다', () {
+      expect(Stage.start(0).rules, isEmpty);
+      expect(Stage.start(1).rules, [CorruptionRule.elite]);
+      expect(Stage.start(2).has(CorruptionRule.bossRegen), isTrue);
+      expect(Stage.start(3).has(CorruptionRule.deathBlast), isFalse);
+      expect(Stage.start(8).rules, CorruptionRule.values);
+      for (final rule in CorruptionRule.values) {
+        expect(rule.label, isNotEmpty);
+        expect(rule.description, isNotEmpty);
+      }
+    });
   });
 
   group('보상', () {

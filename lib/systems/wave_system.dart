@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 
 import '../components/enemies/minions.dart';
 import '../data/balance.dart';
+import '../data/corruption.dart';
 import '../data/enemies.dart';
 import '../data/stages.dart';
 import '../game/ashborn_game.dart';
@@ -56,26 +57,35 @@ class WaveSystem extends Component
         Balance.enemyContactDamage *
         stage.enemyDamageMultiplier *
         fate.enemyDamageMultiplier;
-    final speed = Balance.enemySpeed * stage.enemySpeedMultiplier;
+    // 무리 습격: 더 빠르고 한 번에 더 많이.
+    final frenzy = stage.has(CorruptionRule.frenzy);
+    final speed =
+        Balance.enemySpeed *
+        stage.enemySpeedMultiplier *
+        (frenzy ? 1 + Balance.frenzySpeed : 1);
+    final elites = stage.has(CorruptionRule.elite);
     final kinds = unlocked(region, time);
-    var count = batchSize(time);
+    var count = batchSize(time) + (frenzy ? Balance.frenzyBatch : 0);
     while (count > 0 && world.enemies.length < Balance.maxEnemies) {
       final kind = pick(kinds, game.random);
       // 떼는 한자리에 몇 마리씩 몰려 나온다 (한 마리로 친다).
       final pack = kind.behavior == EnemyBehavior.swarm ? Balance.swarmPack : 1;
       final at = world.offscreenPoint();
+      // 정예 출현: 떼는 무리째로 정예가 되지 않게 한 마리짜리만.
+      final elite =
+          elites && pack == 1 && game.random.nextDouble() < Balance.eliteChance;
       for (var i = 0; i < pack; i++) {
-        world.add(
-          spawnMinion(
-            kind,
-            position: at + Vector2(i * 18.0, (i % 2) * 18.0),
-            maxHp: hp,
-            contactDamage: damage,
-            damageType: region.damageType,
-            speed: speed,
-            color: region.enemy,
-          ),
+        final minion = spawnMinion(
+          kind,
+          position: at + Vector2(i * 18.0, (i % 2) * 18.0),
+          maxHp: hp * (elite ? Balance.eliteHp : 1),
+          contactDamage: damage * (elite ? Balance.eliteDamage : 1),
+          damageType: region.damageType,
+          speed: speed,
+          color: region.enemy,
         );
+        if (elite) minion.makeElite();
+        world.add(minion);
       }
       count--;
     }

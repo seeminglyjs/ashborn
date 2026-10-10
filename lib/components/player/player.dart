@@ -18,6 +18,7 @@ import '../../data/weapons.dart';
 import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
 import '../../services/audio.dart';
+import '../../systems/fate_system.dart';
 import '../effects/burst.dart';
 import '../effects/damage_number.dart';
 import '../effects/pixel_fx.dart';
@@ -38,8 +39,8 @@ import '../weapons/weapon_art.dart';
 import '../weapons/witch_weapons.dart';
 import 'sprite_motion.dart';
 
-/// 캐릭터 스프라이트의 자세.
-enum PlayerPose { idle, run, hit }
+/// 캐릭터 스프라이트의 자세. [windup] · [strike] 는 기본 무기를 쓸 때의 몸짓이다.
+enum PlayerPose { idle, run, hit, windup, strike }
 
 class Player extends PositionComponent
     with
@@ -85,6 +86,12 @@ class Player extends PositionComponent
   SpriteMotion? _motion;
   bool _facingLeft = false;
   double _hitPose = 0;
+
+  // 공격 몸짓: 남은 예비 동작 · 내지름 · 되돌림 시간. 되돌림은 예비 동작 프레임을 다시 쓴다.
+  double _windup = 0;
+  double _strike = 0;
+  double _recover = 0;
+  bool _attackLeft = false;
 
   bool get isDead => hp <= 0;
 
@@ -141,7 +148,7 @@ class Player extends PositionComponent
     _guardTime = math.max(_guardTime, time);
   }
 
-  /// 연격 숙련: 대검 콤보 확률과 맹공 지속 시간 증가.
+  /// 연격의 달인: 대검 콤보 확률과 맹공 지속 시간 증가.
   double get comboBonus =>
       ClassPassive.swordMastery.value(classLevel(ClassPassive.swordMastery));
   double get onslaughtBonus =>
@@ -277,6 +284,8 @@ class Player extends PositionComponent
     // 스프라이트는 기다리지 않고 읽는다. 다 읽기 전에는 그림자만 보인다.
     unawaited(_loadSprite());
     gainWeapon(character.startWeapon);
+    // 받아 둔 은총 중 출정 때 효과 (무기 레벨 · 새 무기 · 시작 레벨).
+    FateSystem.depart(world);
   }
 
   /// 캐릭터 스프라이트 시트를 읽어 자세별 애니메이션으로 붙인다.
@@ -300,6 +309,8 @@ class Player extends PositionComponent
         PlayerPose.idle: clip(0, 4, 0.15),
         PlayerPose.run: clip(4, 4, 0.1),
         PlayerPose.hit: clip(8, 1, 1),
+        PlayerPose.windup: clip(9, 1, 1),
+        PlayerPose.strike: clip(10, 1, 1),
       },
       current: PlayerPose.idle,
       size: frame * Balance.playerSpriteScale,
@@ -322,17 +333,24 @@ class Player extends PositionComponent
   void _updateSprite(double dt) {
     final sprite = _sprite;
     if (_hitPose > 0) _hitPose -= dt;
+    final attack = _tickAttack(dt);
     if (sprite == null) return;
-    if (_move.x.abs() > 0.05 && (_move.x < 0) != _facingLeft) {
+    if (attack != null) {
+      // 공격하는 동안은 걷는 방향이 아니라 노린 쪽을 본다.
+      _facingLeft = _attackLeft;
+    } else if (_move.x.abs() > 0.05 && (_move.x < 0) != _facingLeft) {
       _facingLeft = !_facingLeft;
     }
+    final previous = sprite.current;
     sprite
       ..current = _hitPose > 0
           ? PlayerPose.hit
-          : _move.length2 > 0.0025
-          ? PlayerPose.run
-          : PlayerPose.idle
+          : attack ??
+                (_move.length2 > 0.0025 ? PlayerPose.run : PlayerPose.idle)
       ..opacity = _blinking ? 0 : 1;
+    if (sprite.current == PlayerPose.strike && previous != PlayerPose.strike) {
+      _motion!.lunge(_facingLeft ? -1 : 1);
+    }
     final stepped = _motion!.apply(
       sprite,
       dt,
@@ -350,6 +368,38 @@ class Player extends PositionComponent
         ),
       );
     }
+  }
+
+  /// 기본 무기를 쓸 때의 몸짓. [windup] 초 예비 동작, [strike] 초 내지른 자세,
+  /// [recover] 초 다시 예비 동작 프레임(장전 · 지팡이 거두기)을 보인다. 그동안 [aimX] 쪽을 본다.
+  /// 이미 몸짓 중이면 새 공격으로 바꾼다.
+  void attackPose({
+    double windup = 0,
+    required double strike,
+    double recover = 0,
+    required double aimX,
+  }) {
+    _windup = windup;
+    _strike = strike;
+    _recover = recover;
+    if (aimX.abs() > 0.01) _attackLeft = aimX < 0;
+  }
+
+  /// 공격 몸짓 시간을 흘리고 지금 보일 자세를 돌려준다. 몸짓 중이 아니면 null.
+  PlayerPose? _tickAttack(double dt) {
+    if (_windup > 0) {
+      _windup -= dt;
+      return PlayerPose.windup;
+    }
+    if (_strike > 0) {
+      _strike -= dt;
+      return PlayerPose.strike;
+    }
+    if (_recover > 0) {
+      _recover -= dt;
+      return PlayerPose.windup;
+    }
+    return null;
   }
 
   /// 뛰어올라 [time] 초 뒤 착지한다 (대검 내려찍기). 스프라이트만 뜨고 판정 위치는 그대로다.
