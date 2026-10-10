@@ -56,7 +56,8 @@ Write-Host ("  버전: " + (git log -1 --format='%h %s' HEAD))
 $built = if (Test-Path $Stamp) { (Get-Content $Stamp -Raw).Trim() } else { '' }
 if ($built -ne $head) {
     Write-Host '새 버전을 빌드하는 중... (약 40초)' -ForegroundColor Cyan
-    flutter pub get | Out-Null
+    # Windows 플러그인용 "개발자 모드를 켜라" 경고가 나오지만 웹 빌드와는 상관없어 숨긴다.
+    flutter pub get *> $null
     flutter build web --release --no-web-resources-cdn
     if ($LASTEXITCODE -eq 0) {
         Set-Content -Path $Stamp -Value $head -Encoding ascii
