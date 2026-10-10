@@ -160,7 +160,10 @@ class WeaponModel {
 
   /// 한 번 쓸 때 대상에게 들어가는 타격 수와 무기 기본 피해 (레벨 배율 포함), 쓰는 간격(초).
   /// 공격 속도 [attackSpeed] 는 장비 · 런 패시브 합.
-  ({double hits, double base, double interval}) cycle(double attackSpeed) {
+  /// [power] 는 장비 피해까지 포함한 한 타 전체에 붙는 배율 (대검의 무게).
+  ({double hits, double base, double interval, double power}) cycle(
+    double attackSpeed,
+  ) {
     final cooldown =
         _cooldownBase *
         (1 - id.total(WeaponStat.cooldown, level)) *
@@ -182,7 +185,14 @@ class WeaponModel {
         final interval =
             (cooldown * (1 - onslaught * (1 - Balance.onslaughtCooldown)) +
             extra * Balance.comboDelay);
-        return (hits: 1 + extra, base: avg * damage, interval: interval);
+        const power =
+            (Balance.thrustPower + Balance.swingPower + Balance.slamPower) / 3;
+        return (
+          hits: 1 + extra,
+          base: avg * damage,
+          interval: interval,
+          power: power,
+        );
       case WeaponId.emberOrb:
         final bolts = 1 + id.total(WeaponStat.count, level);
         // 부채꼴로 퍼져 보스(반지름 40)에 맞는 구체 수 (거리 200 기준).
@@ -193,6 +203,7 @@ class WeaponModel {
           hits: (hit + overheat) * echo,
           base: Balance.emberOrbDamage * damage,
           interval: cooldown,
+          power: 1.0,
         );
       case WeaponId.fireCrossbow:
         final arrows = 1 + id.total(WeaponStat.count, level);
@@ -206,6 +217,7 @@ class WeaponModel {
           hits: hit * volley * sniper,
           base: Balance.crossbowDamage * damage,
           interval: cooldown,
+          power: 1.0,
         );
       default:
         throw UnimplementedError('$id');
@@ -268,7 +280,7 @@ class WeaponModel {
         _class2(ClassPassive.weakSpot);
     // 기본 무기 + 보조 무기의 초당 (기본 피해 + 더해지는 피해).
     final raw =
-        (c.base + gear.addedDamage) * c.hits / c.interval +
+        (c.base + gear.addedDamage) * c.power * c.hits / c.interval +
         (Calibration.otherBase + gear.addedDamage) *
             Calibration.otherHits *
             attackSpeed;

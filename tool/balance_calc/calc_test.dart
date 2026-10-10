@@ -28,12 +28,12 @@ import 'model.dart';
 const _mastery = int.fromEnvironment('MASTERY');
 const _stages = int.fromEnvironment('STAGES', defaultValue: 40);
 
-/// 마지막 시뮬레이터 측정 (2026-10-10, 3캐릭터 × 시드 2 평균): 4시간에 깬 스테이지.
+/// 마지막 시뮬레이터 측정 (2026-10-10, 시드 2 평균, 기사는 대검의 무게 반영 후): 4시간에 깬 스테이지.
 /// 시뮬레이터는 런이 끝날 때만 최전선을 기록하고 런 하나가 한 시간을 넘기도 해서,
 /// 짧은 시간 칸은 실제보다 낮게 나온다. 그래서 4시간 칸만 비교한다.
 /// 시뮬레이터를 다시 돌리면 여기를 고친다.
 const _sim = {
-  CharacterId.knight: {240: 28.0},
+  CharacterId.knight: {240: 30.5},
   CharacterId.witch: {240: 34.0},
   CharacterId.hunter: {240: 32.5},
 };

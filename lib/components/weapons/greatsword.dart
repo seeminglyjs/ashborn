@@ -204,8 +204,13 @@ class Greatsword extends Weapon {
           SwordMove.slam => Balance.slamDamage,
         } *
         damageMultiplier;
+    final power = switch (move) {
+      SwordMove.thrust => Balance.thrustPower,
+      SwordMove.swing => Balance.swingPower,
+      SwordMove.slam => Balance.slamPower,
+    };
     for (final enemy in hits) {
-      player.strike(enemy, damage, id.damageType);
+      player.strike(enemy, damage, id.damageType, power: power);
     }
     if (move == SwordMove.slam) {
       final center = at + dir * (Balance.slamOffset * size);
