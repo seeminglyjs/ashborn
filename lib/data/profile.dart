@@ -86,7 +86,8 @@ class Profile {
     return load();
   }
 
-  /// 형식이 바뀌면 키를 올린다. 예전 형식은 읽지 않는다.
+  /// 형식이 바뀌면 키를 올린다. 이제는 세이브를 이어 가야 하므로, 키를 올릴 때는
+  /// 예전 키를 읽어 새 형식으로 옮기는 코드를 함께 넣는다 (CLAUDE.md "세이브 호환").
   static const inventoryKey = 'inventory.v4';
   static const progressKey = 'progress.v1';
   static const settingsKey = 'settings.v1';
