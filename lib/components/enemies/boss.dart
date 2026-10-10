@@ -6,7 +6,6 @@ import 'package:flame/components.dart';
 import '../../data/balance.dart';
 import '../../data/damage.dart';
 import '../../data/stages.dart';
-import '../effects/burst.dart';
 import '../effects/sparks.dart';
 import 'enemy.dart';
 import 'hazards.dart';
@@ -107,15 +106,9 @@ class Boss extends Enemy {
   double get _interval =>
       Balance.bossMoveInterval * (_enraged ? Balance.bossEnragedInterval : 1);
 
-  static final _chargeLine = Paint()
-    ..color = const Color(0x55FF3A2E)
-    ..strokeWidth = 18
-    ..strokeCap = StrokeCap.round;
-  static final _slamFill = Paint()..color = const Color(0x22FF3A2E);
-  static final _slamEdge = Paint()
-    ..color = const Color(0x99FF3A2E)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 3;
+  static const _chargeLane = Color(0x40FF3A2E);
+  static final _slamFill = Paint()..color = const Color(0x33FF3A2E);
+  static final _slamEdge = dangerStroke(3.5);
 
   Color get _hazard => hazardColor(damageType);
 
@@ -126,7 +119,11 @@ class Boss extends Enemy {
       world.game.notify('$name 격노!', color: const Color(0xFFE8463A));
       world
         ..add(
-          Burst(position: position.clone(), radius: radius * 3, color: color),
+          HostileBurst(
+            position: position.clone(),
+            radius: radius * 3,
+            color: color,
+          ),
         )
         ..shake(0.4);
     }
@@ -344,7 +341,11 @@ class Boss extends Enemy {
       );
     }
     world.add(
-      Burst(position: position.clone(), radius: radius * 2, color: _hazard),
+      HostileBurst(
+        position: position.clone(),
+        radius: radius * 2,
+        color: _hazard,
+      ),
     );
   }
 
@@ -383,7 +384,11 @@ class Boss extends Enemy {
         );
         _hidden = false;
         world.add(
-          Burst(position: position.clone(), radius: radius * 2, color: _hazard),
+          HostileBurst(
+            position: position.clone(),
+            radius: radius * 2,
+            color: _hazard,
+          ),
         );
         _step = 1;
       }
@@ -402,7 +407,13 @@ class Boss extends Enemy {
       case BossMove.charge || BossMove.rush when !_dashing:
         final reach =
             _walkSpeed * Balance.bossChargeSpeed * Balance.bossChargeDuration;
-        canvas.drawLine(c, c + Offset(_aim.x, _aim.y) * reach, _chargeLine);
+        drawDangerLane(
+          canvas,
+          c,
+          c + Offset(_aim.x, _aim.y) * reach,
+          radius * 1.1,
+          _chargeLane,
+        );
       case BossMove.slam:
         final t = (_t / Balance.bossSlamWindup).clamp(0.0, 1.0);
         canvas

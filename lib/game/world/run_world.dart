@@ -121,8 +121,11 @@ class RunWorld extends World
     unawaited(game.monsterSprites.load(game.images));
     unawaited(game.props.load(game.images));
     _camera.position.setFrom(player.position);
+    final floor = DungeonFloor();
     addAll([
-      DungeonFloor(),
+      floor,
+      // 구조물 뒤로 들어간 캐릭터를 가리는 앞쪽 구조물 (캐릭터 위에 그린다).
+      StructureFront(floor),
       player,
       WaveSystem(),
       CrowdSystem(),
@@ -288,7 +291,7 @@ class RunWorld extends World
   }
 
   void _dropBossChest(Vector2 at) {
-    final items = LootSystem.bossChest(game.random, stage);
+    final items = LootSystem.bossChest(game.random, stage, character.id);
     for (final (i, item) in items.indexed) {
       final angle = math.pi * 2 * i / items.length;
       add(
@@ -381,7 +384,12 @@ class RunWorld extends World
         Balance.stoneDropChance * stage.dropChanceMultiplier) {
       _pendingStones++;
     }
-    final item = LootSystem.rollDrop(game.random, stage, fate.dropMultiplier);
+    final item = LootSystem.rollDrop(
+      game.random,
+      stage,
+      fate.dropMultiplier,
+      character.id,
+    );
     if (item != null) add(ItemDrop(position: position.clone(), item: item));
     if (player.effects.contains(UniqueEffect.emberBurst) &&
         game.random.nextDouble() < Balance.emberBurstChance) {
@@ -397,7 +405,7 @@ class RunWorld extends World
       add(
         ItemDrop(
           position: at + Vector2(-14, 0),
-          item: LootSystem.chestItem(game.random, stage),
+          item: LootSystem.chestItem(game.random, stage, character.id),
         ),
       );
       add(
@@ -418,6 +426,7 @@ class RunWorld extends World
             item: LootSystem.generate(
               game.random,
               level: stage.level,
+              owner: character.id,
               rarity: LootSystem.rollRarity(
                 game.random,
                 luck: stage.rarityLuck,

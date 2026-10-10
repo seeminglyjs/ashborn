@@ -38,7 +38,16 @@ enum MonsterSprite {
   batBlood('bat_blood', 16, 16),
   wispFrost('wisp_frost', 16, 16),
   wispEmber('wisp_ember', 16, 16),
-  wispSpark('wisp_spark', 16, 16);
+  wispSpark('wisp_spark', 16, 16),
+
+  // `tool/assets/new_monsters.py` 가 Endesga 32 로 처음부터 그린 몬스터.
+  carrionCrow('carrion_crow', 16, 16),
+  ashRam('ash_ram', 32, 36),
+  bogCroc('bog_croc', 32, 23),
+  emberMaw('ember_maw', 16, 23),
+  emberDrake('ember_drake', 16, 23),
+  rustScorpion('rust_scorpion', 16, 16),
+  flameLizard('flame_lizard', 16, 23);
 
   const MonsterSprite(this.file, this.width, this.height);
 

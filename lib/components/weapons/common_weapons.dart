@@ -7,6 +7,7 @@ import '../../data/balance.dart';
 import '../../data/weapons.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
+import '../effects/pixel_fx.dart';
 import '../effects/sparks.dart';
 import '../enemies/enemy.dart';
 import 'weapon.dart';
@@ -29,16 +30,21 @@ class AshAura extends PositionComponent
       areaMultiplier *
       (awakened ? Balance.infernoAuraScale : 1);
 
-  static final _fill = Paint()..color = const Color(0x22FF6B35);
-  static final _edge = Paint()
-    ..color = const Color(0x66FF8C42)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 2;
-  static final _infernoFill = Paint()..color = const Color(0x334FC3FF);
-  static final _infernoEdge = Paint()
-    ..color = const Color(0x998FE3FF)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 2.5;
+  /// 불꽃 혀의 색 (밑동 → 끝). 각성(지옥불 고리)은 푸른 불.
+  static const _flame = [
+    Pal.redDark,
+    Pal.red,
+    Color(0xFFF77622),
+    Pal.gold,
+    Pal.goldLight,
+  ];
+  static const _inferno = [
+    Color(0xFF124E89),
+    Color(0xFF0099DB),
+    Color(0xFF2CE8F5),
+    Pal.white,
+    Pal.white,
+  ];
 
   @override
   void onMount() {
@@ -69,16 +75,45 @@ class AshAura extends PositionComponent
     }
   }
 
+  /// 도트 불꽃 고리: 둘레를 따라 불꽃 혀가 줄지어 솟았다 잦아들고, 안쪽엔 잿불 티가 드문드문 깜빡인다.
   @override
   void render(Canvas canvas) {
-    final pulse = 1 + 0.04 * math.sin(_t * 6);
-    canvas
-      ..drawCircle(Offset.zero, radius * pulse, awakened ? _infernoFill : _fill)
-      ..drawCircle(
-        Offset.zero,
-        radius * pulse,
-        awakened ? _infernoEdge : _edge,
-      );
+    final tones = awakened ? _inferno : _flame;
+    final pc = PixelCanvas.shared;
+    final px = pc.px;
+    final r = radius;
+    // 안쪽: 드문드문 깜빡이는 불티 (흐리게).
+    final cells = (r / px).floor();
+    final beat = (_t * 6).floor();
+    for (var y = -cells; y <= cells; y++) {
+      for (var x = -cells; x <= cells; x++) {
+        if ((x * x + y * y) > (cells - 2) * (cells - 2)) continue;
+        if (PixelFx.hash(x, y, beat) > 0.035) continue;
+        pc.dot(x, y, tones[2]);
+      }
+    }
+    pc.flush(canvas, opacity: 0.6);
+    // 둘레: 원 위의 칸마다 불꽃 혀 하나. 높이가 시간 따라 오르내린다.
+    final steps = (math.pi * 2 * r / px / 1.2).round();
+    final seen = <int>{};
+    for (var i = 0; i < steps; i++) {
+      final a = math.pi * 2 * i / steps;
+      final bx = (math.cos(a) * r / px).floor();
+      final by = (math.sin(a) * r / px).floor();
+      if (!seen.add(bx * 4096 + by)) continue;
+      final wave = math.sin(_t * 7 + i * 0.9) * 0.5 + 0.5;
+      final h = 1 + (wave * 3 + PixelFx.hash(i, beat, 3) * 1.5).floor();
+      for (var k = 0; k < h; k++) {
+        final c =
+            tones[math.min(
+              tones.length - 1,
+              ((k + 1) / h * (tones.length - 1)).round(),
+            )];
+        pc.dot(bx, by - k, c);
+      }
+    }
+    PixelFx.glow(canvas, Offset.zero, r * 1.25, tones[2], strength: 0.18);
+    pc.flush(canvas);
   }
 }
 

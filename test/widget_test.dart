@@ -279,6 +279,15 @@ void main() {
       await tester.pump();
       expect(find.text(ring.name), findsWidgets);
 
+      // 상세를 보다 닫으면 일시정지 메뉴가 아니라 가방으로 돌아간다.
+      await tester.tap(find.byKey(const Key('close-equipment')));
+      await tester.pump();
+      expect(find.byKey(const Key('close-detail')), findsNothing);
+      expect(find.byKey(const Key('bag-count')), findsOneWidget);
+      expect(find.byKey(const Key('pause-resume')), findsNothing);
+      await tester.tap(find.byKey(Key('bag-$index')));
+      await tester.pump();
+
       await tester.tap(find.byKey(const Key('equip-ring1')));
       await tester.pump();
       expect(gear.equipped[EquipSlot.ring1], ring);
@@ -382,8 +391,11 @@ void main() {
       }
       expect(center('head').dy, lessThan(center('earring1').dy));
       expect(center('boots').dy, greaterThan(center('belt').dy));
+      // 아래 줄은 갑옷 · 장화가 가운데에 나란히.
+      expect(center('armor').dy, closeTo(center('boots').dy, 1));
+      expect(center('armor').dx, lessThan(center('boots').dx));
       expect(
-        center('boots').dx,
+        (center('armor').dx + center('boots').dx) / 2,
         closeTo(tester.getCenter(find.byKey(const Key('paper-doll'))).dx, 1),
       );
 

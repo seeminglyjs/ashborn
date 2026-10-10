@@ -9,6 +9,7 @@ import '../../data/damage.dart';
 import '../../data/weapons.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
+import '../effects/pixel_fx.dart';
 import '../effects/sparks.dart';
 import 'projectile.dart';
 import 'weapon.dart';
@@ -61,9 +62,7 @@ class Mine extends PositionComponent with HasWorldReference<RunWorld> {
   final bool chain;
   double _t = 0;
 
-  static final _body = Paint()..color = const Color(0xFF5A3A22);
-  static final _light = Paint()..color = const Color(0xFFFF6B35);
-  static final _armed = Paint()..color = const Color(0xFFFFE08A);
+  static final _wick = Paint();
 
   @override
   void update(double dt) {
@@ -110,12 +109,25 @@ class Mine extends PositionComponent with HasWorldReference<RunWorld> {
     }
   }
 
+  /// 도트 덫. 걸리면 터질 준비가 되면 심지가 금빛으로 깜빡이며 빛을 낸다.
   @override
   void render(Canvas canvas) {
-    final blink = _t >= Balance.mineArmTime && (_t * 3).floor().isEven;
-    canvas
-      ..drawCircle(Offset.zero, 7, _body)
-      ..drawCircle(Offset.zero, 3, blink ? _armed : _light);
+    final armed = _t >= Balance.mineArmTime;
+    final blink = armed && (_t * 3).floor().isEven;
+    const scale = 2.0;
+    mineArt.draw(
+      canvas,
+      pivot: Offset(mineArt.width / 2, mineArt.height / 2),
+      scale: scale,
+    );
+    if (blink) {
+      PixelFx.glow(canvas, const Offset(0, 0), 22, Pal.gold, strength: 0.55);
+    }
+    _wick.color = blink ? Pal.goldLight : (armed ? Pal.red : Pal.redDark);
+    canvas.drawRect(
+      Rect.fromLTWH(-1.5 * scale, -0.5 * scale, 3 * scale, 1 * scale),
+      _wick,
+    );
   }
 }
 

@@ -19,6 +19,7 @@ import '../../game/ashborn_game.dart';
 import '../../game/world/run_world.dart';
 import '../effects/burst.dart';
 import '../effects/damage_number.dart';
+import '../effects/pixel_fx.dart';
 import '../effects/sparks.dart';
 import '../enemies/boss.dart';
 import '../enemies/enemy.dart';
@@ -30,7 +31,9 @@ import '../weapons/fire_crossbow.dart';
 import '../weapons/greatsword.dart';
 import '../weapons/hunter_weapons.dart';
 import '../weapons/knight_weapons.dart';
+import '../weapons/skill_weapons.dart';
 import '../weapons/weapon.dart';
+import '../weapons/weapon_art.dart';
 import '../weapons/witch_weapons.dart';
 import 'sprite_motion.dart';
 
@@ -70,6 +73,7 @@ class Player extends PositionComponent
   int _revivesUsed = 0;
 
   final _keyDirection = Vector2.zero();
+  final _feet = Vector2.zero();
   final _move = Vector2.zero();
 
   /// 발밑 그림자.
@@ -114,6 +118,26 @@ class Player extends PositionComponent
       StatType.critDamage => v2(ClassPassive.weakSpot),
       _ => 0,
     };
+  }
+
+  /// 고유 스킬 특성이 [weapon] 에 [kind] 로 더해 주는 수치의 합.
+  double skillBonus(WeaponId weapon, SkillBonus kind) {
+    var total = 0.0;
+    for (final p in ClassPassive.of(character.id)) {
+      if (p.skill == weapon) total += p.skillBonus(weapon, kind, classLevel(p));
+    }
+    return total;
+  }
+
+  /// 전투 함성 뒤의 받는 피해 감소와 남은 시간.
+  double _guard = 0;
+  double _guardTime = 0;
+  bool get isGuarded => _guardTime > 0;
+
+  /// [amount] 만큼 받는 피해를 [time] 초 동안 줄인다 (겹치면 큰 쪽).
+  void guard(double amount, double time) {
+    _guard = _guardTime > 0 ? math.max(_guard, amount) : amount;
+    _guardTime = math.max(_guardTime, time);
   }
 
   /// 연격 숙련: 대검 콤보 확률과 맹공 지속 시간 증가.
@@ -258,7 +282,7 @@ class Player extends PositionComponent
   /// 무기 이펙트 아래에 그려지도록 우선순위를 낮춘다.
   Future<void> _loadSprite() async {
     final sheet = await game.images.load(character.sprite);
-    final frame = Vector2(16, 28);
+    final frame = Vector2(heroFrame.width, heroFrame.height);
     // 시트의 [start] 번째 프레임부터 [count] 장.
     SpriteAnimation clip(int start, int count, double step) =>
         SpriteAnimation.fromFrameData(
@@ -327,6 +351,12 @@ class Player extends PositionComponent
     }
   }
 
+  /// 뛰어올라 [time] 초 뒤 착지한다 (대검 내려찍기). 스프라이트만 뜨고 판정 위치는 그대로다.
+  void leap(double time, double height) => _motion?.leap(time, height);
+
+  /// 지금 뛰어올라 있는 높이 (월드).
+  double get leapLift => _motion?.leapLift ?? 0;
+
   bool get _blinking =>
       _invulnerable > 0 && (_invulnerable * 20).floor().isEven;
 
@@ -351,6 +381,9 @@ class Player extends PositionComponent
     WeaponId.greatsword => Greatsword(),
     WeaponId.earthSlam => EarthSlam(),
     WeaponId.cleave => Cleave(),
+    WeaponId.warCry => WarCry(),
+    WeaponId.emberSpirits => EmberSpirits(),
+    WeaponId.snareNet => SnareNet(),
     WeaponId.emberOrb => EmberOrb(),
     WeaponId.meteor => Meteor(),
     WeaponId.fireTornado => FireTornado(),
@@ -404,6 +437,7 @@ class Player extends PositionComponent
     super.update(dt);
     if (_invulnerable > 0) _invulnerable -= dt;
     if (_veilCooldown > 0) _veilCooldown -= dt;
+    if (_guardTime > 0) _guardTime -= dt;
     final regen = bonus(StatType.hpRegen);
     if (regen > 0 && hp < maxHp) {
       hp = (hp + regen * dt).clamp(0, maxHp);
@@ -425,7 +459,12 @@ class Player extends PositionComponent
       ..add(game.joystick.relativeDelta);
     if (_move.length2 > 1) _move.normalize();
     position.addScaled(_move, speed * dt);
-    world.obstacles.pushOut(position, Balance.playerRadius * 0.7);
+    // 구조물은 발밑으로 막는다: 몸 중심이 아니라 발 자리 원을 밑동 밖으로 밀어낸다.
+    // 그래야 기둥 앞뒤로 지나갈 때 발이 기둥 밑동을 밟고 서지 않는다.
+    _feet.setValues(position.x, position.y + Balance.playerFootOffset);
+    if (world.obstacles.pushOut(_feet, Balance.playerFootRadius)) {
+      position.setValues(_feet.x, _feet.y - Balance.playerFootOffset);
+    }
     _updateSprite(dt);
   }
 
@@ -433,8 +472,9 @@ class Player extends PositionComponent
   void render(Canvas canvas) {
     if (_blinking) return;
     if (hasVeil) _renderVeil(canvas);
-    // 뛰어올라 있으면 그림자를 조금 줄인다.
-    final lift = 1 - (_motion?.hop ?? 0) * 0.04;
+    if (isGuarded) _renderGuard(canvas);
+    // 뛰어올라 있으면 그림자를 줄인다.
+    final lift = (1 - (_motion?.hop ?? 0) * 0.012).clamp(0.5, 1.0);
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(size.x / 2, size.y / 2 + Balance.playerRadius),
@@ -443,6 +483,29 @@ class Player extends PositionComponent
       ),
       _shadowPaint,
     );
+  }
+
+  /// 전투 함성의 기세: 몸 둘레에 금빛 도트 방패 조각이 돈다.
+  void _renderGuard(Canvas canvas) {
+    final pc = PixelCanvas.fine;
+    final t = world.elapsed;
+    for (var i = 0; i < 4; i++) {
+      PixelFx.arc(
+        pc,
+        24,
+        28,
+        t * 2.4 + i * math.pi / 2,
+        0.7,
+        const [Pal.goldLight, Pal.gold],
+        taper: false,
+        thin: _guardTime < 0.6 ? 1 : 0,
+      );
+    }
+    canvas
+      ..save()
+      ..translate(size.x / 2, size.y / 2 - 6);
+    pc.flush(canvas);
+    canvas.restore();
   }
 
   static final _veilPaint = Paint()
@@ -537,7 +600,8 @@ class Player extends PositionComponent
         amount *
         character.damageTakenMultiplier *
         (1 - reduction(type)) *
-        (1 - ClassPassive.ironWill.value(classLevel(ClassPassive.ironWill)));
+        (1 - ClassPassive.ironWill.value(classLevel(ClassPassive.ironWill))) *
+        (isGuarded ? 1 - math.min(_guard, Balance.maxReduction) : 1);
     if (type == DamageType.physical) damage *= armorMultiplier;
     if (hp <= maxHp * Balance.lastStandThreshold) {
       damage *=

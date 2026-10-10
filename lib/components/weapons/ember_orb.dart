@@ -6,6 +6,8 @@ import 'package:flame/components.dart';
 import '../../data/balance.dart';
 import '../../data/weapons.dart';
 import '../effects/burst.dart';
+import '../effects/pixel_fx.dart';
+import 'weapon_art.dart';
 import '../effects/sparks.dart';
 import '../enemies/enemy.dart';
 import 'projectile.dart';
@@ -91,11 +93,6 @@ class EmberBolt extends Projectile {
   /// 크기 배율. 과열 화염구는 크다.
   final double bulk;
 
-  static final _glow = Paint()..color = const Color(0x55FF8C42);
-  static final _core = Paint()..color = const Color(0xFFFFD27A);
-  static final _meteorGlow = Paint()..color = const Color(0x77FF3A1A);
-  static final _meteorCore = Paint()..color = const Color(0xFFFFFFFF);
-
   final bool explodes;
 
   /// 각성 폭발 반지름.
@@ -123,23 +120,43 @@ class EmberBolt extends Projectile {
     }
   }
 
+  double _age = 0;
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _age += dt;
+  }
+
+  /// 도트 불덩이: 하얀 속의 머리와 뒤로 끌리는 불꼬리. 과열 화염구는 크고 꼬리가 길며,
+  /// 각성(유성 잔불)은 속이 더 하얗게 달아오른다.
   @override
   void render(Canvas canvas) {
     final c = Offset(size.x / 2, size.y / 2);
-    final r = Balance.emberOrbRadius * bulk;
+    final r = Balance.emberOrbRadius * bulk * (explodes ? 1.3 : 1);
+    PixelFx.glow(canvas, c, r * 4, const Color(0xFFF77622), strength: 0.45);
+    final pc = PixelCanvas.fine;
+    PixelFx.comet(
+      pc,
+      r,
+      r * (bulk > 1 ? 5 : 3.2),
+      time: _age,
+      salt: hashCode & 0xFFFF,
+      tones: explodes
+          ? const [
+              Pal.white,
+              Pal.white,
+              Pal.goldLight,
+              Pal.gold,
+              Color(0xFFF77622),
+              Pal.red,
+            ]
+          : FxTones.fire,
+    );
     canvas
-      ..drawCircle(
-        c,
-        r * (explodes ? 2.4 : 1.8),
-        explodes ? _meteorGlow : _glow,
-      )
-      ..drawCircle(c, r, explodes ? _meteorCore : _core);
-    if (bulk > 1) {
-      // 화염구: 뒤로 끌리는 불꼬리와 노란 속.
-      canvas
-        ..drawCircle(c.translate(-r * 1.2, 0), r * 0.7, _glow)
-        ..drawCircle(c.translate(-r * 2.1, 0), r * 0.45, _glow)
-        ..drawCircle(c, r * 0.55, _core);
-    }
+      ..save()
+      ..translate(c.dx, c.dy);
+    pc.flush(canvas);
+    canvas.restore();
   }
 }

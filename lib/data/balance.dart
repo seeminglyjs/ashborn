@@ -6,6 +6,10 @@ abstract final class Balance {
 
   // 플레이어
   static const double playerRadius = 16;
+
+  /// 구조물에 부딪히는 발 자리: 몸 중심에서 아래로 [playerFootOffset], 반지름 [playerFootRadius].
+  static const double playerFootOffset = 11;
+  static const double playerFootRadius = 8;
   static const double playerSpeed = 160;
   static const double playerInvulnerableTime = 0.5;
 
@@ -19,7 +23,9 @@ abstract final class Balance {
   // 줍는 아이템
   static const double pickupSpeed = 360;
   static const double ashShardSize = 10;
-  static const double ashShardXp = 1;
+  // 막판 적 수를 줄이며(아래 웨이브 절) 처치 수가 약 절반이 되어, 처치당 보상(경험치 ·
+  // 잔불 · 골드 · 강화석 · 장비 드랍)을 그만큼 올려 진행 속도는 그대로 둔다.
+  static const double ashShardXp = 1.9;
 
   // 레벨: 다음 레벨까지 xpBase + xpGrowth * (레벨 - 1) 경험치.
   static const double xpBase = 5;
@@ -29,6 +35,9 @@ abstract final class Balance {
 
   /// 레벨업 때 제시되는 선택지 수.
   static const int levelUpChoices = 3;
+
+  /// 레벨업 · 은총 카드는 한 화면에 가로로 늘어놓으므로 많아야 이만큼.
+  static const int maxCardChoices = 4;
 
   // 적 (재의 무리)
   static const double enemyRadius = 14;
@@ -147,7 +156,8 @@ abstract final class Balance {
   static const double stageDuration = 180;
 
   /// 지역 졸개 종류(로스터 순서대로)가 나오기 시작하는 스테이지 시간(초).
-  static const List<double> rosterUnlock = [0, 0, 25, 55, 90, 125];
+  /// 지역 로스터는 일곱에서 여덟 종류라, 짧은 로스터는 앞의 일곱 칸만 쓴다.
+  static const List<double> rosterUnlock = [0, 0, 20, 40, 60, 80, 100, 120];
 
   /// 보스를 잡은 뒤 다음 지역 선택이 뜨기까지 전리품을 줍는 시간.
   static const double stageClearDelay = 3;
@@ -213,7 +223,14 @@ abstract final class Balance {
 
   /// 이 시간(초)마다 한 번에 스폰되는 수가 1 늘어난다.
   static const double batchGrowthPeriod = 45;
-  static const int maxEnemies = 300;
+
+  /// 스테이지 시간이 이만큼 지나면 스폰이 더 늘지 않는다 (보스 직전에 쏟아지지 않게).
+  /// 이 뒤로는 초당 약 6마리로 일정하다.
+  static const double spawnGrowthCap = 120;
+
+  /// 보스가 나온 뒤에는 스폰 간격이 이 배율로 길어진다 (보스에 집중하도록).
+  static const double bossSpawnSlow = 1.6;
+  static const int maxEnemies = 220;
 
   /// 화면 밖 스폰 거리 여유분.
   static const double spawnMargin = 60;
@@ -240,7 +257,7 @@ abstract final class Balance {
   static const double masteryXpBase = 800;
   static const double masteryXpGrowth = 1.12;
 
-  /// 직업 패시브 최대 레벨. 직업마다 패시브 3개라 숙련 레벨 상한은 그 세 배.
+  /// 직업 패시브 최대 레벨. 숙련 레벨 상한은 이 값 × 직업 패시브 수.
   static const int classPassiveMaxLevel = 10;
 
   /// 포인트 되돌리기 골드: 쓴 포인트 하나마다.
@@ -252,6 +269,61 @@ abstract final class Balance {
   static const double parryChancePerLevel = 0.02;
   static const double parryReflect = 1.5;
   static const double parryReflectPerLevel = 0.35;
+
+  /// 고유 스킬 특성: 그 스킬 하나만 강하게 한다. (첫째 수치, 둘째 수치) 의 1레벨 값과 레벨마다 더하는 값.
+  /// 대지의 울림 (기사 · 대지 강타): 피해 · 범위.
+  static const double quakeDamage = 0.06;
+  static const double quakeDamagePerLevel = 0.04;
+  static const double quakeArea = 0.04;
+  static const double quakeAreaPerLevel = 0.02;
+
+  /// 심판관 (기사 · 심판의 일격): 피해 · 범위.
+  static const double judgeDamage = 0.06;
+  static const double judgeDamagePerLevel = 0.04;
+  static const double judgeArea = 0.04;
+  static const double judgeAreaPerLevel = 0.02;
+
+  /// 불굴의 함성 (기사 · 전투 함성): 쿨다운 감소 · 함성 뒤 받는 피해 감소 추가.
+  static const double rallyCooldown = 0.04;
+  static const double rallyCooldownPerLevel = 0.02;
+  static const double rallyGuard = 0.02;
+  static const double rallyGuardPerLevel = 0.01;
+
+  /// 별똥 부르기 (마녀 · 운석 낙하): 피해 · 폭발 범위.
+  static const double starfallDamage = 0.06;
+  static const double starfallDamagePerLevel = 0.04;
+  static const double starfallArea = 0.04;
+  static const double starfallAreaPerLevel = 0.02;
+
+  /// 불바람 (마녀 · 화염 회오리): 피해 · 지속 시간.
+  static const double firestormDamage = 0.06;
+  static const double firestormDamagePerLevel = 0.04;
+  static const double firestormDuration = 0.05;
+  static const double firestormDurationPerLevel = 0.03;
+
+  /// 정령 계약 (마녀 · 잔불 정령): 피해 · 회전 속도.
+  static const double pactDamage = 0.06;
+  static const double pactDamagePerLevel = 0.04;
+  static const double pactSpeed = 0.04;
+  static const double pactSpeedPerLevel = 0.03;
+
+  /// 덫 장인 (사냥꾼 · 불씨 덫): 피해 · 폭발 범위.
+  static const double trapperDamage = 0.06;
+  static const double trapperDamagePerLevel = 0.04;
+  static const double trapperArea = 0.04;
+  static const double trapperAreaPerLevel = 0.02;
+
+  /// 칼날 비 (사냥꾼 · 투척 단검): 피해 · 단검 속도.
+  static const double bladeDamage = 0.06;
+  static const double bladeDamagePerLevel = 0.04;
+  static const double bladeSpeed = 0.05;
+  static const double bladeSpeedPerLevel = 0.03;
+
+  /// 사냥 그물 (사냥꾼 · 올가미 그물): 묶는 시간 · 감속 추가.
+  static const double netterDuration = 0.06;
+  static const double netterDurationPerLevel = 0.04;
+  static const double netterSlow = 0.02;
+  static const double netterSlowPerLevel = 0.01;
 
   /// 탄 · 장판을 튕겨 낼 때 되돌려 줄 적을 찾는 거리.
   static const double parryRange = 220;
@@ -416,7 +488,7 @@ abstract final class Balance {
 
   // 잔불: 스테이지 클리어와 처치로 얻고, 장비 분해로도 얻는다. 화톳불 영구 강화에 쓴다.
   static const double stageClearEmber = 20;
-  static const double killEmber = 0.15;
+  static const double killEmber = 0.28;
   static const double salvageEmber = 3;
 
   /// 분해 잔불은 등급이 오를 때마다 이 배율로 는다.
@@ -429,13 +501,13 @@ abstract final class Balance {
   // 졸개가 다양해지며(떼 · 분열) 처치 수가 약 두 배가 되어 처치당 보상을 낮췄다.
   // 강화석은 1/3, 골드 · 잔불 · 장비 드랍은 0.75배 (골드까지 절반이면 강화가 막혀 진행이 멈춘다).
   /// 처치당 골드 (스테이지 레벨마다).
-  static const double killGold = 0.75;
+  static const double killGold = 1.4;
 
   /// 스테이지 클리어 골드 (스테이지 레벨마다, 타락 보상 배율이 붙는다).
   static const double stageClearGold = 50;
 
   /// 처치당 강화석이 나올 확률 (타락 보상 배율이 붙는다).
-  static const double stoneDropChance = 0.01;
+  static const double stoneDropChance = 0.019;
 
   /// 보스가 주는 강화석. 타락 단계마다 하나씩 더.
   static const int bossStones = 3;
@@ -494,7 +566,7 @@ abstract final class Balance {
   static const int bagCapacity = 60;
 
   // 장비 드랍: 처치당 드랍 확률, 등급이 오를 때마다 드랍 가중치는 이 배율로 준다.
-  static const double itemDropChance = 0.015;
+  static const double itemDropChance = 0.028;
   static const double rarityDropRatio = 0.25;
 
   /// 영웅 이상 장비는 드랍 가중치에 이 배율이 한 번 더 붙는다 (은총 카드 · 옵션 등급에는 없음).
@@ -697,6 +769,9 @@ abstract final class Balance {
   static const double slamRadius = 72;
   static const double slamKnockback = 240;
 
+  /// 내려찍기 때 뛰어오르는 높이 (월드). 휘두르기와 한눈에 갈리게 몸째 솟았다 떨어진다.
+  static const double slamLeap = 42;
+
   /// 콤보: 앞 기술이 끝나고 다음 기술이 나가기까지의 간격.
   static const double comboDelay = 0.2;
 
@@ -765,6 +840,33 @@ abstract final class Balance {
   static const double tornadoSpeed = 90;
   static const double tornadoLifetime = 3;
   static const double tornadoHitInterval = 0.4;
+
+  // 고유 스킬 (레벨업 카드로 얻는 직업 전용 무기).
+  /// 전투 함성 (기사): 둘레 적을 다치게 하고 느리게 묶으며, 잠시 받는 피해가 준다.
+  static const double warCryCooldown = 5;
+  static const double warCryDamage = 18;
+  static const double warCryRadius = 120;
+  static const double warCrySlow = 0.55;
+  static const double warCrySlowTime = 1.4;
+  static const double warCryGuard = 0.2;
+  static const double warCryGuardTime = 3;
+
+  /// 잔불 정령 (마녀): 몸 둘레를 도는 불덩이. 닿은 적을 [spiritHitInterval] 마다 태운다.
+  static const double spiritCooldown = 0.5;
+  static const double spiritDamage = 7;
+  static const double spiritOrbit = 62;
+  static const double spiritRadius = 9;
+  static const double spiritTurnSpeed = 2.6;
+  static const double spiritHitInterval = 0.45;
+
+  /// 올가미 그물 (사냥꾼): 가까운 적 무리에 그물을 던져 묶어 두고 조금 다치게 한다.
+  static const double netCooldown = 3.2;
+  static const double netDamage = 16;
+  static const double netRadius = 58;
+  static const double netRange = 380;
+  static const double netSlow = 0.7;
+  static const double netTime = 2.2;
+  static const double netFlightTime = 0.35;
 
   // 무기: 불씨 덫 (불씨 사냥꾼)
   static const double mineCooldown = 1.8;

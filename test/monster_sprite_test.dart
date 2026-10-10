@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:ashborn/components/enemies/enemy.dart';
+import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/monster_sprites.dart';
 import 'package:ashborn/data/stages.dart';
@@ -31,9 +32,14 @@ void draw(Enemy enemy) {
 }
 
 void main() {
-  test('지역마다 졸개 여섯 종류와 보스 스프라이트가 모두 다르다', () {
+  test('지역마다 졸개 일곱에서 여덟 종류와 보스 스프라이트가 모두 다르다', () {
     for (final r in Region.values) {
-      expect(r.roster, hasLength(6), reason: r.label);
+      expect(r.roster.length, inInclusiveRange(7, 8), reason: r.label);
+      expect(
+        r.roster.length,
+        lessThanOrEqualTo(Balance.rosterUnlock.length),
+        reason: '풀리는 시각이 정해져 있어야 한다',
+      );
     }
     final all = [
       for (final r in Region.values) ...[

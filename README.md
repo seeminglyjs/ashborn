@@ -380,12 +380,16 @@ flowchart TD
 
 | 에셋 | 만든 사람 | 라이선스 | 쓰는 곳 |
 |:---|:---|:---|:---|
-| [16x16 DungeonTileset II](https://0x72.itch.io/dungeontileset-ii) v1.7 | Robert (0x72), 색 수정 GrafxKid | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (출처 표기 의무 없음) | 캐릭터 · 적 · 보스 스프라이트, 타이틀 · 캐릭터 선택의 던전 바닥 · 벽 · 기둥, 공개 예정 캐릭터 실루엣 `assets/images/sprites/` (캐릭터는 knight_m · wizzard_f · elf_f 를 다시 칠함) |
+| [16x16 DungeonTileset II](https://0x72.itch.io/dungeontileset-ii) v1.7 | Robert (0x72), 색 수정 GrafxKid | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (출처 표기 의무 없음) | 적 · 보스 스프라이트, 타이틀 · 캐릭터 선택의 던전 바닥 · 벽 · 기둥, 공개 예정 캐릭터 실루엣 `assets/images/sprites/` |
 | [Galmuri11 Bold](https://github.com/quiple/galmuri) v2.40.4 | 이민서 (quiple) | [SIL OFL 1.1](assets/fonts/Galmuri-OFL.md) (앱에 넣어 배포 가능, 글꼴만 따로 팔 수 없음) | 로고 · 화면 제목 · 버튼의 픽셀 한글 글꼴 `assets/fonts/` |
 
 - CC0 는 저작자가 권리를 포기한 퍼블릭 도메인이라 상업적 이용 · 수정 · 재배포가 자유롭습니다. 출처 표기는 의무가 아니지만 감사의 뜻으로 적어 둡니다.
 - 스프라이트 시트는 [tool/assets/sprites.py](tool/assets/sprites.py) 로 원본 프레임을 붙이고 일러스트 톤에 맞게 다시 칠해 만듭니다. 원본 압축 파일은 저장소에 넣지 않습니다.
-  그다음 [tool/assets/monsters.py](tool/assets/monsters.py) 로 지역 변종을 만들고, [tool/assets/polish.py](tool/assets/polish.py) 로 캐릭터 · 몬스터에 색조 이동 명암 · 윗면 빛 · 색 외곽선과 캐릭터 장비(기사 대검, 마녀 지팡이, 사냥꾼 석궁)를 덧입힙니다 (이 순서로 한 번씩).
+  그다음 [tool/assets/monsters.py](tool/assets/monsters.py) 로 지역 변종을 만들고, [tool/assets/polish.py](tool/assets/polish.py) 로 몬스터에 색조 이동 명암 · 윗면 빛 · 색 외곽선을 입힙니다 (이 순서로 한 번씩).
+  새 몬스터 7종(까마귀 · 숫양 · 악어 · 식충 꽃 · 새끼용 · 전갈 · 도마뱀 전사)은 [tool/assets/new_monsters.py](tool/assets/new_monsters.py) 가 Endesga 32 로 처음부터 그리고,
+  마지막에 [tool/assets/monster_polish2.py](tool/assets/monster_polish2.py) 가 적 시트의 어두운 몸통을 띄우고 외곽선 · 테두리 빛 · 눈빛을 다듬습니다 (PNG 표시로 두 번 칠하지 않음).
+- 플레이어 캐릭터 세 명은 [tool/assets/heroes.py](tool/assets/heroes.py) 가 Endesga 32 팔레트로 처음부터 그립니다 (24x28 프레임). 장비 아이콘은 [tool/assets/gear_icons.py](tool/assets/gear_icons.py).
+- 그림을 고치기 전에 [art_refs/README.md](art_refs/README.md) 의 참고 자료 목록과 규격을 봅니다 (참고 그림 자체는 저작권 때문에 커밋하지 않습니다).
 - 화톳불 픽셀 애니메이션(`scene/campfire.png`)은 원본 팩에 없어 같은 스크립트가 직접 그립니다.
 - 예전 타이틀 · 캐릭터 일러스트는 앱에 넣지 않고 `art/illustrations/` 에 보관합니다 (스토어 이미지 등 참고용).
 - AI 로 만든 픽셀 그림은 [tool/assets/ai_cleanup.py](tool/assets/ai_cleanup.py) 로 격자 · 배경 · 팔레트(Endesga 32) · 잡티 · 외곽선을 정리한 뒤 넣습니다. 격자 찾기는 [Sprite Fusion Pixel Snapper](https://github.com/Hugo-Dz/spritefusion-pixel-snapper) (MIT, `cargo install spritefusion-pixel-snapper`) 를 씁니다. 도구라서 게임에 들어가지 않으니 위 표에는 올리지 않습니다.

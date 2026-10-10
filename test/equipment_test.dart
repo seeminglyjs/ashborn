@@ -340,6 +340,76 @@ void main() {
     });
   });
 
+  group('직업 무기 · 갑옷', () {
+    test('무기는 그 런 캐릭터의 무기 종류로 떨어지고, 주옵션도 그 직업 결이다', () {
+      final random = math.Random(7);
+      for (final c in CharacterId.values) {
+        for (final type in [ItemType.oneHand, ItemType.twoHand]) {
+          for (var i = 0; i < 30; i++) {
+            final it = LootSystem.generate(random, type: type, owner: c);
+            expect(it.kind!.owner, c);
+            expect(it.kind!.type, type);
+            expect(it.kind!.mainStats, contains(it.stats.first.stat));
+            expect(it.name, contains(it.kind!.label));
+          }
+        }
+      }
+      expect(WeaponKind.of(CharacterId.witch, ItemType.twoHand), [
+        WeaponKind.staff,
+      ]);
+      expect(
+        LootSystem.generate(
+          random,
+          type: ItemType.ring,
+          owner: CharacterId.witch,
+        ).kind,
+        isNull,
+        reason: '무기가 아니면 종류가 없다',
+      );
+    });
+
+    test('다른 직업의 무기는 줍으면 가방으로 가고 낄 수 없다', () {
+      final inventory = Inventory();
+      final staff = LootSystem.generate(
+        math.Random(1),
+        type: ItemType.twoHand,
+        owner: CharacterId.witch,
+      );
+      final knight = inventory.gear(CharacterId.knight);
+      expect(knight.canWear(staff), isFalse);
+      expect(knight.add(staff), isNull);
+      expect(inventory.bag, contains(staff));
+      final witch = inventory.gear(CharacterId.witch);
+      expect(witch.canWear(staff), isTrue);
+      witch.equip(staff, EquipSlot.hand1);
+      expect(witch.equipped[EquipSlot.hand1], staff);
+    });
+
+    test('종류가 저장되고, 종류가 없던 예전 무기는 누구나 낀다', () {
+      final bow = LootSystem.generate(
+        math.Random(2),
+        type: ItemType.twoHand,
+        owner: CharacterId.hunter,
+      );
+      final loaded = Item.fromJson(jsonDecode(jsonEncode(bow.toJson())));
+      expect(loaded.kind, bow.kind);
+      final legacy = Item.fromJson(
+        jsonDecode(jsonEncode(bow.toJson()..remove('kind'))),
+      );
+      expect(legacy.kind, isNull);
+      for (final c in CharacterId.values) {
+        expect(legacy.wearableBy(c), isTrue);
+      }
+    });
+
+    test('갑옷은 갑옷 칸에 낀다', () {
+      final inventory = Inventory();
+      final armor = LootSystem.generate(math.Random(3), type: ItemType.armor);
+      expect(inventory.gear(CharacterId.knight).add(armor), EquipSlot.armor);
+      expect(ItemType.armor.mainStats, contains(armor.stats.first.stat));
+    });
+  });
+
   group('캐릭터별 장착과 공용 가방', () {
     test('장착은 캐릭터마다 따로이고 가방은 함께 쓴다', () {
       final inv = Inventory();

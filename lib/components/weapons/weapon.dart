@@ -1,6 +1,7 @@
 import 'package:flame/components.dart';
 
 import '../../data/balance.dart';
+import '../../data/class_passives.dart';
 import '../../data/weapons.dart';
 import '../../game/world/run_world.dart';
 
@@ -33,24 +34,33 @@ mixin LeveledWeapon on HasWorldReference<RunWorld> {
   /// 레벨업으로 오른 [stat] 의 합.
   double stat(WeaponStat stat) => id.total(stat, _level);
 
-  /// 무기 레벨과 각성에 따른 피해 배율. 장비와 패시브는 [Player.strike] 가 더한다.
+  /// 이 스킬을 강하게 하는 특성이 [kind] 로 더해 주는 수치.
+  double skillBonus(SkillBonus kind) => world.player.skillBonus(id, kind);
+
+  /// 무기 레벨 · 각성 · 스킬 특성에 따른 피해 배율. 장비와 패시브는 [Player.strike] 가 더한다.
   double get damageMultiplier =>
       id.damageMultiplier(_level) *
-      (_awakened ? Balance.awakenDamageMultiplier : 1);
+      (_awakened ? Balance.awakenDamageMultiplier : 1) *
+      (1 + skillBonus(SkillBonus.damage));
 
   /// 레벨업으로 늘어난 개수 (칼날 · 구체 · 화살 …).
   int get bonusCount => stat(WeaponStat.count).round();
 
-  /// 레벨업과 패시브로 늘어난 범위 배율.
+  /// 레벨업 · 패시브 · 스킬 특성으로 늘어난 범위 배율.
   double get areaMultiplier =>
-      (1 + stat(WeaponStat.area)) * world.player.areaMultiplier;
+      (1 + stat(WeaponStat.area)) *
+      world.player.areaMultiplier *
+      (1 + skillBonus(SkillBonus.area));
 
-  double get speedMultiplier => 1 + stat(WeaponStat.speed);
-  double get durationMultiplier => 1 + stat(WeaponStat.duration);
+  double get speedMultiplier =>
+      (1 + stat(WeaponStat.speed)) * (1 + skillBonus(SkillBonus.speed));
+  double get durationMultiplier =>
+      (1 + stat(WeaponStat.duration)) * (1 + skillBonus(SkillBonus.duration));
   int get bonusPierce => stat(WeaponStat.pierce).round();
 
-  /// 쿨다운 배율 (레벨업 쿨다운 감소만, 공격 속도는 따로).
-  double get cooldownMultiplier => 1 - stat(WeaponStat.cooldown);
+  /// 쿨다운 배율 (레벨업 · 스킬 특성 쿨다운 감소, 공격 속도는 따로).
+  double get cooldownMultiplier =>
+      (1 - stat(WeaponStat.cooldown)) * (1 - skillBonus(SkillBonus.cooldown));
 }
 
 /// 쿨다운마다 자동으로 발동하는 무기. 플레이어의 자식으로 붙는다.

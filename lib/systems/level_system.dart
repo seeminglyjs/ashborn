@@ -31,9 +31,9 @@ abstract final class LevelSystem {
 
   /// 무작위 선택지 최대 [Balance.levelUpChoices] 장.
   static List<LevelUpOption> roll(Player player, math.Random random) =>
-      (available(
-        player,
-      )..shuffle(random)).take(Balance.levelUpChoices).toList();
+      (available(player)..shuffle(random))
+          .take(math.min(Balance.levelUpChoices, Balance.maxCardChoices))
+          .toList();
 }
 
 sealed class LevelUpOption {

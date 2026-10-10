@@ -262,11 +262,11 @@ void main() {
       expect(tables.toSet(), hasLength(WeaponId.values.length));
     });
 
-    test('캐릭터마다 전용 무기 셋과 공용 무기를 얻을 수 있다', () {
+    test('캐릭터마다 전용 무기 넷(고유 스킬 포함)과 공용 무기를 얻을 수 있다', () {
       for (final c in Roster.all) {
         final pool = WeaponId.poolFor(c.id);
         expect(pool, contains(c.startWeapon));
-        expect(pool.where((id) => id.owner == c.id), hasLength(3));
+        expect(pool.where((id) => id.owner == c.id), hasLength(4));
         expect(pool.where((id) => id.owner == null), hasLength(3));
       }
     });

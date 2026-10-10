@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# 아트 참고 자료 (저작권 있는 외부 그림이라 커밋하지 않는다). 규격은 art_refs/README.md
+/art_refs/*
+!/art_refs/README.md

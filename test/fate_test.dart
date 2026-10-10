@@ -14,6 +14,7 @@ import 'package:ashborn/ui/overlays/stage_clear_overlay.dart';
 import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter/material.dart';
+import 'package:ashborn/ui/widgets/card_row.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
@@ -508,7 +509,7 @@ void main() {
       final card = f.card;
       expect(find.text(card.title), findsOneWidget);
       expect(find.text(card.god.name), findsOneWidget);
-      expect(find.text(card.god.lore), findsOneWidget);
+      expect(find.text(keepWords(card.god.lore)), findsOneWidget);
       expect(
         find.text('${card.god.myth.label} 신화 · ${card.domain.label}'),
         findsOneWidget,
@@ -523,7 +524,7 @@ void main() {
     expect(find.text(Rarity.epic.label), findsOneWidget);
     expect(find.text(Rarity.legend.label), findsOneWidget);
     expect(find.text('저주'), findsOneWidget);
-    expect(find.text(curse.description), findsOneWidget);
+    expect(find.text(keepWords(curse.description)), findsOneWidget);
     expect(find.text(FateType.reward.label), findsOneWidget);
     expect(find.text('다시 뽑기 (0)'), findsOneWidget);
   });

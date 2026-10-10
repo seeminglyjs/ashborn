@@ -31,20 +31,27 @@ enum Decor {
 /// [flames] 는 원본 픽셀 좌표의 불꽃 자리 (불꽃 밑동 가운데 x, y, 크기 배율).
 /// 불꽃은 바닥 그림에 굽지 않고 매 프레임 일렁이게 그린다.
 enum Structure {
-  pillar('column.png', 16, 48, bottomPad: 9, foot: 6),
-  brokenPillar('column_broken.png', 16, 30, foot: 6),
-  deadTree('dead_tree.png', 32, 40, foot: 4),
-  charredTree('charred_tree.png', 32, 40, foot: 4),
+  pillar('column.png', 16, 48, bottomPad: 9, foot: 7.5),
+  brokenPillar('column_broken.png', 16, 30, foot: 7.5),
+  deadTree('dead_tree.png', 32, 40, foot: 5),
+  charredTree('charred_tree.png', 32, 40, foot: 5),
   // 가지 끝 좌표는 tool/assets/sprites.py 의 TREE_TIPS 와 같다.
   burningTree(
     'charred_tree.png',
     32,
     40,
-    foot: 4,
+    foot: 5,
     flames: [(4, 12, 0.7), (28, 10, 0.75), (10, 8, 0.6), (18, 5, 0.85)],
   ),
-  brazier('brazier.png', 16, 24, bottomPad: 2, foot: 5, flames: [(8, 11, 0.8)]),
-  flamePillar('column.png', 16, 48, bottomPad: 9, foot: 6, flames: [(8, 7, 1)]),
+  brazier('brazier.png', 16, 24, bottomPad: 2, foot: 6, flames: [(8, 11, 0.8)]),
+  flamePillar(
+    'column.png',
+    16,
+    48,
+    bottomPad: 9,
+    foot: 7.5,
+    flames: [(8, 7, 1)],
+  ),
   fireVent(
     'fire_vent.png',
     16,

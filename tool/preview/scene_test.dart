@@ -9,22 +9,41 @@
 // 플레이어 움직임 프레임 (motion/f_*.png → tool/preview/motion.py 로 묶는다).
 // Windows 빌드가 막혀 있어 게임을 띄우지 않고 그림을 확인하는 방법이다.
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:ashborn/components/effects/burst.dart';
+import 'package:ashborn/components/effects/ground_fx.dart';
 import 'package:ashborn/components/enemies/minions.dart';
+import 'package:ashborn/components/weapons/witch_weapons.dart';
+import 'package:ashborn/data/balance.dart';
 import 'package:ashborn/components/weapons/greatsword.dart';
 import 'package:ashborn/components/weapons/weapon_art.dart';
 import 'package:ashborn/data/characters.dart';
 import 'package:ashborn/data/class_passives.dart';
 import 'package:ashborn/data/damage.dart';
 import 'package:ashborn/data/enemies.dart';
+import 'package:ashborn/data/equipment.dart';
+import 'package:ashborn/data/fates.dart';
+import 'package:ashborn/data/inventory.dart';
+import 'package:ashborn/data/passives.dart';
+import 'package:ashborn/systems/level_system.dart';
+import 'package:ashborn/systems/loot_system.dart';
+import 'package:ashborn/ui/equipment/equipment_screen.dart';
+import 'package:ashborn/ui/overlays/level_up_overlay.dart';
+import 'package:ashborn/ui/overlays/stage_clear_overlay.dart';
+import 'package:ashborn/ui/screens/character_select_screen.dart';
 import 'package:ashborn/data/profile.dart';
+import 'package:ashborn/data/stages.dart';
+import 'package:ashborn/game/world/obstacles.dart';
+import 'package:ashborn/game/world/region_theme.dart';
 import 'package:ashborn/data/weapons.dart';
 import 'package:ashborn/game/ashborn_game.dart';
 import 'package:ashborn/systems/crate_system.dart';
 import 'package:ashborn/systems/wave_system.dart';
 import 'package:ashborn/ui/mastery/mastery_screen.dart';
 import 'package:ashborn/ui/profile_scope.dart';
+import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -61,13 +80,18 @@ Future<(AshbornGame, GlobalKey)> _arena(
   WidgetTester tester,
   CharacterDef character, {
   double ratio = 1,
+  Stage stage = Stage.first,
 }) async {
   tester.view
     ..physicalSize = Size(390 * ratio, 600 * ratio)
     ..devicePixelRatio = ratio;
   addTearDown(tester.view.reset);
   await _fonts();
-  final game = AshbornGame(character: character, profile: Profile());
+  final game = AshbornGame(
+    character: character,
+    profile: Profile(),
+    startStage: stage,
+  );
   final key = GlobalKey();
   await tester.pumpWidget(
     RepaintBoundary(
@@ -201,21 +225,47 @@ void main() {
     await tester.pump(const Duration(milliseconds: 16));
     var n = 0;
     for (final move in SwordMove.values) {
-      world.add(
-        SwordStrike(
-          move: move,
-          angle: 0.5,
-          sizeScale: size,
-          fury: move == SwordMove.slam,
-          onImpact: (_) {},
-        ),
+      final strike = SwordStrike(
+        move: move,
+        angle: 0.5,
+        sizeScale: size,
+        fury: move == SwordMove.slam,
+        onImpact: (_) {
+          if (move != SwordMove.slam) return;
+          final center =
+              at +
+              Vector2(math.cos(0.5), math.sin(0.5)) * Balance.slamOffset * size;
+          world
+            ..add(
+              GroundCrack(position: center, radius: Balance.slamRadius * size),
+            )
+            ..add(
+              EarthSpikes(
+                position: center.clone(),
+                radius: Balance.slamRadius * size,
+                ember: true,
+              ),
+            )
+            ..add(
+              Ring(
+                position: center.clone(),
+                radius: Balance.slamRadius * size * 1.15,
+                color: const Color(0xFFE8D2A8),
+                strokeWidth: 8,
+              ),
+            );
+        },
       );
+      if (move == SwordMove.slam) {
+        player.leap(strike.duration * strike.impactAt, Balance.slamLeap);
+      }
+      world.add(strike);
       await tester.pump(const Duration(milliseconds: 16));
       var elapsed = 16;
       for (final f in switch (move) {
         SwordMove.thrust => [60, 120, 180],
         SwordMove.swing => [60, 120, 200],
-        SwordMove.slam => [80, 180, 240],
+        SwordMove.slam => [120, 300, 430, 520],
       }) {
         await tester.pump(Duration(milliseconds: f - elapsed));
         elapsed = f;
@@ -281,6 +331,336 @@ void main() {
     player.takeDamage(1);
     await run(0.7, Vector2.zero());
     game.pauseEngine();
+  });
+
+  testWidgets('내 공격 이펙트', (tester) async {
+    // 회오리 셋(나이 다르게) · 폭발 · 충격 고리 · 벼락을 한 화면에 놓고 몇 순간 찍는다.
+    final (game, key) = await _arena(tester, Roster.witch, ratio: 2);
+    final world = game.world;
+    final player = world.player;
+    player.gainWeapon(WeaponId.fireTornado);
+    final weapon = player.weapon(WeaponId.fireTornado)! as FireTornado;
+    weapon.removeFromParent();
+    final at = player.position;
+    Tornado tornado(Vector2 p) => Tornado(
+      weapon: weapon,
+      position: p,
+      direction: Vector2(1, 0),
+      radius: Balance.tornadoRadius,
+      speed: 0,
+      lifetime: 30,
+    );
+    world.add(tornado(at + Vector2(-150, -40)));
+    await tester.pump(const Duration(milliseconds: 120));
+    world
+      ..add(tornado(at + Vector2(-60, -40)))
+      ..add(tornado(at + Vector2(30, -40)));
+    await tester.pump(const Duration(milliseconds: 400));
+    for (var i = 0; i < 3; i++) {
+      world
+        ..add(
+          Burst(
+            position: at + Vector2(-130, 130),
+            radius: 55,
+            color: const Color(0xFFFF7A2E),
+          ),
+        )
+        ..add(
+          Burst(
+            position: at + Vector2(-10, 130),
+            radius: 40,
+            color: const Color(0xFF8FE3FF),
+          ),
+        )
+        ..add(
+          Ring(
+            position: at + Vector2(120, 130),
+            radius: 90,
+            color: const Color(0xFFE0A060),
+            strokeWidth: 10,
+          ),
+        )
+        ..add(
+          LightningBolt(
+            position: at + Vector2(140, -20),
+            color: const Color(0xFFFFF27A),
+          ),
+        );
+      await tester.pump(Duration(milliseconds: 40 + i * 70));
+      await _shot(tester, key, 'fx_$i');
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+    game.pauseEngine();
+  });
+
+  for (final (who, weapons) in [
+    (
+      Roster.knight,
+      [
+        WeaponId.greatsword,
+        WeaponId.earthSlam,
+        WeaponId.cleave,
+        WeaponId.warCry,
+      ],
+    ),
+    (
+      Roster.witch,
+      [
+        WeaponId.emberOrb,
+        WeaponId.meteor,
+        WeaponId.fireTornado,
+        WeaponId.emberSpirits,
+      ],
+    ),
+    (
+      Roster.hunter,
+      [WeaponId.fireCrossbow, WeaponId.emberMine, WeaponId.snareNet],
+    ),
+  ]) {
+    testWidgets('전투 이펙트 ${who.id.name}', (tester) async {
+      final (game, key) = await _arena(tester, who, ratio: 2);
+      final world = game.world;
+      final player = world.player;
+      for (final id in weapons) {
+        for (
+          var i = player.weapon(id) == null ? 0 : 1;
+          i < WeaponId.maxLevel;
+          i++
+        ) {
+          player.gainWeapon(id);
+        }
+      }
+      for (var i = 0; i < 16; i++) {
+        world.add(
+          _dummy(
+            EnemyKind.values[i % 6],
+            player.position +
+                (Vector2(110 * (1 + i % 3 * 0.5), 0)..rotate(i * 0.4)),
+            speed: 40,
+          ),
+        );
+      }
+      for (var shot = 0; shot < 4; shot++) {
+        for (var i = 0; i < 9; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await _shot(tester, key, 'battle_${who.id.name}_$shot');
+      }
+      game.pauseEngine();
+    });
+  }
+
+  testWidgets('기둥 앞뒤', (tester) async {
+    // 기둥이 있는 지역에서 기둥 뒤 · 앞에 서 보고, 기둥 쪽으로 걸어 막히는지 찍는다.
+    final stage = [for (var i = 0; i < 12; i++) Stage(i)].firstWhere(
+      (s) => RegionTheme.of(s.region).structures.containsKey(Structure.pillar),
+    );
+    final (game, key) = await _arena(
+      tester,
+      Roster.knight,
+      ratio: 2,
+      stage: stage,
+    );
+    final world = game.world;
+    final player = world.player;
+    (int, int)? found;
+    for (var r = 0; r < 60 && found == null; r++) {
+      for (var gx = -r; gx <= r && found == null; gx++) {
+        for (var gy = -r; gy <= r; gy++) {
+          if (world.obstacles.structureAt(gx, gy) == Structure.pillar) {
+            found = (gx, gy);
+            break;
+          }
+        }
+      }
+    }
+    final foot = Obstacles.footOf(found!.$1, found.$2);
+    // 뒤 (위쪽): 발이 밑동보다 위.
+    player.position.setValues(foot.x + 6, foot.y - 30);
+    await tester.pump(const Duration(milliseconds: 100));
+    await _shot(tester, key, 'pillar_behind');
+    // 앞 (아래쪽).
+    player.position.setValues(foot.x - 4, foot.y + 6);
+    await tester.pump(const Duration(milliseconds: 100));
+    await _shot(tester, key, 'pillar_front');
+    // 위에서 아래로 걸어 내려가 본다: 밑동에 막혀 비켜 가야 한다.
+    player.position.setValues(foot.x, foot.y - 60);
+    game.joystick.delta.setValues(0, 1000);
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    game.joystick.delta.setZero();
+    await tester.pump(const Duration(milliseconds: 16));
+    await _shot(tester, key, 'pillar_blocked');
+    game.pauseEngine();
+  });
+
+  for (final (who, id) in [
+    (Roster.knight, WeaponId.warCry),
+    (Roster.hunter, WeaponId.snareNet),
+  ]) {
+    testWidgets('새 스킬 ${id.name}', (tester) async {
+      final (game, key) = await _arena(tester, who, ratio: 2);
+      final world = game.world;
+      final player = world.player;
+      for (final w in player.weapons.toList()) {
+        (w as Component).removeFromParent();
+      }
+      for (var i = 0; i < WeaponId.maxLevel; i++) {
+        player.gainWeapon(id);
+      }
+      for (var i = 0; i < 10; i++) {
+        world.add(
+          _dummy(
+            EnemyKind.values[i % 6],
+            player.position + (Vector2(70 + (i % 3) * 25, 0)..rotate(i * 0.63)),
+          ),
+        );
+      }
+      await tester.pump(const Duration(milliseconds: 16));
+      final weapon = player.weapon(id)!;
+      (weapon as Component).removeFromParent();
+      await tester.pump(const Duration(milliseconds: 16));
+      world.add(weapon as Component);
+      await tester.pump(const Duration(milliseconds: 16));
+      (weapon as dynamic).fire();
+      var t = 0;
+      for (final ms in [80, 200, 420, 900]) {
+        await tester.pump(Duration(milliseconds: ms - t));
+        t = ms;
+        await _shot(tester, key, 'skill_${id.name}_$ms');
+      }
+      game.pauseEngine();
+    });
+  }
+
+  group('화면', () {
+    Future<GlobalKey> screen(
+      WidgetTester tester,
+      Widget child, {
+      Size size = const Size(390, 844),
+    }) async {
+      tester.view
+        ..physicalSize = size
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await _fonts();
+      final key = GlobalKey();
+      final mastery = Mastery()..addXp(CharacterId.knight, 30000);
+      final inventory = Inventory()..addLoot(gold: 99999);
+      final random = math.Random(4);
+      for (final c in CharacterId.values) {
+        for (final t in [ItemType.oneHand, ItemType.twoHand]) {
+          inventory
+              .gear(CharacterId.knight)
+              .add(
+                LootSystem.generate(
+                  random,
+                  type: t,
+                  owner: c,
+                  rarity: Rarity.values[c.index + 2],
+                ),
+              );
+        }
+      }
+      inventory
+          .gear(CharacterId.knight)
+          .add(
+            LootSystem.generate(
+              random,
+              type: ItemType.armor,
+              rarity: Rarity.legend,
+            ),
+          );
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: key,
+          child: ProfileScope(
+            profile: Profile(mastery: mastery, inventory: inventory),
+            child: MaterialApp(theme: ThemeData.dark(), home: child),
+          ),
+        ),
+      );
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      for (var i = 0; i < 3; i++) {
+        await tester.runAsync(
+          () => Future.delayed(const Duration(milliseconds: 300)),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      return key;
+    }
+
+    testWidgets('캐릭터 선택', (tester) async {
+      final key = await screen(tester, const CharacterSelectScreen());
+      await _shot(tester, key, 'ui_select');
+    });
+
+    testWidgets('특성', (tester) async {
+      final key = await screen(
+        tester,
+        const MasteryScreen(character: Roster.knight),
+      );
+      await _shot(tester, key, 'ui_traits');
+    });
+
+    testWidgets('장비', (tester) async {
+      final key = await screen(
+        tester,
+        const EquipmentScreen(character: Roster.knight),
+      );
+      await _shot(tester, key, 'ui_equipment');
+      await tester.tap(find.byKey(const Key('bag-2')));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      await _shot(tester, key, 'ui_equipment_locked');
+    });
+
+    for (final n in [3, 4]) {
+      testWidgets('레벨업 카드 $n장', (tester) async {
+        final game = AshbornGame(character: Roster.witch, profile: Profile());
+        game.levelUpOptions.value = [
+          const WeaponOption(WeaponId.emberSpirits, 1),
+          const WeaponOption(WeaponId.fireTornado, 4),
+          const AwakenOption(WeaponId.meteor),
+          const PassiveOption(PassiveId.haste, 2),
+        ].take(n).toList();
+        final key = await screen(
+          tester,
+          Scaffold(
+            backgroundColor: const Color(0xFF2E2A28),
+            body: LevelUpOverlay(game: game),
+          ),
+        );
+        await _shot(tester, key, 'ui_levelup_$n');
+      });
+    }
+
+    testWidgets('은총 카드 4장', (tester) async {
+      final game = AshbornGame(character: Roster.knight, profile: Profile());
+      game.fateOptions.value = [
+        for (final (i, card) in FateCard.values.take(12).indexed)
+          if (i % 3 == 0)
+            Fate(card, Rarity.values[math.max(card.minRarity.index, i % 6)]),
+      ].take(4).toList();
+      final key = await screen(
+        tester,
+        Scaffold(
+          backgroundColor: const Color(0xFF2E2A28),
+          body: StageClearOverlay(game: game, onReturn: () {}),
+        ),
+      );
+      await _shot(tester, key, 'ui_fate_4');
+      // 짧은 화면에서도 스크롤 없이 한 화면에 모두 보여야 한다.
+      tester.view.physicalSize = const Size(390, 560);
+      await tester.pump();
+      await _shot(tester, key, 'ui_fate_4_short');
+    });
   });
 
   testWidgets('숙련 화면', (tester) async {
